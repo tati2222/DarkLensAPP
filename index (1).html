@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DARKLENS – Explorador de Personalidad</title>
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- TensorFlow.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.20.0"></script>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1"></script>
+
+  <style>
+    /* ========================================
+       ESTILOS CRÍTICOS INLINE
+       ======================================== */
+    .hidden {
+      display: none !important;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e0e0ff;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .hero {
+      width: 100%;
+      height: 300px;
+      overflow: hidden;
+      position: relative;
+      background: linear-gradient(135deg, rgba(127, 0, 255, 0.2) 0%, rgba(108, 99, 255, 0.2) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hero-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.7;
+    }
+
+    .section {
+      background: rgba(37, 37, 64, 0.8);
+      border-radius: 15px;
+      padding: 40px;
+      margin: 30px 0;
+      box-shadow: 0 8px 32px rgba(127, 0, 255, 0.2);
+      border: 1px solid rgba(192, 128, 255, 0.2);
+    }
+
+    .bienvenida {
+      background: rgba(37, 37, 64, 0.9);
+      border-radius: 15px;
+      padding: 40px;
+      margin: 30px 0;
+      box-shadow: 0 8px 32px rgba(127, 0, 255, 0.3);
+      border: 2px solid rgba(192, 128, 255, 0.3);
+    }
+
+    h1 {
+      font-size: 3em;
+      text-align: center;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, #c080ff 0%, #7f00ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 800;
+    }
+
+    h2 {
+      font-size: 1.5em;
+      text-align: center;
+      margin-bottom: 30px;
+      color: #c080ff;
+      font-weight: 400;
+    }
+
+    h3 {
+      font-size: 2em;
+      margin-bottom: 20px;
+      color: #c080ff;
+      text-align: center;
+    }
+
+    h4 {
+      font-size: 1.3em;
+      margin: 20px 0 10px 0;
+      color: #b0a0ff;
+    }
+
+    .explicacion {
+      background: rgba(26, 26, 46, 0.5);
+      padding: 30px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+      border: 1px solid rgba(192, 128, 255, 0.2);
+    }
+
+    .explicacion p {
+      margin-bottom: 15px;
+      line-height: 1.8;
+      color: #d0d0ff;
+      font-size: 1.05em;
+    }
+
+    .explicacion ol {
+      margin-left: 25px;
+      color: #d0d0ff;
+      line-height: 2;
+    }
+
+    .explicacion ol li {
+      margin-bottom: 10px;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    label {
+      font-weight: 600;
+      color: #c080ff;
+      font-size: 1.1em;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+      padding: 12px 15px;
+      border: 2px solid rgba(192, 128, 255, 0.3);
+      border-radius: 8px;
+      font-size: 1em;
+      background: rgba(26, 26, 46, 0.8);
+      color: #e0e0ff;
+      transition: all 0.3s;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus {
+      outline: none;
+      border-color: #7f00ff;
+      box-shadow: 0 0 15px rgba(127, 0, 255, 0.3);
+      background: rgba(26, 26, 46, 1);
+    }
+
+    select option {
+      background: #1a1a2e;
+      color: #e0e0ff;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: flex-start;
+      gap: 15px;
+      cursor: pointer;
+      padding: 15px;
+      background: rgba(26, 26, 46, 0.5);
+      border-radius: 8px;
+      border: 1px solid rgba(192, 128, 255, 0.2);
+      transition: background 0.3s;
+    }
+
+    .checkbox-label:hover {
+      background: rgba(26, 26, 46, 0.8);
+    }
+
+    .checkbox-label input[type="checkbox"] {
+      min-width: 20px;
+      min-height: 20px;
+      cursor: pointer;
+      accent-color: #7f00ff;
+    }
+
+    .checkbox-label span {
+      color: #d0d0ff;
+      line-height: 1.6;
+      font-size: 0.95em;
+    }
+
+    .btn-primary,
+    button[type="submit"],
+    button[type="button"] {
+      padding: 15px 40px;
+      font-size: 1.1em;
+      background: linear-gradient(135deg, #7f00ff 0%, #6c63ff 100%);
+      color: white;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-weight: 600;
+      box-shadow: 0 4px 15px rgba(127, 0, 255, 0.4);
+      display: block;
+      margin: 20px auto;
+    }
+
+    .btn-primary:hover,
+    button[type="submit"]:hover,
+    button[type="button"]:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(127, 0, 255, 0.6);
+      background: linear-gradient(135deg, #9000ff 0%, #7c73ff 100%);
+    }
+
+    .btn-primary:disabled,
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .test-item {
+      margin-bottom: 25px;
+      padding: 25px;
+      background: rgba(26, 26, 46, 0.6);
+      border-radius: 12px;
+      transition: all 0.3s;
+      border: 1px solid rgba(192, 128, 255, 0.2);
+    }
+
+    .test-item:hover {
+      background: rgba(37, 37, 64, 0.8);
+      border-color: rgba(192, 128, 255, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .test-item p {
+      color: #e0e0ff;
+      font-size: 1.1em;
+      margin-bottom: 15px;
+      line-height: 1.6;
+    }
+
+    .test-item strong {
+      color: #c080ff;
+      font-size: 1.2em;
+      margin-right: 8px;
+    }
+
+    .opciones {
+      display: flex;
+      gap: 12px;
+      margin-top: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .opciones input[type="radio"] {
+      display: none;
+    }
+
+    .opciones label {
+      padding: 12px 24px;
+      border: 2px solid rgba(192, 128, 255, 0.6);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: rgba(37, 37, 64, 0.9);
+      color: #e0e0ff;
+      min-width: 55px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 1.1em;
+    }
+
+    .opciones input[type="radio"]:checked + label {
+      background: linear-gradient(135deg, #7f00ff 0%, #6c63ff 100%);
+      color: #ffffff;
+      transform: scale(1.1);
+      border-color: #ffffff;
+      box-shadow: 0 0 20px rgba(127, 0, 255, 0.6);
+    }
+
+    .opciones label:hover {
+      background: rgba(127, 0, 255, 0.4);
+      border-color: #c080ff;
+      transform: translateY(-2px);
+      color: #ffffff;
+    }
+
+    .analisis-loading {
+      font-weight: bold;
+      color: #c080ff;
+      margin-top: 10px;
+      text-align: center;
+      font-size: 1.2em;
+      padding: 25px;
+      background: rgba(127, 0, 255, 0.15);
+      border-radius: 10px;
+      border: 2px solid rgba(192, 128, 255, 0.3);
+    }
+
+    .resultado-box {
+      border: 2px solid #6c63ff;
+      padding: 25px;
+      border-radius: 12px;
+      background: rgba(37, 37, 64, 0.9);
+      margin-top: 20px;
+      box-shadow: 0 4px 15px rgba(127, 0, 255, 0.2);
+    }
+
+    .resultado-box h4 {
+      color: #c080ff;
+      margin-bottom: 20px;
+      font-size: 1.5em;
+    }
+
+    .resultado-box p {
+      color: #d0d0ff;
+      line-height: 1.8;
+      margin-bottom: 12px;
+      font-size: 1.05em;
+    }
+
+    .resultado-box strong {
+      color: #e0e0ff;
+    }
+
+    .emocion-bar {
+      margin-bottom: 12px;
+      background: rgba(26, 26, 46, 0.8);
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+      height: 35px;
+      border: 1px solid rgba(192, 128, 255, 0.2);
+    }
+
+    .emocion-bar-fill {
+      background: linear-gradient(90deg, #7f00ff 0%, #6c63ff 100%);
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      transition: width 0.8s ease;
+    }
+
+    .emocion-bar-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      justify-content: space-between;
+      padding: 7px 15px;
+      font-size: 1em;
+      color: #e0e0ff;
+      font-weight: 600;
+    }
+
+    .grafico-container {
+      max-width: 600px;
+      margin: 30px auto;
+      padding: 20px;
+      background: rgba(26, 26, 46, 0.6);
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(127, 0, 255, 0.2);
+    }
+
+    .grafico-emociones-container {
+      margin: 30px 0;
+      background: rgba(37, 37, 64, 0.9);
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(127, 0, 255, 0.3);
+      border: 1px solid rgba(192, 128, 255, 0.2);
+    }
+
+    .resultado-integrado {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .audio-controls {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-bottom: 35px;
+      flex-wrap: wrap;
+    }
+
+    .btn-audio {
+      padding: 12px 25px;
+      font-size: 1em;
+      background: linear-gradient(135deg, #7f00ff 0%, #6c63ff 100%);
+      color: white;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      font-weight: 600;
+    }
+
+    .btn-audio:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(127, 0, 255, 0.5);
+    }
+
+    .perfiles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 25px;
+      margin-bottom: 35px;
+    }
+
+    .narrativa-principal {
+      background: rgba(37, 37, 64, 0.95);
+      font-size: 1.1em;
+      line-height: 1.9;
+      border: 2px solid rgba(192, 128, 255, 0.3);
+    }
+
+    .narrativa-principal p {
+      margin-bottom: 18px;
+      color: #d0d0ff;
+    }
+
+    .disclaimer {
+      background: rgba(255, 100, 100, 0.15);
+      border-color: #ff6384;
+    }
+
+    .disclaimer p {
+      color: #ffb0b0;
+    }
+
+    .footer-investigacion {
+      text-align: center;
+      margin-top: 50px;
+      padding-top: 35px;
+      border-top: 2px solid rgba(192, 128, 255, 0.3);
+    }
+
+    .footer-investigacion p {
+      color: #c080ff;
+    }
+
+    .camera-section {
+      text-align: center;
+      padding: 30px;
+      background: rgba(26, 26, 46, 0.5);
+      border-radius: 12px;
+      border: 1px solid rgba(192, 128, 255, 0.2);
+    }
+
+    #video,
+    #canvas {
+      border-radius: 12px;
+      margin: 20px auto;
+      display: block;
+      box-shadow: 0 4px 20px rgba(127, 0, 255, 0.3);
+      border: 2px solid rgba(192, 128, 255, 0.3);
+      max-width: 100%;
+      height: auto;
+    }
+
+    #input-imagen {
+      display: none;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HERO -->
+  <section class="hero">
+    <img src="assets/futuristic_face.png" alt="Análisis facial futurista" class="hero-img">
+  </section>
+
+  <!-- BIENVENIDA -->
+  <div class="container">
+    <section class="bienvenida" id="seccion-bienvenida">
+      <h1>DARKLENS</h1>
+      <h2>Explorador de rasgos de personalidad oscura mediante test psicométrico y análisis de microexpresiones</h2>
+
+      <div class="explicacion">
+        <h3>¿En qué consiste esta experiencia?</h3>
+        <p>
+          DARKLENS es una herramienta experimental diseñada para explorar rasgos de personalidad oscura mediante la integración de dos enfoques complementarios: la evaluación psicométrica y el análisis automatizado de microexpresiones faciales. Esta experiencia forma parte de una investigación académica en el marco de la <strong>Licenciatura en Ciencia de Datos</strong> de la <strong>Universidad del Gran Rosario (UGR)</strong>.
+        </p>
+        <p>La participación es voluntaria, anónima y no implica ningún tipo de diagnóstico clínico. El objetivo es ofrecer una interpretación combinada de tu perfil psicométrico y emocional, basada en modelos de inteligencia artificial entrenados para este fin.</p>
+        
+        <h4>La experiencia consta de tres pasos:</h4>
+        <ol>
+          <li><strong>Test SD3:</strong> Completás un cuestionario validado de 27 ítems que evalúa maquiavelismo, narcisismo y psicopatía subclínica.</li>
+          <li><strong>Análisis de microexpresiones:</strong> Subís una imagen facial que será procesada por un modelo entrenado para detectar emociones sutiles.</li>
+          <li><strong>Interpretación combinada:</strong> Recibís un resumen integrador de tus resultados psicométricos y emocionales.</li>
+        </ol>
+        <p><em>Esta herramienta no reemplaza evaluaciones psicológicas profesionales. Los resultados deben interpretarse como una aproximación exploratoria dentro de un contexto académico.</em></p>
+      </div>
+
+      <form id="form-datos-basicos">
+        <label>Nombre:</label>
+        <input type="text" name="nombre" required>
+
+        <label>Edad:</label>
+        <input type="number" name="edad" min="18" max="100" required>
+
+        <label>Género:</label>
+        <select name="genero" required>
+          <option value="">Seleccionar</option>
+          <option value="Femenino">Femenino</option>
+          <option value="Masculino">Masculino</option>
+          <option value="No binario">No binario</option>
+          <option value="Prefiero no decirlo">Prefiero no decirlo</option>
+        </select>
+
+        <label>País:</label>
+        <input type="text" name="pais" required>
+
+        <label class="checkbox-label">
+          <input type="checkbox" name="consentimiento" required>
+          <span>
+            Acepto prestar mis datos personales, los resultados del test y mi imagen facial para participar voluntariamente en esta investigación académica. Entiendo que esta no es una evaluación clínica, y que la información recopilada será utilizada exclusivamente con fines de estudio, tratada de forma anónima y almacenada en una base de datos privada sin posibilidad de identificarme personalmente.
+          </span>
+        </label>
+
+        <button type="submit" class="btn-primary">Entiendo y deseo continuar</button>
+      </form>
+    </section>
+
+    <!-- TEST SD3 -->
+    <section class="section hidden" id="seccion-test">
+      <h3>Paso 1: Test SD3</h3>
+      <p style="text-align: center; margin-bottom: 30px; color: #c080ff; font-size: 1.1em;">
+        Indicá tu nivel de acuerdo con cada afirmación<br>
+        <strong>1 = Fuertemente en desacuerdo</strong> | <strong>5 = Fuertemente de acuerdo</strong>
+      </p>
+
+      <form id="form-sd3"></form>
+
+      <div id="resultado-sd3" class="hidden"></div>
+      <div class="grafico-container hidden" id="grafico-container">
+        <canvas id="grafico-sd3"></canvas>
+      </div>
+      <div id="narrativa-sd3" class="hidden"></div>
+
+      <button id="btn-continuar-micro" class="hidden btn-primary">Continuar al análisis facial</button>
+    </section>
+
+    <!-- MICROEXPRESIONES -->
+    <section class="section hidden" id="seccion-micro">
+      <h3>Paso 2: Análisis de Microexpresiones</h3>
+      <p style="text-align: center; margin-bottom: 30px; color: #c080ff; font-size: 1.1em;">
+        Tomá o subí una foto de tu rostro mirando a la cámara en un ambiente bien iluminado
+      </p>
+
+      <div class="camera-section">
+        <video id="video" width="480" height="360" autoplay class="hidden"></video>
+        <canvas id="canvas" width="480" height="360" class="hidden"></canvas>
+
+        <div class="button-group">
+          <button type="button" id="btn-activar-camara" class="btn-primary">📷 Activar cámara</button>
+          <button type="button" id="btn-tomar-foto" class="hidden btn-primary">📸 Capturar foto</button>
+          <button type="button" id="btn-subir-imagen" class="btn-primary">📁 Subir imagen</button>
+        </div>
+        <input type="file" id="input-imagen" accept="image/*">
+
+        <button type="button" id="btn-analizar" class="hidden btn-primary">🧠 Analizar microexpresiones</button>
+      </div>
+
+      <div id="resultado-micro" class="hidden"></div>
+    </section>
+
+    <!-- RESULTADO FINAL -->
+    <section class="section hidden" id="seccion-final">
+      <div class="resultado-final">
+        <h3 style="text-align: center; font-size: 2em; color: #c080ff; margin-bottom: 30px;">
+          🎯 Análisis Integrado Final
+        </h3>
+        <div id="contenido-final"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Script JavaScript -->
+  <script src="script.js"></script>
+  
+</body>
+</html>
