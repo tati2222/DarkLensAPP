@@ -103,7 +103,7 @@ async function precargarModelo() {
     console.log('✅ TensorFlow.js está listo');
     
     // Cargar modelo OPTIMIZADO desde tu carpeta model/
-    const modelURL = "https://tati2222.github.io/DarkLens/model/model.json";
+    const modelURL = "https://tati2222.github.io/DarkLensAPP/model/model.json";
     
     modeloMicroexpresiones = await tf.loadLayersModel(modelURL);
     
