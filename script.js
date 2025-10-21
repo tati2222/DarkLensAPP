@@ -717,10 +717,10 @@ function mostrarResultadoIntegrado() {
 
   const seccionMicro = document.getElementById('seccion-micro');
   const seccionFinal = document.getElementById('seccion-final');
-  
+
   if (seccionMicro) seccionMicro.classList.add('hidden');
   if (seccionFinal) seccionFinal.classList.remove('hidden');
-  
+
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
   const { mach, narc, psych } = resultadosSD3;
@@ -737,14 +737,13 @@ function mostrarResultadoIntegrado() {
         <button id="btn-reproducir-audio" class="btn-audio">
           🔊 Escuchar Análisis
         </button>
-       <button id="btn-pausar-audio" class="btn-audio hidden">⏸️ Pausar</button>
+        <button id="btn-pausar-audio" class="btn-audio hidden">⏸️ Pausar</button>
       </div>
       <div id="narrativa-final">${narrativa}</div>
       <canvas id="grafico-emociones"></canvas>
     </div>
   `;
 
-  const seccionFinal = document.getElementById('seccion-final');
   if (seccionFinal) seccionFinal.innerHTML = html;
 
   crearGraficoEmociones(resultadosMicro);
@@ -774,6 +773,3 @@ function mostrarResultadoIntegrado() {
   }
 }
 
-// ========================================
-// FIN DEL ARCHIVO
-// ========================================
