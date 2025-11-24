@@ -1,21 +1,18 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>DARKLENS – Explorador de Personalidad</title>
-  <link rel="stylesheet" href="style.css">
-  
+  <link rel="stylesheet" href="style.css" />
+
   <!-- TensorFlow.js -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.20.0"></script>
-  
+
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1"></script>
 
   <style>
-    /* ========================================
-       ESTILOS CRÍTICOS INLINE
-       ======================================== */
     .hidden {
       display: none !important;
     }
@@ -40,7 +37,11 @@
       height: 300px;
       overflow: hidden;
       position: relative;
-      background: linear-gradient(135deg, rgba(127, 0, 255, 0.2) 0%, rgba(108, 99, 255, 0.2) 100%);
+      background: linear-gradient(
+        135deg,
+        rgba(127, 0, 255, 0.2) 0%,
+        rgba(108, 99, 255, 0.2) 100%
+      );
       display: flex;
       align-items: center;
       justify-content: center;
@@ -140,8 +141,8 @@
       font-size: 1.1em;
     }
 
-    input[type="text"],
-    input[type="number"],
+    input[type='text'],
+    input[type='number'],
     select {
       padding: 12px 15px;
       border: 2px solid rgba(192, 128, 255, 0.3);
@@ -152,8 +153,8 @@
       transition: all 0.3s;
     }
 
-    input[type="text"]:focus,
-    input[type="number"]:focus,
+    input[type='text']:focus,
+    input[type='number']:focus,
     select:focus {
       outline: none;
       border-color: #7f00ff;
@@ -182,7 +183,7 @@
       background: rgba(26, 26, 46, 0.8);
     }
 
-    .checkbox-label input[type="checkbox"] {
+    .checkbox-label input[type='checkbox'] {
       min-width: 20px;
       min-height: 20px;
       cursor: pointer;
@@ -196,8 +197,8 @@
     }
 
     .btn-primary,
-    button[type="submit"],
-    button[type="button"] {
+    button[type='submit'],
+    button[type='button'] {
       padding: 15px 40px;
       font-size: 1.1em;
       background: linear-gradient(135deg, #7f00ff 0%, #6c63ff 100%);
@@ -213,8 +214,8 @@
     }
 
     .btn-primary:hover,
-    button[type="submit"]:hover,
-    button[type="button"]:hover {
+    button[type='submit']:hover,
+    button[type='button']:hover {
       transform: translateY(-3px);
       box-shadow: 0 6px 20px rgba(127, 0, 255, 0.6);
       background: linear-gradient(135deg, #9000ff 0%, #7c73ff 100%);
@@ -263,7 +264,7 @@
       flex-wrap: wrap;
     }
 
-    .opciones input[type="radio"] {
+    .opciones input[type='radio'] {
       display: none;
     }
 
@@ -281,7 +282,7 @@
       font-size: 1.1em;
     }
 
-    .opciones input[type="radio"]:checked + label {
+    .opciones input[type='radio']:checked + label {
       background: linear-gradient(135deg, #7f00ff 0%, #6c63ff 100%);
       color: #ffffff;
       transform: scale(1.1);
@@ -484,10 +485,6 @@
   </style>
 </head>
 <body>
-
-  <!-- HERO -->
-
-  <!-- BIENVENIDA -->
   <div class="container">
     <section class="bienvenida" id="seccion-bienvenida">
       <h1>DARKLENS</h1>
@@ -498,8 +495,10 @@
         <p>
           DARKLENS es una herramienta experimental diseñada para explorar rasgos de personalidad oscura mediante la integración de dos enfoques complementarios: la evaluación psicométrica y el análisis automatizado de microexpresiones faciales. Esta experiencia forma parte de una investigación académica en el marco de la <strong>Licenciatura en Ciencia de Datos</strong> de la <strong>Universidad del Gran Rosario (UGR)</strong>.
         </p>
-        <p>La participación es voluntaria, anónima y no implica ningún tipo de diagnóstico clínico. El objetivo es ofrecer una interpretación combinada de tu perfil psicométrico y emocional, basada en modelos de inteligencia artificial entrenados para este fin.</p>
-        
+        <p>
+          La participación es voluntaria, anónima y no implica ningún tipo de diagnóstico clínico. El objetivo es ofrecer una interpretación combinada de tu perfil psicométrico y emocional, basada en modelos de inteligencia artificial entrenados para este fin.
+        </p>
+
         <h4>La experiencia consta de tres pasos:</h4>
         <ol>
           <li><strong>Test SD3:</strong> Completás un cuestionario validado de 27 ítems que evalúa maquiavelismo, narcisismo y psicopatía subclínica.</li>
@@ -511,90 +510,25 @@
 
       <form id="form-datos-basicos">
         <label>Nombre:</label>
-        <input type="text" name="nombre" required>
+        <input type="text" name="nombre" required />
 
         <label>Edad:</label>
-        <input type="number" name="edad" min="18" max="100" required>
+        <input type="number" name="edad" min="18" max="99" required />
 
         <label>Género:</label>
         <select name="genero" required>
-          <option value="">Seleccionar</option>
-          <option value="Femenino">Femenino</option>
-          <option value="Masculino">Masculino</option>
-          <option value="No binario">No binario</option>
-          <option value="Prefiero no decirlo">Prefiero no decirlo</option>
+          <option value="" disabled selected>Selecciona tu género</option>
+          <option value="femenino">Femenino</option>
+          <option value="masculino">Masculino</option>
+          <option value="otro">Otro</option>
+          <option value="prefiero_no_decirlo">Prefiero no decirlo</option>
         </select>
 
-        <label>País:</label>
-        <input type="text" name="pais" required>
-
-        <label class="checkbox-label">
-          <input type="checkbox" name="consentimiento" required>
-          <span>
-            Acepto prestar mis datos personales, los resultados del test y mi imagen facial para participar voluntariamente en esta investigación académica. Entiendo que esta no es una evaluación clínica, y que la información recopilada será utilizada exclusivamente con fines de estudio, tratada de forma anónima y almacenada en una base de datos privada sin posibilidad de identificarme personalmente.
-          </span>
-        </label>
-
-        <button type="submit" class="btn-primary">Entiendo y deseo continuar</button>
+        <button type="submit" class="btn-primary">Iniciar test SD3</button>
       </form>
     </section>
 
-    <!-- TEST SD3 -->
-    <section class="section hidden" id="seccion-test">
-      <h3>Paso 1: Test SD3</h3>
-      <p style="text-align: center; margin-bottom: 30px; color: #c080ff; font-size: 1.1em;">
-        Indicá tu nivel de acuerdo con cada afirmación<br>
-        <strong>1 = Fuertemente en desacuerdo</strong> | <strong>5 = Fuertemente de acuerdo</strong>
-      </p>
-
-      <form id="form-sd3"></form>
-
-      <div id="resultado-sd3" class="hidden"></div>
-      <div class="grafico-container hidden" id="grafico-container">
-        <canvas id="grafico-sd3"></canvas>
-      </div>
-      <div id="narrativa-sd3" class="hidden"></div>
-
-      <button id="btn-continuar-micro" class="hidden btn-primary">Continuar al análisis facial</button>
-    </section>
-
-    <!-- MICROEXPRESIONES -->
-    <section class="section hidden" id="seccion-micro">
-      <h3>Paso 2: Análisis de Microexpresiones</h3>
-      <p style="text-align: center; margin-bottom: 30px; color: #c080ff; font-size: 1.1em;">
-        Tomá o subí una foto de tu rostro mirando a la cámara en un ambiente bien iluminado
-      </p>
-
-      <div class="camera-section">
-        <video id="video" width="480" height="360" autoplay class="hidden"></video>
-        <canvas id="canvas" width="480" height="360" class="hidden"></canvas>
-
-        <div class="button-group">
-          <button type="button" id="btn-activar-camara" class="btn-primary">📷 Activar cámara</button>
-          <button type="button" id="btn-tomar-foto" class="hidden btn-primary">📸 Capturar foto</button>
-          <button type="button" id="btn-subir-imagen" class="btn-primary">📁 Subir imagen</button>
-        </div>
-        <input type="file" id="input-imagen" accept="image/*">
-
-        <button type="button" id="btn-analizar" class="hidden btn-primary">🧠 Analizar microexpresiones</button>
-      </div>
-
-      <div id="resultado-micro" class="hidden"></div>
-    </section>
-
-    <!-- RESULTADO FINAL -->
-    <section class="section hidden" id="seccion-final">
-      <div class="resultado-final">
-        <h3 style="text-align: center; font-size: 2em; color: #c080ff; margin-bottom: 30px;">
-          🎯 Análisis Integrado Final
-        </h3>
-        <div id="contenido-final"></div>
-      </div>
-    </section>
+    <!-- Aquí irán las secciones siguientes (test, análisis imagen, resultados) -->
   </div>
-
-  <!-- Script JavaScript -->
-  <script src="script.js"></script>
-  
 </body>
 </html>
