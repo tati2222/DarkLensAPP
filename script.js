@@ -1,4 +1,14 @@
 // ========================================
+// CONFIG — PONÉ TUS ENDPOINTS AQUÍ
+// ========================================
+const RENDER_PREDICT_URL = "https://darklnesapp-api.onrender.com/run/predict"; 
+// ejemplo: https://darklnesapp-api.onrender.com/run/predict
+// Si tu endpoint es otro, reemplazalo.
+
+const GOOGLE_SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AAA.../exec";
+// Reemplazá por la URL de tu Google Apps Script web app que reciba POST y guarde filas en tu Sheet.
+
+// ========================================
 // VARIABLES GLOBALES
 // ========================================
 const invertidos = [11, 15, 17, 20, 25];
@@ -8,20 +18,15 @@ let resultadosSD3 = null;
 let resultadosMicro = null;
 let imagenCapturada = null;
 let stream = null;
-let modeloMicroexpresiones = null;
 let audioNarrativa = null;
-let modeloCargado = false;
-let modeloCargando = false;
+let modeloCargado = false; // ya no usamos tf local
 
-// ========================================
-// VARIABLES PARA TRACKING DE TIEMPOS
-// ========================================
+// TRACKING TIEMPOS
 let tiemposRespuesta = {};
 let tiempoInicioItem = {};
-let itemActualVisible = null;
 let testInicioTimestamp = null;
 
-// Items del test SD3
+// Items SD3 (igual que tenías)
 const itemsSD3 = [
   "No es prudente contar tus secretos.",
   "Me gusta usar manipulaciones ingeniosas para salirme con la mía.",
@@ -53,109 +58,16 @@ const itemsSD3 = [
 ];
 
 // ========================================
-// 🚀 PRECARGAR MODELO AL INICIAR PÁGINA
-// ========================================
-async function precargarModelo() {
-  if (modeloCargando || modeloCargado) {
-    console.log('⚠️ Modelo ya está cargando o cargado');
-    return;
-  }
-
-  modeloCargando = true;
-
-  try {
-    console.log('🔄 Precargando modelo de IA optimizado...');
-    
-    // Crear indicador visual
-    const indicator = document.createElement('div');
-    indicator.id = 'modelo-loading-indicator';
-    indicator.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: linear-gradient(135deg, #7f00ff 0%, #6c63ff 100%);
-      color: white;
-      padding: 12px 24px;
-      border-radius: 25px;
-      z-index: 9999;
-      font-size: 0.95em;
-      box-shadow: 0 4px 20px rgba(127, 0, 255, 0.4);
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    `;
-    indicator.innerHTML = '<span style="animation: spin 1s linear infinite;">⏳</span> Cargando modelo de IA...';
-    
-    // Agregar animación
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-      }
-    `;
-    document.head.appendChild(style);
-    document.body.appendChild(indicator);
-
-    // Asegurar que TensorFlow esté listo
-    await tf.ready();
-    console.log('✅ TensorFlow.js está listo');
-    
-    // Cargar modelo OPTIMIZADO desde tu carpeta model/
-    const modelURL = "https://tati2222.github.io/DarkLensAPP/model/model.json";
-    
-    modeloMicroexpresiones = await tf.loadLayersModel(modelURL);
-    
-    modeloCargado = true;
-    modeloCargando = false;
-    
-    console.log('✅ Modelo optimizado cargado en segundo plano');
-    console.log('📊 Input shape:', modeloMicroexpresiones.inputs[0].shape);
-    console.log('📊 Output shape:', modeloMicroexpresiones.outputs[0].shape);
-    
-    // Cambiar indicador a "listo"
-    indicator.style.background = 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)';
-    indicator.innerHTML = '✅ Modelo listo';
-    
-    // Ocultar después de 3 segundos
-    setTimeout(() => {
-      indicator.style.transition = 'opacity 0.5s ease';
-      indicator.style.opacity = '0';
-      setTimeout(() => indicator.remove(), 500);
-    }, 3000);
-    
-  } catch (error) {
-    modeloCargando = false;
-    modeloCargado = false;
-    
-    console.error('❌ Error al precargar modelo:', error);
-    
-    const indicator = document.getElementById('modelo-loading-indicator');
-    if (indicator) {
-      indicator.style.background = 'linear-gradient(135deg, #ff4444 0%, #cc0000 100%)';
-      indicator.innerHTML = '⚠️ Error al cargar modelo';
-      
-      setTimeout(() => {
-        indicator.style.transition = 'opacity 0.5s ease';
-        indicator.style.opacity = '0';
-        setTimeout(() => indicator.remove(), 500);
-      }, 5000);
-    }
-  }
-}
-
-// ========================================
 // GENERAR ITEMS DEL TEST
 // ========================================
 function generarItemsTest() {
   const form = document.getElementById('form-sd3');
   form.innerHTML = '';
-  
+
   testInicioTimestamp = Date.now();
   tiemposRespuesta = {};
   tiempoInicioItem = {};
-  
+
   itemsSD3.forEach((texto, index) => {
     const num = index + 1;
     const div = document.createElement('div');
@@ -179,7 +91,7 @@ function generarItemsTest() {
   btnSubmit.textContent = 'Enviar respuestas del test';
   btnSubmit.className = 'btn-primary';
   form.appendChild(btnSubmit);
-  
+
   configurarTrackingTiempos();
 }
 
@@ -192,17 +104,14 @@ function configurarTrackingTiempos() {
       if (entry.isIntersecting) {
         const itemDiv = entry.target;
         const itemNum = parseInt(itemDiv.getAttribute('data-item'));
-        
+
         const input = document.querySelector(`input[name="item${itemNum}"]:checked`);
         if (!input && !tiempoInicioItem[itemNum]) {
           tiempoInicioItem[itemNum] = Date.now();
-          console.log(`⏱️ Ítem ${itemNum} visible - iniciando contador`);
         }
       }
     });
-  }, {
-    threshold: 0.5
-  });
+  }, { threshold: 0.5 });
 
   document.querySelectorAll('.test-item').forEach(item => {
     observer.observe(item);
@@ -219,24 +128,18 @@ function configurarTrackingTiempos() {
 }
 
 function registrarTiempoRespuesta(itemNum) {
-  if (tiemposRespuesta[itemNum]) {
-    return;
-  }
+  if (tiemposRespuesta[itemNum]) return;
 
   const tiempoInicio = tiempoInicioItem[itemNum];
-  
   if (tiempoInicio) {
     const tiempoFin = Date.now();
     const tiempoRespuesta = tiempoFin - tiempoInicio;
-    
     tiemposRespuesta[itemNum] = {
       tiempo_ms: tiempoRespuesta,
       tiempo_segundos: (tiempoRespuesta / 1000).toFixed(2),
       timestamp_inicio: tiempoInicio,
       timestamp_respuesta: tiempoFin
     };
-    
-    console.log(`✅ Ítem ${itemNum} respondido en ${(tiempoRespuesta / 1000).toFixed(2)}s`);
   } else {
     const tiempoDesdeInicio = Date.now() - testInicioTimestamp;
     tiemposRespuesta[itemNum] = {
@@ -246,24 +149,19 @@ function registrarTiempoRespuesta(itemNum) {
       timestamp_respuesta: Date.now(),
       nota: 'Respondido antes de visualización completa'
     };
-    
-    console.log(`⚠️ Ítem ${itemNum} respondido antes de tracking completo`);
   }
 }
 
 // ========================================
-// FORMULARIO DE DATOS BÁSICOS 
+// DOMContentLoaded - formularios y eventos
 // ========================================
 document.addEventListener("DOMContentLoaded", () => {
-  // 🚀 INICIAR PRECARGA DEL MODELO
-  precargarModelo();
-
   const formDatos = document.getElementById("form-datos-basicos");
   const seccionBienvenida = document.getElementById("seccion-bienvenida");
   const seccionTest = document.getElementById("seccion-test");
 
   if (!formDatos) {
-    console.error("❌ No se encontró el formulario de datos básicos.");
+    console.error("No se encontró el formulario de datos básicos.");
     return;
   }
 
@@ -276,34 +174,18 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const nombre = formDatos.querySelector('input[name="nombre"]');
-    const edad = formDatos.querySelector('input[name="edad"]');
-    const genero = formDatos.querySelector('select[name="genero"]');
-    const pais = formDatos.querySelector('input[name="pais"]');
+    const nombre = formDatos.querySelector('input[name="nombre"]').value.trim();
+    const edad = formDatos.querySelector('input[name="edad"]').value;
+    const genero = formDatos.querySelector('select[name="genero"]').value;
+    const pais = formDatos.querySelector('input[name="pais"]').value.trim();
 
-    if (!nombre || !nombre.value.trim()) {
-      alert("Por favor ingresá tu nombre.");
-      nombre.focus();
+    if (!nombre || !edad || !genero || !pais) {
+      alert("Completá todos los datos personales requeridos.");
       return;
     }
 
-    if (!edad || !edad.value) {
-      alert("Por favor ingresá tu edad.");
-      edad.focus();
-      return;
-    }
-
-    if (!genero || !genero.value) {
-      alert("Por favor seleccioná tu género.");
-      genero.focus();
-      return;
-    }
-
-    if (!pais || !pais.value.trim()) {
-      alert("Por favor ingresá tu país.");
-      pais.focus();
-      return;
-    }
+    // Guardamos datos básicos en sessionStorage para la página de resultados
+    sessionStorage.setItem('datos_personales', JSON.stringify({ nombre, edad, genero, pais }));
 
     generarItemsTest();
 
@@ -311,7 +193,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (seccionTest) seccionTest.classList.remove("hidden");
 
     window.scrollTo({ top: 0, behavior: "smooth" });
-    console.log("✅ Se cambió correctamente de bienvenida a test");
   });
 
   const formSD3 = document.getElementById('form-sd3');
@@ -321,10 +202,27 @@ document.addEventListener("DOMContentLoaded", () => {
       calcularSD3();
     });
   }
+
+  // Botón continuar
+  const btnContinuar = document.getElementById('btn-continuar-micro');
+  if (btnContinuar) {
+    btnContinuar.addEventListener('click', function() {
+      const seccionTest = document.getElementById('seccion-test');
+      const seccionMicro = document.getElementById('seccion-micro');
+
+      if (seccionTest) seccionTest.classList.add('hidden');
+      if (seccionMicro) seccionMicro.classList.remove('hidden');
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
+  // Cámara y subida
+  configurarCamaraYSubida();
 });
 
 // ========================================
-// CÁLCULO SD3
+// CALCULO SD3
 // ========================================
 function calcularSD3() {
   const respuestas = [];
@@ -335,9 +233,7 @@ function calcularSD3() {
     if (!input) {
       alert(`Por favor respondé el ítem ${i}`);
       const firstRadio = document.querySelector(`input[name="item${i}"]`);
-      if (firstRadio) {
-        firstRadio.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+      if (firstRadio) firstRadio.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
     let val = parseInt(input.value);
@@ -353,14 +249,14 @@ function calcularSD3() {
 
   const testFinTimestamp = Date.now();
   const tiempoTotalTest = testFinTimestamp - testInicioTimestamp;
-  
-  const tiemposArray = Object.values(tiemposRespuesta).map(t => t.tiempo_ms);
+
+  const tiemposArray = Object.values(tiemposRespuesta).map(t => t.tiempo_ms || 0);
   const estadisticasTiempo = calcularEstadisticasTiempo(tiemposArray);
 
-  resultadosSD3 = { 
-    mach, 
-    narc, 
-    psych, 
+  resultadosSD3 = {
+    mach,
+    narc,
+    psych,
     respuestas: respuestasObj,
     tiempos_respuesta: tiemposRespuesta,
     tiempo_total_ms: tiempoTotalTest,
@@ -368,8 +264,10 @@ function calcularSD3() {
     estadisticas_tiempo: estadisticasTiempo
   };
 
-  console.log('📊 Estadísticas de tiempo:', estadisticasTiempo);
+  // Guardamos en sessionStorage para pagina resultados
+  sessionStorage.setItem('resultadosSD3', JSON.stringify(resultadosSD3));
 
+  // Mostrar resumen en la misma página
   const resultadoSD3 = document.getElementById('resultado-sd3');
   if (resultadoSD3) {
     resultadoSD3.innerHTML = `
@@ -400,13 +298,11 @@ function calcularSD3() {
   }
 
   const btnContinuar = document.getElementById('btn-continuar-micro');
-  if (btnContinuar) {
-    btnContinuar.classList.remove('hidden');
-  }
+  if (btnContinuar) btnContinuar.classList.remove('hidden');
 }
 
 // ========================================
-// CALCULAR ESTADÍSTICAS DE TIEMPO
+// ESTADISTICAS DE TIEMPO (igual que antes)
 // ========================================
 function calcularEstadisticasTiempo(tiemposArray) {
   if (tiemposArray.length === 0) {
@@ -423,24 +319,15 @@ function calcularEstadisticasTiempo(tiemposArray) {
       desviacion_estandar_segundos: '0.00'
     };
   }
-
   const suma = tiemposArray.reduce((a, b) => a + b, 0);
   const promedio = suma / tiemposArray.length;
-  
   const sorted = [...tiemposArray].sort((a, b) => a - b);
   const medio = Math.floor(sorted.length / 2);
-  const mediana = sorted.length % 2 === 0 
-    ? (sorted[medio - 1] + sorted[medio]) / 2 
-    : sorted[medio];
-  
+  const mediana = sorted.length % 2 === 0 ? (sorted[medio - 1] + sorted[medio]) / 2 : sorted[medio];
   const minimo = Math.min(...tiemposArray);
   const maximo = Math.max(...tiemposArray);
-  
-  const varianza = tiemposArray.reduce((acc, val) => {
-    return acc + Math.pow(val - promedio, 2);
-  }, 0) / tiemposArray.length;
+  const varianza = tiemposArray.reduce((acc, val) => acc + Math.pow(val - promedio, 2), 0) / tiemposArray.length;
   const desviacionEstandar = Math.sqrt(varianza);
-
   return {
     promedio_ms: Math.round(promedio),
     promedio_segundos: (promedio / 1000).toFixed(2),
@@ -456,10 +343,12 @@ function calcularEstadisticasTiempo(tiemposArray) {
   };
 }
 
+// ========================================
+// GRAFICOS SD3 (igual que antes)
+// ========================================
 function crearGraficoSD3(mach, narc, psych) {
   const canvas = document.getElementById('grafico-sd3');
   if (!canvas) return;
-
   const ctx = canvas.getContext('2d');
   if (graficoSD3) graficoSD3.destroy();
 
@@ -478,21 +367,8 @@ function crearGraficoSD3(mach, narc, psych) {
       responsive: true,
       maintainAspectRatio: true,
       plugins: {
-        legend: {
-          position: 'bottom',
-          labels: {
-            color: '#e0e0ff',
-            font: { size: 14 },
-            padding: 15
-          }
-        },
-        tooltip: {
-          callbacks: {
-            label: function(context) {
-              return context.label + ': ' + context.parsed.toFixed(2);
-            }
-          }
-        }
+        legend: { position: 'bottom', labels: { color: '#e0e0ff', font: { size: 14 }, padding: 15 } },
+        tooltip: { callbacks: { label: function(context) { return context.label + ': ' + context.parsed.toFixed(2); } } }
       }
     }
   });
@@ -504,40 +380,21 @@ function generarNarrativa(mach, narc, psych) {
     if (valor <= 3.4) return `puntaje medio en ${rasgo}`;
     return `puntaje alto en ${rasgo}`;
   };
-
   return `
     <div class="resultado-box">
       <h4>Interpretación Académica</h4>
-      <p><strong>Maquiavelismo:</strong> Tu resultado muestra un ${interpretar(mach, "manipulación estratégica y cálculo interpersonal")}. Esto refleja tu tendencia a la planificación a largo plazo en las relaciones sociales.</p>
-      <p><strong>Narcisismo:</strong> Tu resultado muestra un ${interpretar(narc, "autoimagen grandiosa y búsqueda de admiración")}. Esto indica tu nivel de confianza en ti mismo y necesidad de reconocimiento social.</p>
-      <p><strong>Psicopatía:</strong> Tu resultado muestra un ${interpretar(psych, "impulsividad y búsqueda de sensaciones")}. Esto refleja tu tendencia a la espontaneidad y toma de riesgos.</p>
-      <p style="margin-top: 20px; font-style: italic; color: #b0a0ff;">Recordá que estos resultados son parte de una investigación académica y no constituyen un diagnóstico clínico. Los rasgos medidos existen en un continuo y todas las personas los presentan en algún grado.</p>
+      <p><strong>Maquiavelismo:</strong> Tu resultado muestra un ${interpretar(mach, "manipulación estratégica y cálculo interpersonal")}. </p>
+      <p><strong>Narcisismo:</strong> Tu resultado muestra un ${interpretar(narc, "autoimagen grandiosa y búsqueda de admiración")}. </p>
+      <p><strong>Psicopatía:</strong> Tu resultado muestra un ${interpretar(psych, "impulsividad y búsqueda de sensaciones")}. </p>
+      <p style="margin-top: 20px; font-style: italic; color: #b0a0ff;">Recordá que estos resultados son parte de una investigación académica y no constituyen un diagnóstico clínico.</p>
     </div>
   `;
 }
 
 // ========================================
-// CONTINUAR A MICROEXPRESIONES
+// CÁMARA Y SUBIDA DE IMAGEN
 // ========================================
-document.addEventListener('DOMContentLoaded', () => {
-  const btnContinuar = document.getElementById('btn-continuar-micro');
-  if (btnContinuar) {
-    btnContinuar.addEventListener('click', function() {
-      const seccionTest = document.getElementById('seccion-test');
-      const seccionMicro = document.getElementById('seccion-micro');
-      
-      if (seccionTest) seccionTest.classList.add('hidden');
-      if (seccionMicro) seccionMicro.classList.remove('hidden');
-      
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-  }
-});
-
-// ========================================
-// CÁMARA Y CAPTURA
-// ========================================
-document.addEventListener('DOMContentLoaded', () => {
+function configurarCamaraYSubida() {
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
   const btnActivarCamara = document.getElementById('btn-activar-camara');
@@ -550,13 +407,10 @@ document.addEventListener('DOMContentLoaded', () => {
     btnActivarCamara.addEventListener('click', async function() {
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        if (video) {
-          video.srcObject = stream;
-          video.classList.remove('hidden');
-        }
+        if (video) { video.srcObject = stream; video.classList.remove('hidden'); }
         this.classList.add('hidden');
         if (btnTomarFoto) btnTomarFoto.classList.remove('hidden');
-      } catch(err) {
+      } catch (err) {
         alert('No se pudo acceder a la cámara. Por favor subí una imagen.');
         console.error(err);
       }
@@ -569,25 +423,16 @@ document.addEventListener('DOMContentLoaded', () => {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0);
-      
-      imagenCapturada = canvas.toDataURL('image/jpeg', 0.8);
-      
+      imagenCapturada = canvas.toDataURL('image/jpeg', 0.9);
       video.classList.add('hidden');
       canvas.classList.remove('hidden');
       if (btnAnalizar) btnAnalizar.classList.remove('hidden');
-      
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
-      }
+      if (stream) { stream.getTracks().forEach(track => track.stop()); stream = null; }
     });
   }
 
   if (btnSubirImagen && inputImagen) {
-    btnSubirImagen.addEventListener('click', function() {
-      inputImagen.click();
-    });
-
+    btnSubirImagen.addEventListener('click', function() { inputImagen.click(); });
     inputImagen.addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (file) {
@@ -600,12 +445,11 @@ document.addEventListener('DOMContentLoaded', () => {
               canvas.width = img.width;
               canvas.height = img.height;
               ctx.drawImage(img, 0, 0);
-              
-              imagenCapturada = canvas.toDataURL('image/jpeg', 0.8);
-              
+              imagenCapturada = canvas.toDataURL('image/jpeg', 0.9);
               if (video) video.classList.add('hidden');
               canvas.classList.remove('hidden');
-              if (btnAnalizar) btnAnalizar.classList.remove('hidden');
+              const btnAnalizarLocal = document.getElementById('btn-analizar');
+              if (btnAnalizarLocal) btnAnalizarLocal.classList.remove('hidden');
             }
           };
           img.src = event.target.result;
@@ -620,156 +464,116 @@ document.addEventListener('DOMContentLoaded', () => {
       await analizarMicroexpresiones();
     });
   }
-});
+}
 
 // ========================================
-// ANÁLISIS DE MICROEXPRESIONES
+// ANALIZAR: manda imagen a RENDER y guarda en Google Sheets
 // ========================================
 async function analizarMicroexpresiones() {
   const resultadoDiv = document.getElementById('resultado-micro');
-  if (!resultadoDiv) {
-    console.error('No se encontró el div de resultados');
-    return;
-  }
+  if (!resultadoDiv) return;
 
-  resultadoDiv.innerHTML = `
-    <div class="analisis-loading">
-      ${modeloCargado ? 'Analizando microexpresiones...' : 'Cargando modelo de IA...'}
-    </div>`;
+  resultadoDiv.innerHTML = `<div class="analisis-loading">Analizando microexpresiones...</div>`;
   resultadoDiv.classList.remove('hidden');
 
   try {
-    // Si el modelo no está precargado, cargarlo ahora
-    if (!modeloCargado) {
-      console.log('⚠️ Modelo no precargado, cargando ahora...');
-      await tf.ready();
-      modeloMicroexpresiones = await tf.loadLayersModel(
-  'model/model.json'
-);
+    if (!imagenCapturada) throw new Error("No hay imagen para analizar. Capturá o subí una foto.");
 
-      modeloCargado = true;
-      console.log('✅ Modelo cargado');
+    // Convertir dataURL a Blob
+    const blob = dataURLtoBlob(imagenCapturada);
+
+    // 1) Enviar a Render
+    const formData = new FormData();
+    formData.append('img', blob, 'foto.jpg');
+
+    const res = await fetch(RENDER_PREDICT_URL, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Error en la API de Render: ${res.status} ${text}`);
+    }
+    const json = await res.json();
+
+    // Esperamos respuesta con {emociones: {...}, sd3: {...}} o similar
+    resultadosMicro = json.emociones || json;
+    // si tu API devuelve otro formato, ajustá acá.
+
+    // Guardar SD3 ya calculado (si tu API no devuelve sd3, usamos el que ya guardamos localmente)
+    const sd3_from_api = json.sd3 || null;
+    if (sd3_from_api) {
+      resultadosSD3 = sd3_from_api;
+      sessionStorage.setItem('resultadosSD3', JSON.stringify(resultadosSD3));
+    } else {
+      // si aun no lo tenés (pero lo deberías tener porque pasaste por el test)
+      if (!resultadosSD3) {
+        resultadosSD3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || 'null');
+      }
     }
 
-    resultadoDiv.innerHTML = `
-      <div class="analisis-loading">
-        Analizando microexpresiones...
-      </div>`;
-
-    const canvas = document.getElementById('canvas');
-    if (!canvas) throw new Error("No se encontró el canvas para analizar.");
-
-    // Preprocesar imagen
-    let tensor = tf.browser.fromPixels(canvas);
-    console.log('📐 Forma original del tensor:', tensor.shape);
-    
-    tensor = tf.image.resizeBilinear(tensor, [224, 224]);
-    tensor = tensor.toFloat().div(255.0);
-    tensor = tensor.expandDims(0);
-    
-    console.log('📐 Forma final del tensor:', tensor.shape);
-
-    // Realizar predicción
-    const prediccion = await modeloMicroexpresiones.predict(tensor).data();
-    tensor.dispose();
-
-    if (!prediccion || prediccion.length < 8) {
-      throw new Error("Predicción inválida");
+    // 2) Enviar fila a Google Sheets (webapp)
+    try {
+      const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
+      const payload = {
+        timestamp: new Date().toISOString(),
+        persona,
+        sd3: resultadosSD3,
+        emociones: resultadosMicro
+      };
+      if (GOOGLE_SHEETS_WEBAPP_URL && GOOGLE_SHEETS_WEBAPP_URL.startsWith('https')) {
+        await fetch(GOOGLE_SHEETS_WEBAPP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        console.warn("No se ha configurado GOOGLE_SHEETS_WEBAPP_URL o no es válida. No se guardaron datos en Sheets.");
+      }
+    } catch(err) {
+      console.warn("Error al guardar en Google Sheets:", err);
     }
 
-    resultadosMicro = {
-      enojado: prediccion[0],
-      desprecio: prediccion[1],
-      disgusto: prediccion[2],
-      miedo: prediccion[3],
-      feliz: prediccion[4],
-      otro: prediccion[5],
-      triste: prediccion[6],
-      sorprendido: prediccion[7]
-    };
+    // Guardar en sessionStorage y redirigir a la página de resultados
+    sessionStorage.setItem('resultadosMicro', JSON.stringify(resultadosMicro));
+    // Si no tenés resultadosSD3 en memoria, ya lo guardamos en el paso de SD3
+    if (!resultadosSD3) resultadosSD3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || 'null');
 
-    console.log('✅ Análisis completado:', resultadosMicro);
-    mostrarResultadoIntegrado();
+    // Redirigir a resultados.html
+    window.location.href = 'resultados.html';
 
-  } catch (error) {
-    console.error('❌ Error completo:', error);
+  } catch (err) {
+    console.error(err);
     resultadoDiv.innerHTML = `
       <div class="resultado-box" style="border-color: #ff6384;">
         <h4>Error en el análisis</h4>
         <p>No se pudo realizar el análisis. Por favor intentá de nuevo.</p>
-        <p style="font-size: 0.9em; color: #ff6384;">${error.message}</p>
-        <button onclick="location.reload()" class="btn-primary" style="margin-top: 20px;">
-          🔄 Recargar página
-        </button>
+        <p style="font-size: 0.9em; color: #ff6384;">${err.message}</p>
+        <button onclick="location.reload()" class="btn-primary" style="margin-top: 20px;">🔄 Recargar página</button>
       </div>
     `;
   }
 }
 
-// ========================================
-// RESULTADO INTEGRADO CON VOZ Y GRÁFICO
-// ========================================
-function mostrarResultadoIntegrado() {
-  if (!resultadosSD3 || !resultadosMicro) {
-    alert('Faltan completar algunos pasos del análisis');
-    return;
+// Helper: dataURL -> Blob
+function dataURLtoBlob(dataurl) {
+  const arr = dataurl.split(',');
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while(n--){
+    u8arr[n] = bstr.charCodeAt(n);
   }
-
-  const seccionMicro = document.getElementById('seccion-micro');
-  const seccionFinal = document.getElementById('seccion-final');
-
-  if (seccionMicro) seccionMicro.classList.add('hidden');
-  if (seccionFinal) seccionFinal.classList.remove('hidden');
-
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-
-  const { mach, narc, psych } = resultadosSD3;
-  const emocionesSorted = Object.entries(resultadosMicro).sort((a, b) => b[1] - a[1]);
-  const emocionPrincipal = emocionesSorted[0][0];
-  const emocionSecundaria = emocionesSorted[1][0];
-  const intensidad = emocionesSorted[0][1];
-
-  const narrativa = generarNarrativaIntegrada(mach, narc, psych, emocionPrincipal, intensidad);
-
-  let html = `
-    <div class="resultado-integrado">
-      <div class="audio-controls">
-        <button id="btn-reproducir-audio" class="btn-audio">
-          🔊 Escuchar Análisis
-        </button>
-        <button id="btn-pausar-audio" class="btn-audio hidden">⏸️ Pausar</button>
-      </div>
-      <div id="narrativa-final">${narrativa}</div>
-      <canvas id="grafico-emociones"></canvas>
-    </div>
-  `;
-
-  if (seccionFinal) seccionFinal.innerHTML = html;
-
-  crearGraficoEmociones(resultadosMicro);
-
-  // 🎧 Control del audio narrativo
-  const btnReproducir = document.getElementById('btn-reproducir-audio');
-  const btnPausar = document.getElementById('btn-pausar-audio');
-
-  if (btnReproducir && btnPausar) {
-    btnReproducir.addEventListener('click', () => {
-      if (!audioNarrativa) {
-        const narrador = new SpeechSynthesisUtterance(narrativa);
-        narrador.lang = 'es-ES';
-        narrador.rate = 1.05;
-        window.speechSynthesis.speak(narrador);
-        audioNarrativa = narrador;
-      }
-      btnReproducir.classList.add('hidden');
-      btnPausar.classList.remove('hidden');
-    });
-
-    btnPausar.addEventListener('click', () => {
-      window.speechSynthesis.cancel();
-      btnPausar.classList.add('hidden');
-      btnReproducir.classList.remove('hidden');
-    });
-  }
+  return new Blob([u8arr], { type: mime });
 }
 
+// ========================================
+// MOSTRAR RESULTADO INTEGRADO (pagina resultados.html lo hará)
+// ========================================
+function mostrarResultadoIntegrado() {
+  // esta función ahora es reemplazada por resultados.html que lee sessionStorage
+  // pero la dejo por compatibilidad
+  window.location.href = 'resultados.html';
+}
