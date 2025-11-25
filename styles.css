@@ -98,8 +98,9 @@ body {
     color: var(--text-primary);
 }
 
-.content-box ul {
+.content-box ul, .content-box ol {
     margin-left: 25px;
+    margin-bottom: 20px;
 }
 
 /* ========================================
@@ -376,6 +377,92 @@ body {
 }
 
 /* ========================================
+   DASHBOARD INVESTIGADOR
+   ======================================== */
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--border);
+}
+
+.stats-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin: 30px 0;
+}
+
+.stat-card {
+    background: var(--card-bg);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+}
+
+.stat-card h4 {
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    font-size: 0.9em;
+}
+
+.stat-number {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: var(--primary);
+}
+
+.participants-list {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.participant-item {
+    background: var(--card-bg);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+}
+
+.participant-item:hover {
+    border-color: var(--primary);
+}
+
+.participant-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.participant-scores {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.score-item {
+    text-align: center;
+}
+
+.score-value {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: var(--primary);
+}
+
+.score-label {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+}
+
+/* ========================================
    FOOTER
    ======================================== */
 footer {
@@ -388,6 +475,20 @@ footer {
 
 footer p {
     margin: 5px 0;
+}
+
+/* ========================================
+   CHART CONTAINER
+   ======================================== */
+#grafico-container {
+    margin-top: 30px;
+    text-align: center;
+}
+
+#grafico-sd3 {
+    max-width: 500px;
+    margin: 0 auto;
+    display: block;
 }
 
 /* ========================================
@@ -423,17 +524,18 @@ footer p {
     .btn-primary, .btn-secondary {
         width: 100%;
     }
-}
-
-/* ========================================
-   CHART CONTAINER
-   ======================================== */
-#grafico-container {
-    margin-top: 30px;
-}
-
-#grafico-sd3 {
-    max-width: 500px;
-    margin: 0 auto;
-    display: block;
+    
+    .dashboard-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .stats-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .participant-scores {
+        grid-template-columns: 1fr;
+    }
 }
