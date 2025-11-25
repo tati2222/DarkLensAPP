@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>DARKLENS – Explorador de Personalidad</title>
-  <link rel="stylesheet" href="style.css" />
 
   <!-- TensorFlow.js -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.20.0"></script>
@@ -13,6 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1"></script>
 
   <style>
+    /* ----------- CSS Completo ----------- */
     .hidden {
       display: none !important;
     }
@@ -425,6 +425,9 @@
       font-size: 1.1em;
       line-height: 1.9;
       border: 2px solid rgba(192, 128, 255, 0.3);
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 30px;
     }
 
     .narrativa-principal p {
@@ -486,6 +489,8 @@
 </head>
 <body>
   <div class="container">
+
+    <!-- SECCIÓN BIENVENIDA -->
     <section class="bienvenida" id="seccion-bienvenida">
       <h1>DARKLENS</h1>
       <h2>Explorador de rasgos de personalidad oscura mediante test psicométrico y análisis de microexpresiones</h2>
@@ -509,26 +514,537 @@
       </div>
 
       <form id="form-datos-basicos">
-        <label>Nombre:</label>
-        <input type="text" name="nombre" required />
+        <label for="nombre">Nombre completo</label>
+        <input type="text" id="nombre" name="nombre" placeholder="Tu nombre completo" required />
 
-        <label>Edad:</label>
-        <input type="number" name="edad" min="18" max="99" required />
+        <label for="edad">Edad</label>
+        <input type="number" id="edad" name="edad" min="10" max="120" placeholder="Ej: 25" required />
 
-        <label>Género:</label>
-        <select name="genero" required>
-          <option value="" disabled selected>Selecciona tu género</option>
-          <option value="femenino">Femenino</option>
-          <option value="masculino">Masculino</option>
-          <option value="otro">Otro</option>
-          <option value="prefiero_no_decirlo">Prefiero no decirlo</option>
+        <label for="sexo">Sexo</label>
+        <select id="sexo" name="sexo" required>
+          <option value="" disabled selected>Selecciona una opción</option>
+          <option value="Masculino">Masculino</option>
+          <option value="Femenino">Femenino</option>
+          <option value="Otro">Otro</option>
+          <option value="Prefiero no decir">Prefiero no decir</option>
         </select>
 
-        <button type="submit" class="btn-primary">Iniciar test SD3</button>
+        <button type="submit" class="btn-primary">Iniciar experiencia</button>
       </form>
     </section>
 
-    <!-- Aquí irán las secciones siguientes (test, análisis imagen, resultados) -->
+    <!-- SECCIÓN TEST SD3 -->
+    <section class="section hidden" id="seccion-test">
+      <h3>Test SD3 - Rasgos de personalidad oscura</h3>
+      <form id="form-sd3"></form>
+      <button id="btn-enviar-test" class="btn-primary" disabled>Enviar respuestas</button>
+    </section>
+
+    <!-- SECCIÓN ANÁLISIS MICROEXPRESIONES -->
+    <section class="section hidden" id="seccion-micro">
+      <h3>Análisis de microexpresiones faciales</h3>
+
+      <div class="camera-section">
+        <div class="button-group">
+          <button id="btn-activar-camara" class="btn-primary">Activar Cámara</button>
+          <button id="btn-tomar-foto" class="btn-primary hidden">Tomar Foto</button>
+          <button id="btn-subir-imagen" class="btn-primary">Subir Imagen</button>
+          <input type="file" id="input-imagen" accept="image/*" />
+          <button id="btn-analizar" class="btn-primary hidden">Analizar Imagen</button>
+        </div>
+
+        <video id="video" autoplay muted playsinline class="hidden"></video>
+        <canvas id="canvas" class="hidden"></canvas>
+
+        <button id="btn-continuar-micro" class="btn-primary hidden">Continuar</button>
+      </div>
+    </section>
+
+    <!-- SECCIÓN RESULTADOS -->
+    <section class="section hidden" id="seccion-resultados">
+      <h3>Resultados</h3>
+
+      <div id="resultado-sd3" class="resultado-box hidden">
+        <h4>Resultados Test SD3</h4>
+        <div id="resumen-sd3"></div>
+        <div id="grafico-sd3-container" class="grafico-container hidden">
+          <canvas id="grafico-sd3"></canvas>
+        </div>
+        <div id="narrativa-sd3" class="narrativa-principal hidden"></div>
+      </div>
+
+      <div id="resultado-micro" class="resultado-box hidden">
+        <h4>Resultados Análisis de Microexpresiones</h4>
+        <div id="resumen-micro"></div>
+        <div id="grafico-micro-container" class="grafico-container hidden">
+          <canvas id="grafico-micro"></canvas>
+        </div>
+      </div>
+
+      <div id="resultado-integrado" class="resultado-box hidden">
+        <h4>Interpretación Integrada</h4>
+        <div id="narrativa-integrada"></div>
+      </div>
+    </section>
+
   </div>
+
+  <script>
+    // ----------- JS Completo -----------
+
+    // Variables globales para almacenar datos
+    let datosUsuario = {};
+    let respuestasSD3 = {};
+    let resultadosMicro = null;
+    let modelosCargados = false;
+
+    // Items SD3
+    const itemsSD3 = [
+      {id: 1, texto: "Es importante para mí influir en los demás."},
+      {id: 2, texto: "Cuando las personas me deben un favor, me aseguro de cobrarlo."},
+      {id: 3, texto: "No me importa lastimar a otros para conseguir lo que quiero."},
+      {id: 4, texto: "Me gusta ser el centro de atención."},
+      {id: 5, texto: "A menudo siento que los demás me envidian."},
+      {id: 6, texto: "Disfruto manipulando a la gente para conseguir mis objetivos."},
+      {id: 7, texto: "Me gusta impresionar a otros con mis habilidades y logros."},
+      {id: 8, texto: "No siento culpa cuando hago algo malo."},
+      {id: 9, texto: "Prefiero no mostrar mis verdaderos sentimientos a los demás."},
+      {id: 10, texto: "Me esfuerzo por mantener el control en mis relaciones."},
+      {id: 11, texto: "A menudo uso el engaño para avanzar en la vida."},
+      {id: 12, texto: "Creo que merezco más respeto que la mayoría."},
+      {id: 13, texto: "A veces me siento superior a los demás."},
+      {id: 14, texto: "No me preocupa romper reglas si me beneficia."},
+      {id: 15, texto: "Disfruto cuando los demás dependen de mí."},
+      {id: 16, texto: "Me gusta tener el control sobre las situaciones sociales."},
+      {id: 17, texto: "A menudo no pienso en las consecuencias de mis acciones."},
+      {id: 18, texto: "Me gusta llamar la atención cuando entro en una habitación."},
+      {id: 19, texto: "No me siento mal cuando tomo ventaja de otros."},
+      {id: 20, texto: "Me siento orgulloso/a de mis habilidades sociales."},
+      {id: 21, texto: "Disfruto ver cómo otros reaccionan a mis bromas."},
+      {id: 22, texto: "No me gusta que me contradigan."},
+      {id: 23, texto: "Prefiero evitar emociones profundas."},
+      {id: 24, texto: "No me preocupo por las normas sociales si me impiden alcanzar mis metas."},
+      {id: 25, texto: "Me gusta que me admiren los demás."},
+      {id: 26, texto: "No me siento culpable cuando engaño para salir adelante."},
+      {id: 27, texto: "Prefiero mantener a las personas a distancia emocionalmente."}
+    ];
+
+    // Función para crear el formulario SD3 dinámicamente
+    function crearFormularioSD3() {
+      const formSD3 = document.getElementById('form-sd3');
+      formSD3.innerHTML = '';
+
+      itemsSD3.forEach(item => {
+        const divItem = document.createElement('div');
+        divItem.classList.add('test-item');
+
+        const pItem = document.createElement('p');
+        pItem.innerHTML = `<strong>Ítem ${item.id}:</strong> ${item.texto}`;
+        divItem.appendChild(pItem);
+
+        const opcionesDiv = document.createElement('div');
+        opcionesDiv.classList.add('opciones');
+
+        // Opciones escala Likert 1-5
+        for (let i = 1; i <= 5; i++) {
+          const inputRadio = document.createElement('input');
+          inputRadio.type = 'radio';
+          inputRadio.name = `item-${item.id}`;
+          inputRadio.id = `item-${item.id}-opcion-${i}`;
+          inputRadio.value = i;
+
+          const labelRadio = document.createElement('label');
+          labelRadio.htmlFor = inputRadio.id;
+          labelRadio.textContent = i;
+
+          opcionesDiv.appendChild(inputRadio);
+          opcionesDiv.appendChild(labelRadio);
+        }
+
+        divItem.appendChild(opcionesDiv);
+        formSD3.appendChild(divItem);
+      });
+    }
+
+    // Validar que todos los ítems tengan respuesta para habilitar botón enviar
+    function validarRespuestas() {
+      const formSD3 = document.getElementById('form-sd3');
+      const totalItems = itemsSD3.length;
+      let respuestasContadas = 0;
+
+      for (let i = 1; i <= totalItems; i++) {
+        const radios = document.getElementsByName(`item-${i}`);
+        let responded = false;
+        radios.forEach = radios.forEach || function(cb){for(let r of this) cb(r);}; // Polyfill for NodeList
+
+        radios.forEach(radio => {
+          if (radio.checked) responded = true;
+        });
+
+        if (responded) respuestasContadas++;
+      }
+
+      const btnEnviar = document.getElementById('btn-enviar-test');
+      btnEnviar.disabled = respuestasContadas !== totalItems;
+    }
+
+    // Obtener respuestas en objeto
+    function obtenerRespuestasSD3() {
+      const respuestas = {};
+      itemsSD3.forEach(item => {
+        const radios = document.getElementsByName(`item-${item.id}`);
+        radios.forEach = radios.forEach || function(cb){for(let r of this) cb(r);};
+
+        radios.forEach(radio => {
+          if (radio.checked) respuestas[`item-${item.id}`] = parseInt(radio.value);
+        });
+      });
+      return respuestas;
+    }
+
+    // Mostrar resultados simples del test
+    function mostrarResultadosSD3(respuestas) {
+      // Agrupamos en subescalas: Maquiavelismo (ítems 2,6,11,14,17,19,24,26),
+      // Narcisismo (ítems 1,4,5,7,12,13,15,18,20,21,25),
+      // Psicopatía (ítems 3,8,9,10,16,22,23,27)
+      const maquiavelismoIds = [2,6,11,14,17,19,24,26];
+      const narcisismoIds = [1,4,5,7,12,13,15,18,20,21,25];
+      const psicopatiaIds = [3,8,9,10,16,22,23,27];
+
+      const suma = (arr) => arr.reduce((acc, id) => acc + (respuestas[`item-${id}`] || 0), 0);
+
+      const maquiavelismo = suma(maquiavelismoIds);
+      const narcisismo = suma(narcisismoIds);
+      const psicopatia = suma(psicopatiaIds);
+
+      const totalMax = maquiavelismoIds.length * 5;
+
+      const resumenDiv = document.getElementById('resumen-sd3');
+      resumenDiv.innerHTML = `
+        <p><strong>Maquiavelismo:</strong> ${maquiavelismo} / ${totalMax}</p>
+        <p><strong>Narcisismo:</strong> ${narcisismo} / ${narcisismoIds.length * 5}</p>
+        <p><strong>Psicopatía:</strong> ${psicopatia} / ${psicopatiaIds.length * 5}</p>
+      `;
+
+      // Mostrar gráfica
+      mostrarGraficoSD3({maquiavelismo, narcisismo, psicopatia});
+    }
+
+    // Crear gráfica con Chart.js
+    function mostrarGraficoSD3(valores) {
+      const ctx = document.getElementById('grafico-sd3').getContext('2d');
+      document.getElementById('grafico-sd3-container').classList.remove('hidden');
+
+      if (window.graficoSD3) {
+        window.graficoSD3.destroy();
+      }
+
+      window.graficoSD3 = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Maquiavelismo', 'Narcisismo', 'Psicopatía'],
+          datasets: [{
+            label: 'Puntaje',
+            data: [valores.maquiavelismo, valores.narcisismo, valores.psicopatia],
+            backgroundColor: [
+              'rgba(127,0,255,0.8)',
+              'rgba(108,99,255,0.8)',
+              'rgba(180,100,255,0.8)'
+            ],
+            borderRadius: 6,
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 40,
+              ticks: { color: '#c080ff', stepSize: 5 }
+            },
+            x: {
+              ticks: { color: '#c080ff' }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: true }
+          }
+        }
+      });
+    }
+
+    // Narrativa simple según puntajes (puede ampliarse o hacerse más compleja)
+    function mostrarNarrativaSD3(respuestas) {
+      const maquiavelismoIds = [2,6,11,14,17,19,24,26];
+      const narcisismoIds = [1,4,5,7,12,13,15,18,20,21,25];
+      const psicopatiaIds = [3,8,9,10,16,22,23,27];
+
+      const suma = (arr) => arr.reduce((acc, id) => acc + (respuestas[`item-${id}`] || 0), 0);
+
+      const maquiavelismo = suma(maquiavelismoIds);
+      const narcisismo = suma(narcisismoIds);
+      const psicopatia = suma(psicopatiaIds);
+
+      const narr = [];
+
+      if (maquiavelismo >= 30) narr.push("Tu perfil indica una marcada tendencia al maquiavelismo, caracterizado por la manipulación estratégica y la búsqueda de control.");
+      else if (maquiavelismo >= 20) narr.push("Presentas rasgos moderados de maquiavelismo, con cierta inclinación a la influencia social.");
+      else narr.push("Tus rasgos maquiavélicos son bajos, mostrando poco interés en manipular a otros.");
+
+      if (narcisismo >= 40) narr.push("El narcisismo es un rasgo prominente en ti, evidenciando una alta necesidad de admiración y atención.");
+      else if (narcisismo >= 25) narr.push("Tu nivel de narcisismo es moderado, con momentos de búsqueda de reconocimiento.");
+      else narr.push("Bajo nivel de narcisismo, prefieres mantener una imagen más humilde y discreta.");
+
+      if (psicopatia >= 25) narr.push("Se detectan rasgos psicopáticos significativos, como la baja empatía y la impulsividad.");
+      else if (psicopatia >= 15) narr.push("Presentas ciertos rasgos psicopáticos moderados, con cierta impulsividad y desapego emocional.");
+      else narr.push("Tus rasgos psicopáticos son bajos, mostrando empatía y autocontrol.");
+
+      const narrativaDiv = document.getElementById('narrativa-sd3');
+      narrativaDiv.innerHTML = narr.map(p => `<p>${p}</p>`).join('');
+      narrativaDiv.classList.remove('hidden');
+    }
+
+    // Manejar envío del formulario datos básicos y mostrar sección test
+    const formDatosBasicos = document.getElementById('form-datos-basicos');
+    formDatosBasicos.addEventListener('submit', e => {
+      e.preventDefault();
+
+      const nombre = formDatosBasicos.nombre.value.trim();
+      const edad = parseInt(formDatosBasicos.edad.value);
+      const sexo = formDatosBasicos.sexo.value;
+
+      if (!nombre || !edad || !sexo) {
+        alert("Por favor completa todos los datos antes de continuar.");
+        return;
+      }
+
+      datosUsuario = { nombre, edad, sexo };
+
+      // Ocultar bienvenida y mostrar test
+      document.getElementById('seccion-bienvenida').classList.add('hidden');
+      document.getElementById('seccion-test').classList.remove('hidden');
+    });
+
+    // Crear formulario SD3 y habilitar botón enviar cuando se completen todas
+    crearFormularioSD3();
+
+    document.getElementById('form-sd3').addEventListener('change', validarRespuestas);
+
+    // Enviar respuestas test
+    document.getElementById('btn-enviar-test').addEventListener('click', () => {
+      respuestasSD3 = obtenerRespuestasSD3();
+
+      // Mostrar resultados test SD3
+      mostrarResultadosSD3(respuestasSD3);
+      mostrarNarrativaSD3(respuestasSD3);
+
+      // Ocultar test y mostrar resultados
+      document.getElementById('seccion-test').classList.add('hidden');
+      const resDiv = document.getElementById('resultado-sd3');
+      resDiv.classList.remove('hidden');
+
+      // Mostrar sección resultados
+      document.getElementById('seccion-resultados').classList.remove('hidden');
+
+      // Mostrar botón para continuar a microexpresiones
+      agregarBotonContinuarMicro();
+    });
+
+    // Función para agregar botón "Continuar a Microexpresiones"
+    function agregarBotonContinuarMicro() {
+      let boton = document.getElementById('btn-continuar-test');
+      if (!boton) {
+        boton = document.createElement('button');
+        boton.id = 'btn-continuar-test';
+        boton.textContent = 'Continuar a análisis de microexpresiones';
+        boton.classList.add('btn-primary');
+        document.getElementById('resultado-sd3').appendChild(boton);
+
+        boton.addEventListener('click', () => {
+          // Ocultar resultados test y sección resultados
+          document.getElementById('seccion-resultados').classList.add('hidden');
+          // Ocultar botón para no acumular
+          boton.remove();
+
+          // Mostrar sección microexpresiones
+          document.getElementById('seccion-micro').classList.remove('hidden');
+        });
+      }
+    }
+
+    // --- Análisis de microexpresiones ---
+
+    const btnActivarCamara = document.getElementById('btn-activar-camara');
+    const btnTomarFoto = document.getElementById('btn-tomar-foto');
+    const btnSubirImagen = document.getElementById('btn-subir-imagen');
+    const btnAnalizar = document.getElementById('btn-analizar');
+    const btnContinuarMicro = document.getElementById('btn-continuar-micro');
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const inputImagen = document.getElementById('input-imagen');
+
+    let stream = null;
+    let fotoTomada = false;
+
+    btnActivarCamara.addEventListener('click', async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        video.classList.remove('hidden');
+        btnTomarFoto.classList.remove('hidden');
+        btnActivarCamara.classList.add('hidden');
+      } catch (error) {
+        alert('No se pudo acceder a la cámara.');
+      }
+    });
+
+    btnTomarFoto.addEventListener('click', () => {
+      const contexto = canvas.getContext('2d');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      contexto.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      fotoTomada = true;
+      canvas.classList.remove('hidden');
+      btnAnalizar.classList.remove('hidden');
+      btnTomarFoto.classList.add('hidden');
+      video.classList.add('hidden');
+
+      // Detener cámara para liberar recursos
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+    });
+
+    btnSubirImagen.addEventListener('click', () => {
+      inputImagen.click();
+    });
+
+    inputImagen.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = () => {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+
+          canvas.classList.remove('hidden');
+          btnAnalizar.classList.remove('hidden');
+          video.classList.add('hidden');
+          btnTomarFoto.classList.add('hidden');
+          btnActivarCamara.classList.add('hidden');
+          fotoTomada = true;
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    btnAnalizar.addEventListener('click', async () => {
+      if (!fotoTomada) {
+        alert('Primero debes tomar o subir una imagen.');
+        return;
+      }
+      btnAnalizar.disabled = true;
+      btnAnalizar.textContent = 'Analizando...';
+
+      // Aquí se llamaría el modelo para detectar microexpresiones
+      // Por ahora simulamos con valores aleatorios para emociones básicas
+      await new Promise(r => setTimeout(r, 1500)); // Simula tiempo análisis
+
+      resultadosMicro = {
+        feliz: Math.random() * 1,
+        triste: Math.random() * 1,
+        enojado: Math.random() * 1,
+        miedo: Math.random() * 1,
+        sorpresa: Math.random() * 1,
+        desprecio: Math.random() * 1,
+        neutro: Math.random() * 1
+      };
+
+      mostrarResultadosMicroexpresiones(resultadosMicro);
+
+      btnAnalizar.disabled = false;
+      btnAnalizar.textContent = 'Analizar Imagen';
+      btnContinuarMicro.classList.remove('hidden');
+    });
+
+    btnContinuarMicro.addEventListener('click', () => {
+      // Ocultar sección micro y resultados micro
+      document.getElementById('seccion-micro').classList.add('hidden');
+      document.getElementById('resultado-micro').classList.remove('hidden');
+
+      // Mostrar sección resultados
+      document.getElementById('seccion-resultados').classList.remove('hidden');
+
+      mostrarInterpretacionIntegrada();
+      btnContinuarMicro.classList.add('hidden');
+    });
+
+    function mostrarResultadosMicroexpresiones(resultados) {
+      const resumenDiv = document.getElementById('resumen-micro');
+      resumenDiv.innerHTML = '';
+
+      const total = Object.values(resultados).reduce((a,b) => a + b, 0);
+      for (const [emocion, valor] of Object.entries(resultados)) {
+        const porcentaje = ((valor / total) * 100).toFixed(1);
+        const barra = `
+          <div class="emocion-bar">
+            <div class="emocion-bar-fill" style="width: ${porcentaje}%;"></div>
+            <div class="emocion-bar-content">
+              <span>${emocion.charAt(0).toUpperCase() + emocion.slice(1)}</span>
+              <span>${porcentaje}%</span>
+            </div>
+          </div>
+        `;
+        resumenDiv.innerHTML += barra;
+      }
+
+      document.getElementById('resultado-micro').classList.remove('hidden');
+    }
+
+    // Interpretación integrada simple
+    function mostrarInterpretacionIntegrada() {
+      const div = document.getElementById('narrativa-integrada');
+
+      let texto = `<p>Hola <strong>${datosUsuario.nombre}</strong>, gracias por completar la experiencia.</p>`;
+
+      // Interpretar SD3 (resumen)
+      const maquiavelismo = Object.entries(respuestasSD3)
+        .filter(([key]) => ['item-2','item-6','item-11','item-14','item-17','item-19','item-24','item-26'].includes(key))
+        .reduce((acc, [_, val]) => acc + val, 0);
+      const narcisismo = Object.entries(respuestasSD3)
+        .filter(([key]) => ['item-1','item-4','item-5','item-7','item-12','item-13','item-15','item-18','item-20','item-21','item-25'].includes(key))
+        .reduce((acc, [_, val]) => acc + val, 0);
+      const psicopatia = Object.entries(respuestasSD3)
+        .filter(([key]) => ['item-3','item-8','item-9','item-10','item-16','item-22','item-23','item-27'].includes(key))
+        .reduce((acc, [_, val]) => acc + val, 0);
+
+      texto += `<p><strong>Test SD3:</strong> tus puntajes fueron Maquiavelismo: ${maquiavelismo}, Narcisismo: ${narcisismo}, Psicopatía: ${psicopatia}.</p>`;
+
+      // Interpretar microexpresiones (emociones)
+      if (resultadosMicro) {
+        const emociones = Object.entries(resultadosMicro)
+          .map(([emo, val]) => `${emo}: ${(val*100).toFixed(1)}%`)
+          .join(', ');
+        texto += `<p><strong>Análisis microexpresiones:</strong> se detectaron emociones con la siguiente distribución aproximada: ${emociones}.</p>`;
+      }
+
+      texto += `<p><em>Recuerda que esta interpretación es aproximada y no sustituye la evaluación profesional.</em></p>`;
+
+      div.innerHTML = texto;
+      div.classList.remove('hidden');
+
+      document.getElementById('resultado-integrado').classList.remove('hidden');
+    }
+
+  </script>
 </body>
 </html>
