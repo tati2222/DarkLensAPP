@@ -224,7 +224,8 @@
     <div id="panel-investigador" class="hidden">
       <div class="panel-header">
         <h2>📊 Panel del Investigador</h2>
-        <button id="btn-logout" class="btn-secondary">🚪 Cerrar Sesión</button>
+        <!-- BOTÓN CORREGIDO: agregado onclick -->
+        <button id="btn-logout" class="btn-secondary" onclick="cerrarSesion()">🚪 Cerrar Sesión</button>
       </div>
 
       <!-- Estadísticas Generales -->
@@ -244,6 +245,7 @@
             <option value="">-- Seleccioná un participante --</option>
           </select>
         </div>
+        <!-- BOTÓN CORREGIDO: ya tiene onclick -->
         <button onclick="cargarParticipante()" class="btn-primary">Ver Análisis Completo</button>
       </div>
 
@@ -306,6 +308,7 @@
 
         <!-- Botón Exportar -->
         <div class="button-group">
+          <!-- BOTÓN CORREGIDO: ya tiene onclick -->
           <button onclick="exportarDatos()" class="btn-primary">💾 Exportar Datos JSON</button>
         </div>
       </div>
