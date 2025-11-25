@@ -1,278 +1,252 @@
 /* ========================================
-   VARIABLES Y RESET
+   MEJORAS DE DISEÑO - DARKLENS APP
    ======================================== */
-:root {
-    --primary: #667eea;
-    --secondary: #764ba2;
-    --dark-bg: #0f0f1e;
-    --card-bg: #1a1a2e;
-    --text-primary: #e0e0ff;
-    --text-secondary: #b0a0ff;
-    --border: #2a2a3e;
-    --success: #4CAF50;
-    --error: #ff6384;
-    --warning: #ffce56;
-}
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, var(--dark-bg) 0%, #1a1a2e 50%, #16213e 100%);
-    color: var(--text-primary);
-    min-height: 100vh;
-    line-height: 1.6;
-}
 
 /* ========================================
-   UTILIDADES
-   ======================================== */
-.hidden {
-    display: none !important;
-}
-
-.container {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 40px 20px;
-    animation: fadeIn 0.5s ease;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* ========================================
-   HEADER
+   TYPOGRAPHY & HEADERS MEJORADOS
    ======================================== */
 .header {
     text-align: center;
-    margin-bottom: 40px;
-    padding-bottom: 30px;
-    border-bottom: 2px solid var(--border);
+    margin-bottom: 50px;
+    padding-bottom: 40px;
+    border-bottom: 3px solid var(--primary);
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+    border-radius: 20px;
+    padding: 40px 30px;
 }
 
 .header h1 {
-    font-size: 2.5em;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    font-size: 4em;
+    background: linear-gradient(135deg, var(--primary), var(--secondary), #c080ff);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    font-weight: 800;
+    text-shadow: 0 0 30px rgba(102, 126, 234, 0.3);
 }
 
 .subtitle {
     color: var(--text-secondary);
-    font-size: 1.1em;
+    font-size: 1.4em;
+    font-weight: 300;
+    letter-spacing: 1px;
 }
 
 /* ========================================
-   CONTENT BOXES
-   ======================================== */
-.content-box {
-    background: var(--card-bg);
-    border: 2px solid var(--border);
-    border-radius: 15px;
-    padding: 30px;
-    margin-bottom: 30px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-}
-
-.content-box h2, .content-box h3 {
-    color: var(--primary);
-    margin-bottom: 20px;
-}
-
-.content-box h3 {
-    font-size: 1.3em;
-    margin-top: 30px;
-}
-
-.content-box p, .content-box li {
-    margin-bottom: 15px;
-    color: var(--text-primary);
-}
-
-.content-box ul, .content-box ol {
-    margin-left: 25px;
-    margin-bottom: 20px;
-}
-
-/* ========================================
-   CONSENT BOX
-   ======================================== */
-.consent-box {
-    background: rgba(102, 126, 234, 0.1);
-    border: 2px solid var(--primary);
-    border-radius: 10px;
-    padding: 20px;
-    margin: 20px 0;
-}
-
-.consent-box p {
-    margin-bottom: 12px;
-    font-size: 0.95em;
-}
-
-.consent-box strong {
-    color: var(--primary);
-}
-
-/* ========================================
-   FORMS
+   FORMULARIOS MEJORADOS
    ======================================== */
 .form-group {
-    margin-bottom: 25px;
+    margin-bottom: 30px;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
     color: var(--primary);
     font-weight: 600;
+    font-size: 1.1em;
 }
 
 .form-group input,
 .form-group select {
     width: 100%;
-    padding: 12px 15px;
-    background: var(--dark-bg);
+    padding: 16px 20px;
+    background: rgba(255, 255, 255, 0.05);
     border: 2px solid var(--border);
-    border-radius: 8px;
+    border-radius: 12px;
     color: var(--text-primary);
-    font-size: 1em;
+    font-size: 1.1em;
     transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
 }
 
 .form-group input:focus,
 .form-group select:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3), 0 0 20px rgba(102, 126, 234, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.form-group input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+/* ========================================
+   CONSENT BOX MEJORADO
+   ======================================== */
+.consent-box {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+    border: 2px solid var(--primary);
+    border-radius: 15px;
+    padding: 30px;
+    margin: 30px 0;
+    backdrop-filter: blur(10px);
+}
+
+.consent-box h3 {
+    color: var(--primary);
+    margin-bottom: 25px;
+    font-size: 1.4em;
+    text-align: center;
+}
+
+.consent-box p {
+    margin-bottom: 15px;
+    font-size: 1.05em;
+    line-height: 1.7;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.consent-box p:before {
+    content: "✓";
+    color: #4CAF50;
+    font-weight: bold;
+    font-size: 1.2em;
+    flex-shrink: 0;
 }
 
 .checkbox-group {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
-    margin: 30px 0;
-    padding: 20px;
-    background: rgba(102, 126, 234, 0.05);
-    border-radius: 10px;
+    gap: 15px;
+    margin: 35px 0 20px 0;
+    padding: 25px;
+    background: rgba(102, 126, 234, 0.1);
+    border-radius: 12px;
+    border: 1px solid var(--primary);
 }
 
 .checkbox-group input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
-    margin-top: 3px;
+    width: 24px;
+    height: 24px;
+    margin-top: 2px;
     cursor: pointer;
+    accent-color: var(--primary);
 }
 
 .checkbox-group label {
     flex: 1;
     cursor: pointer;
     color: var(--text-primary);
+    font-size: 1.1em;
+    line-height: 1.5;
 }
 
 /* ========================================
-   BUTTONS
+   BOTONES MEJORADOS
    ======================================== */
 .btn-primary, .btn-secondary {
-    padding: 15px 30px;
-    font-size: 1.1em;
+    padding: 18px 40px;
+    font-size: 1.2em;
     font-weight: 600;
     border: none;
-    border-radius: 10px;
+    border-radius: 15px;
     cursor: pointer;
     transition: all 0.3s ease;
     display: inline-block;
     text-align: center;
+    text-decoration: none;
+    min-width: 200px;
+    position: relative;
+    overflow: hidden;
 }
 
 .btn-primary {
     background: linear-gradient(135deg, var(--primary), var(--secondary));
     color: white;
-    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
 }
 
 .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.6);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 35px rgba(102, 126, 234, 0.6);
 }
 
-.btn-primary:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
+.btn-primary:active {
+    transform: translateY(-1px);
 }
 
 .btn-secondary {
-    background: var(--card-bg);
+    background: rgba(255, 255, 255, 0.05);
     color: var(--text-primary);
     border: 2px solid var(--primary);
+    backdrop-filter: blur(10px);
 }
 
 .btn-secondary:hover {
-    background: rgba(102, 126, 234, 0.1);
+    background: rgba(102, 126, 234, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
 }
 
 .button-group {
     display: flex;
-    gap: 15px;
+    gap: 20px;
     flex-wrap: wrap;
     justify-content: center;
-    margin: 30px 0;
+    margin: 40px 0;
 }
 
 /* ========================================
-   TEST ITEMS
+   TEST SD3 MEJORADO
    ======================================== */
 .escala-info {
-    background: rgba(102, 126, 234, 0.1);
-    padding: 20px;
-    border-radius: 10px;
-    margin-bottom: 30px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+    padding: 25px;
+    border-radius: 15px;
+    margin-bottom: 40px;
+    border: 1px solid var(--primary);
+    backdrop-filter: blur(10px);
 }
 
 .escala {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 10px;
-    margin-top: 15px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
 }
 
 .escala span {
-    font-size: 0.9em;
+    font-size: 1em;
     color: var(--text-secondary);
+    text-align: center;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid var(--border);
 }
 
 .test-item {
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(255, 255, 255, 0.03);
     border: 2px solid var(--border);
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 20px;
+    border-radius: 15px;
+    padding: 25px;
+    margin-bottom: 25px;
     transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
 }
 
 .test-item:hover {
     border-color: var(--primary);
-    background: rgba(102, 126, 234, 0.05);
+    background: rgba(102, 126, 234, 0.08);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
 }
 
 .test-item p {
-    margin-bottom: 15px;
-    font-size: 1.05em;
+    margin-bottom: 20px;
+    font-size: 1.15em;
+    line-height: 1.6;
 }
 
 .opciones {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     flex-wrap: wrap;
 }
 
@@ -282,15 +256,16 @@ body {
 
 .opciones label {
     flex: 1;
-    min-width: 50px;
-    padding: 12px;
+    min-width: 70px;
+    padding: 16px 8px;
     text-align: center;
     background: var(--dark-bg);
     border: 2px solid var(--border);
-    border-radius: 8px;
+    border-radius: 10px;
     cursor: pointer;
     transition: all 0.3s ease;
     font-weight: 600;
+    font-size: 1.1em;
 }
 
 .opciones input[type="radio"]:checked + label {
@@ -298,209 +273,152 @@ body {
     border-color: var(--primary);
     color: white;
     transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
 }
 
 .opciones label:hover {
     border-color: var(--primary);
     background: rgba(102, 126, 234, 0.1);
+    transform: translateY(-2px);
 }
 
 /* ========================================
-   RESULTADO BOXES
-   ======================================== */
-.resultado-box {
-    background: var(--card-bg);
-    border: 2px solid var(--primary);
-    border-radius: 15px;
-    padding: 25px;
-    margin: 20px 0;
-    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
-}
-
-.resultado-box h4 {
-    color: var(--primary);
-    font-size: 1.4em;
-    margin-bottom: 15px;
-}
-
-.resultado-box p {
-    margin-bottom: 10px;
-}
-
-/* ========================================
-   CAMERA
+   CÁMARA MEJORADA
    ======================================== */
 .instrucciones {
-    background: rgba(255, 206, 86, 0.1);
+    background: linear-gradient(135deg, rgba(255, 206, 86, 0.15), rgba(255, 159, 64, 0.15));
     border: 2px solid var(--warning);
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 30px;
+    border-radius: 15px;
+    padding: 30px;
+    margin-bottom: 40px;
+    backdrop-filter: blur(10px);
 }
 
 .instrucciones h3 {
     color: var(--warning);
-    margin-bottom: 15px;
+    margin-bottom: 20px;
+    font-size: 1.4em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.instrucciones ul {
+    margin-left: 20px;
+}
+
+.instrucciones li {
+    margin-bottom: 12px;
+    font-size: 1.05em;
+    line-height: 1.6;
 }
 
 .camera-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 300px;
-    background: var(--dark-bg);
-    border-radius: 15px;
+    min-height: 400px;
+    background: linear-gradient(135deg, var(--dark-bg), #1a1a2e);
+    border-radius: 20px;
     overflow: hidden;
-    margin: 30px 0;
+    margin: 40px 0;
+    border: 2px solid var(--border);
+    position: relative;
+}
+
+.camera-container:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+    pointer-events: none;
 }
 
 #video, #canvas {
     max-width: 100%;
     max-height: 500px;
-    border-radius: 10px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+#camera-placeholder {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 1.2em;
+}
+
+#camera-placeholder p {
+    margin-bottom: 20px;
 }
 
 /* ========================================
-   LOADING
+   SECCIONES MEJORADAS
    ======================================== */
-.analisis-loading {
-    text-align: center;
+.content-box {
+    background: linear-gradient(135deg, var(--card-bg), #1e1e3e);
+    border: 2px solid var(--border);
+    border-radius: 20px;
     padding: 40px;
-    font-size: 1.3em;
+    margin-bottom: 40px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+}
+
+.content-box:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+}
+
+.content-box h2 {
     color: var(--primary);
-    animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-
-/* ========================================
-   DASHBOARD INVESTIGADOR
-   ======================================== */
-.dashboard-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid var(--border);
-}
-
-.stats-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin: 30px 0;
-}
-
-.stat-card {
-    background: var(--card-bg);
-    border: 2px solid var(--border);
-    border-radius: 10px;
-    padding: 20px;
+    font-size: 2em;
     text-align: center;
+    font-weight: 700;
 }
 
-.stat-card h4 {
-    color: var(--text-secondary);
-    margin-bottom: 10px;
-    font-size: 0.9em;
-}
-
-.stat-number {
-    font-size: 2.5em;
-    font-weight: bold;
+.content-box h3 {
     color: var(--primary);
-}
-
-.participants-list {
-    max-height: 500px;
-    overflow-y: auto;
-}
-
-.participant-item {
-    background: var(--card-bg);
-    border: 2px solid var(--border);
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 15px;
-    transition: all 0.3s ease;
-}
-
-.participant-item:hover {
-    border-color: var(--primary);
-}
-
-.participant-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-}
-
-.participant-scores {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
-    margin-top: 15px;
-}
-
-.score-item {
-    text-align: center;
-}
-
-.score-value {
+    margin-bottom: 25px;
     font-size: 1.5em;
-    font-weight: bold;
-    color: var(--primary);
-}
-
-.score-label {
-    font-size: 0.8em;
-    color: var(--text-secondary);
+    font-weight: 600;
 }
 
 /* ========================================
-   FOOTER
-   ======================================== */
-footer {
-    text-align: center;
-    padding: 30px 20px;
-    color: var(--text-secondary);
-    border-top: 2px solid var(--border);
-    margin-top: 60px;
-}
-
-footer p {
-    margin: 5px 0;
-}
-
-/* ========================================
-   CHART CONTAINER
-   ======================================== */
-#grafico-container {
-    margin-top: 30px;
-    text-align: center;
-}
-
-#grafico-sd3 {
-    max-width: 500px;
-    margin: 0 auto;
-    display: block;
-}
-
-/* ========================================
-   RESPONSIVE
+   RESPONSIVE MEJORADO
    ======================================== */
 @media (max-width: 768px) {
     .header h1 {
-        font-size: 2em;
+        font-size: 2.5em;
+    }
+    
+    .subtitle {
+        font-size: 1.1em;
     }
     
     .content-box {
-        padding: 20px;
+        padding: 25px 20px;
+        margin-bottom: 30px;
+    }
+    
+    .button-group {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .btn-primary, .btn-secondary {
+        width: 100%;
+        min-width: auto;
     }
     
     .escala {
@@ -508,34 +426,84 @@ footer p {
     }
     
     .opciones {
-        flex-direction: row;
+        flex-direction: column;
     }
     
     .opciones label {
-        min-width: 40px;
-        padding: 10px 5px;
-        font-size: 0.9em;
+        min-width: auto;
     }
     
-    .button-group {
-        flex-direction: column;
+    .camera-container {
+        min-height: 300px;
     }
-    
-    .btn-primary, .btn-secondary {
-        width: 100%;
+}
+
+/* ========================================
+   ANIMACIONES Y EFECTOS
+   ======================================== */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
     }
-    
-    .dashboard-header {
-        flex-direction: column;
-        gap: 15px;
-        align-items: flex-start;
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
-    
-    .stats-container {
-        grid-template-columns: 1fr;
-    }
-    
-    .participant-scores {
-        grid-template-columns: 1fr;
-    }
+}
+
+.content-box {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.test-item {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+/* ========================================
+   MEJORAS ESPECÍFICAS PARA FORMULARIOS
+   ======================================== */
+.form-section {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 15px;
+    padding: 30px;
+    margin: 25px 0;
+    border: 1px solid var(--border);
+}
+
+.form-section h4 {
+    color: var(--primary);
+    margin-bottom: 20px;
+    font-size: 1.3em;
+}
+
+/* Estilo para campos requeridos */
+.form-group.required label:after {
+    content: " *";
+    color: #ff6384;
+}
+
+/* Loading states */
+.btn-primary.loading {
+    position: relative;
+    color: transparent;
+}
+
+.btn-primary.loading:after {
+    content: "";
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    top: 50%;
+    left: 50%;
+    margin: -10px 0 0 -10px;
+    border: 2px solid transparent;
+    border-top: 2px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
