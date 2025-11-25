@@ -5,7 +5,6 @@ const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwfcPm38VaTFK
 const RENDER_URL = 'https://darklnesapp-api.onrender.com'; // Tu Streamlit
 const RESEARCHER_PASSWORD = 'investigador2025'; // 
 
-
 // ========================================
 // VARIABLES GLOBALES
 // ========================================
@@ -129,6 +128,15 @@ document.addEventListener("DOMContentLoaded", () => {
     btnLogout.addEventListener('click', cerrarSesionInvestigador);
   }
 });
+
+// ========================================
+// NAVEGACIÓN
+// ========================================
+function volverAInicio() {
+  document.getElementById('investigador-login').classList.add('hidden');
+  document.getElementById('seccion-participante').classList.remove('hidden');
+  document.getElementById('login-error').classList.add('hidden');
+}
 
 // ========================================
 // GENERAR ITEMS DEL TEST
@@ -518,8 +526,10 @@ function dataURLtoBlob(dataurl) {
 // ZONA INVESTIGADOR
 // ========================================
 function mostrarLoginInvestigador() {
-  document.getElementById('seccion-participante')?.classList.add('hidden');
-  document.getElementById('investigador-login')?.classList.remove('hidden');
+  document.getElementById('seccion-participante').classList.add('hidden');
+  document.getElementById('investigador-login').classList.remove('hidden');
+  document.getElementById('btn-investigador').style.display = 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function validarLogin() {
@@ -528,6 +538,7 @@ function validarLogin() {
   const errorDiv = document.getElementById('login-error');
 
   if (username === VALID_CREDENTIALS.username && password === VALID_CREDENTIALS.password) {
+    errorDiv.classList.add('hidden');
     document.getElementById('investigador-login').classList.add('hidden');
     document.getElementById('investigador-lista').classList.remove('hidden');
     cargarDatosParticipantes();
@@ -540,8 +551,10 @@ function cerrarSesionInvestigador() {
   document.getElementById('investigador-lista').classList.add('hidden');
   document.getElementById('investigador-detalle').classList.add('hidden');
   document.getElementById('seccion-participante').classList.remove('hidden');
+  document.getElementById('btn-investigador').style.display = 'block';
   todosLosDatos = [];
   datosFiltrados = [];
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function cargarDatosParticipantes() {
