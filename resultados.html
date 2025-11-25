@@ -3,70 +3,483 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tus Resultados - DarklnessApp</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Tus Resultados - DARKLENS</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <style>
+        /* ========================================
+           MISMO DISEÑO QUE INDEX.HTML
+           ======================================== */
+        body {
+            margin: 0; 
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0ff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        h1 {
+            font-size: 3em;
+            margin-bottom: 0.1em;
+            background: linear-gradient(135deg, #c080ff 0%, #7f00ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            text-align: center;
+        }
+        
+        h2 {
+            font-weight: 400;
+            color: #c080ff;
+            margin-top: 0;
+            margin-bottom: 1em;
+            text-align: center;
+            font-size: 1.3em;
+        }
+
+        h3 {
+            color: #c080ff;
+            font-size: 1.6em;
+            margin: 30px 0 20px;
+            text-align: center;
+        }
+
+        h4 {
+            color: #b0a0ff;
+            font-size: 1.3em;
+            margin: 20px 0 15px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: rgba(37, 37, 64, 0.9);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(127, 0, 255, 0.3);
+            border: 2px solid rgba(192, 128, 255, 0.3);
+        }
+        
+        p {
+            font-size: 1.05em;
+            line-height: 1.8;
+            margin-bottom: 15px;
+            color: #d0d0ff;
+        }
+
+        strong {
+            color: #c080ff;
+        }
+
+        /* SECCIONES */
+        .section {
+            background: rgba(31, 43, 71, 0.5);
+            padding: 30px;
+            border-radius: 12px;
+            margin: 30px 0;
+            border: 1px solid rgba(192, 128, 255, 0.2);
+        }
+
+        .section-highlight {
+            background: linear-gradient(135deg, rgba(127, 0, 255, 0.15), rgba(102, 126, 234, 0.15));
+            border: 2px solid rgba(192, 128, 255, 0.4);
+        }
+
+        /* INFO GRID */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .info-item {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(192, 128, 255, 0.2);
+        }
+
+        .info-item strong {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+
+        /* SCORE CARDS */
+        .scores-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+
+        .score-card {
+            background: linear-gradient(135deg, rgba(31, 43, 71, 0.8), rgba(22, 33, 62, 0.8));
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid rgba(192, 128, 255, 0.3);
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .score-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(127, 0, 255, 0.5);
+            border-color: #7f00ff;
+        }
+
+        .score-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .score-label {
+            font-size: 1.1em;
+            color: #b0a0ff;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .score-value {
+            font-size: 3em;
+            font-weight: 800;
+            background: linear-gradient(135deg, #c080ff 0%, #7f00ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 10px 0;
+        }
+
+        .score-level {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.95em;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .nivel-bajo {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+            border: 2px solid #4CAF50;
+        }
+
+        .nivel-medio {
+            background: rgba(255, 206, 86, 0.2);
+            color: #ffce56;
+            border: 2px solid #ffce56;
+        }
+
+        .nivel-alto {
+            background: rgba(255, 99, 132, 0.2);
+            color: #ff6384;
+            border: 2px solid #ff6384;
+        }
+
+        /* BARRA DE PROGRESO */
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+            border: 1px solid rgba(192, 128, 255, 0.2);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #7f00ff 0%, #c080ff 100%);
+            border-radius: 10px;
+            transition: width 1.5s ease-out;
+            box-shadow: 0 0 10px rgba(127, 0, 255, 0.5);
+        }
+
+        /* BARRAS DE EMOCIONES */
+        .emotion-bar {
+            margin: 20px 0;
+        }
+
+        .emotion-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 1.05em;
+        }
+
+        .emotion-label strong {
+            color: #c080ff;
+        }
+
+        .emotion-label span {
+            color: #b0a0ff;
+            font-weight: 600;
+        }
+
+        .bar-container {
+            width: 100%;
+            height: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            overflow: hidden;
+            border: 2px solid rgba(192, 128, 255, 0.2);
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            transition: width 1.5s ease-out;
+            box-shadow: 0 0 15px rgba(102, 126, 234, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 15px;
+            color: white;
+            font-weight: 700;
+            font-size: 0.9em;
+        }
+
+        /* STATS PEQUEÑAS */
+        .stats-mini {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-mini {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(192, 128, 255, 0.2);
+        }
+
+        .stat-mini-label {
+            font-size: 0.9em;
+            color: #b0a0ff;
+            margin-bottom: 8px;
+        }
+
+        .stat-mini-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #c080ff;
+        }
+
+        /* CANVAS GRÁFICOS */
+        .chart-container {
+            max-width: 600px;
+            margin: 30px auto;
+            padding: 20px;
+            background: rgba(31, 43, 71, 0.5);
+            border-radius: 12px;
+            border: 1px solid rgba(192, 128, 255, 0.2);
+        }
+
+        /* BOTONES */
+        .btn-primary {
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            border: none;
+            color: white;
+            background: linear-gradient(135deg, #7f00ff 0%, #6c63ff 100%);
+            box-shadow: 0 4px 15px rgba(127, 0, 255, 0.4);
+            transition: all 0.3s;
+            display: inline-block;
+            margin: 10px;
+            text-decoration: none;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #9000ff 0%, #7c73ff 100%);
+            box-shadow: 0 6px 20px rgba(127, 0, 255, 0.6);
+            transform: translateY(-3px);
+        }
+
+        .btn-secondary {
+            padding: 12px 30px;
+            font-size: 1em;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            border: 2px solid rgba(192, 128, 255, 0.4);
+            color: #e0e0ff;
+            background: rgba(31, 43, 71, 0.6);
+            transition: all 0.3s;
+            display: inline-block;
+            margin: 10px;
+            text-decoration: none;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(127, 0, 255, 0.2);
+            border-color: #7f00ff;
+            transform: translateY(-2px);
+        }
+
+        .button-group {
+            text-align: center;
+            margin: 40px 0;
+        }
+
+        /* DISCLAIMER */
+        .disclaimer {
+            background: rgba(255, 206, 86, 0.1);
+            border: 2px solid #ffce56;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 30px 0;
+        }
+
+        .disclaimer h4 {
+            color: #ffce56;
+            margin-top: 0;
+        }
+
+        /* FOOTER */
+        footer {
+            text-align: center;
+            margin-top: 60px;
+            padding-top: 30px;
+            border-top: 2px solid rgba(192, 128, 255, 0.3);
+            color: #b0a0ff;
+            font-size: 0.95em;
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 2.5em; }
+            .container { padding: 25px; }
+            .scores-grid { grid-template-columns: 1fr; }
+            .info-grid { grid-template-columns: 1fr; }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>📊 Tus Resultados Completos</h1>
-            <p class="subtitle">Análisis detallado de personalidad y microexpresiones</p>
-        </div>
+        <h1>📊 DARKLENS</h1>
+        <h2>Tus Resultados Completos</h2>
 
-        <!-- INFORMACIÓN DEL PARTICIPANTE -->
-        <div class="content-box">
-            <h3>👤 Información del participante</h3>
+        <!-- ============================================
+             INFORMACIÓN DEL PARTICIPANTE
+             ============================================ -->
+        <div class="section">
+            <h3>👤 Información del Participante</h3>
             <div id="info-participante"></div>
         </div>
 
-        <!-- RESULTADOS SD3 -->
-        <div class="content-box">
+        <!-- ============================================
+             RESULTADOS SD3 CON TARJETAS
+             ============================================ -->
+        <div class="section section-highlight">
             <h3>📝 Resultados del Test SD3</h3>
+            <p style="text-align: center; margin-bottom: 30px;">
+                La Tríada Oscura evalúa tres rasgos de personalidad subclínica
+            </p>
             <div id="resultados-sd3-detalle"></div>
-            <canvas id="grafico-sd3-resultados" style="max-width: 500px; margin: 30px auto;"></canvas>
         </div>
 
-        <!-- TIEMPOS DE RESPUESTA -->
-        <div class="content-box">
+        <!-- ============================================
+             GRÁFICO SD3 RADAR
+             ============================================ -->
+        <div class="chart-container">
+            <h4 style="text-align: center; color: #c080ff;">Tu Perfil de Personalidad</h4>
+            <canvas id="grafico-sd3-resultados"></canvas>
+        </div>
+
+        <!-- ============================================
+             TIEMPOS DE RESPUESTA
+             ============================================ -->
+        <div class="section">
             <h3>⏱️ Análisis de Tiempos de Respuesta</h3>
+            <p style="text-align: center; margin-bottom: 25px;">
+                El tiempo que tomaste en responder cada pregunta revela tu patrón de procesamiento
+            </p>
             <div id="tiempos-detalle"></div>
-            <canvas id="grafico-tiempos" style="max-width: 600px; margin: 30px auto;"></canvas>
         </div>
 
-        <!-- MICROEXPRESIONES -->
-        <div class="content-box">
+        <!-- ============================================
+             GRÁFICO DE TIEMPOS
+             ============================================ -->
+        <div class="chart-container">
+            <h4 style="text-align: center; color: #c080ff;">Tiempos por Ítem del Test</h4>
+            <canvas id="grafico-tiempos"></canvas>
+        </div>
+
+        <!-- ============================================
+             MICROEXPRESIONES CON BARRAS
+             ============================================ -->
+        <div class="section section-highlight">
             <h3>🎭 Análisis de Microexpresiones</h3>
+            <p style="text-align: center; margin-bottom: 30px;">
+                Las emociones detectadas en tu expresión facial
+            </p>
             <div id="microexpresiones-detalle"></div>
-            <canvas id="grafico-emociones" style="max-width: 600px; margin: 30px auto;"></canvas>
         </div>
 
-        <!-- ANÁLISIS FACS -->
-        <div class="content-box">
-            <h3>😊 Análisis FACS (Facial Action Coding System)</h3>
-            <p style="color: var(--text-secondary); margin-bottom: 20px;">
-                Sistema de codificación de acciones faciales según la teoría de Paul Ekman
+        <!-- ============================================
+             GRÁFICO DE EMOCIONES
+             ============================================ -->
+        <div class="chart-container">
+            <h4 style="text-align: center; color: #c080ff;">Distribución de Emociones</h4>
+            <canvas id="grafico-emociones"></canvas>
+        </div>
+
+        <!-- ============================================
+             ANÁLISIS FACS
+             ============================================ -->
+        <div class="section">
+            <h3>😊 Análisis FACS</h3>
+            <p style="text-align: center; margin-bottom: 20px; font-size: 0.95em; color: #b0a0ff;">
+                Sistema de Codificación de Acciones Faciales (Facial Action Coding System)
             </p>
             <div id="facs-detalle"></div>
         </div>
 
-        <!-- ANÁLISIS FINAL -->
-        <div class="content-box" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));">
+        <!-- ============================================
+             ANÁLISIS FINAL INTEGRADOR
+             ============================================ -->
+        <div class="section section-highlight">
             <h3>🔍 Análisis Integrado Final</h3>
             <div id="analisis-final"></div>
         </div>
 
-        <div class="button-group">
-            <button onclick="window.print()" class="btn-secondary">🖨️ Imprimir resultados</button>
-            <button onclick="descargarResultados()" class="btn-secondary">💾 Descargar PDF</button>
-            <button onclick="window.location.href='index.html'" class="btn-primary">🏠 Volver al inicio</button>
+        <!-- ============================================
+             DISCLAIMER
+             ============================================ -->
+        <div class="disclaimer">
+            <h4>⚠️ Importante</h4>
+            <p>
+                Estos resultados son parte de una investigación académica y <strong>NO constituyen un diagnóstico clínico</strong>. 
+                Los rasgos de personalidad medidos existen en un continuo y todas las personas presentan algún grado de estas características. 
+                Si tenés preocupaciones sobre tu salud mental, consultá con un profesional calificado.
+            </p>
         </div>
+
+        <!-- ============================================
+             BOTONES DE ACCIÓN
+             ============================================ -->
+        <div class="button-group">
+            <button onclick="window.print()" class="btn-secondary">🖨️ Imprimir</button>
+            <button onclick="descargarResultados()" class="btn-secondary">💾 Descargar</button>
+            <a href="index.html" class="btn-primary">🏠 Volver al Inicio</a>
+        </div>
+
+        <footer>
+            <p><strong>DARKLENS</strong> © 2024/2025</p>
+            <p>Investigación Académica - Universidad del Gran Rosario (UGR)</p>
+            <p>Licenciatura en Ciencia de Datos</p>
+        </footer>
     </div>
 
-    <footer>
-        <p>DarklnessApp © 2024 | Investigación Académica</p>
-    </footer>
-
-    <script src="resultados.js"></script>
+    <script src="js/resultados.js"></script>
 </body>
 </html>
