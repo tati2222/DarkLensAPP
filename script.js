@@ -1,7 +1,7 @@
 // ========================================
 // CONFIGURACIÓN
 // ========================================
-const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxwUphmMo86NNVp4h1mGCFTmtBATgxFxBTI7hA2dDtUpCoymkelrpKLfC9srMPMVy5EVw/exec'; // 
+const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwfcPm38VaTFKJjEFXXO3c-x6r2HOBWmIW_4vbeOMZE-xvtbDhNF0-SH4MBGPwMLZHw2A/exec'; // 
 const RENDER_URL = 'https://darklnesapp-api.onrender.com'; // Tu Streamlit
 const RESEARCHER_PASSWORD = 'investigador2025'; // 
 
