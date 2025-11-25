@@ -1,9 +1,9 @@
 // ========================================
 // CONFIGURACIÓN
 // ========================================
-const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/TU_SCRIPT_ID/exec'; // ⚠️ REEMPLAZAR
+const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxwUphmMo86NNVp4h1mGCFTmtBATgxFxBTI7hA2dDtUpCoymkelrpKLfC9srMPMVy5EVw/exec'; // 
 const RENDER_URL = 'https://darklnesapp-api.onrender.com'; // Tu Streamlit
-const RESEARCHER_PASSWORD = 'investigador2024'; // ⚠️ DEBE COINCIDIR con Google Apps Script
+const RESEARCHER_PASSWORD = 'investigador2025'; // 
 
 // ========================================
 // VARIABLES GLOBALES
@@ -460,7 +460,7 @@ async function cargarListaParticipantes() {
       data.participantes.forEach(p => {
         const card = document.createElement('div');
         card.className = 'participante-card';
-        card.onclick = () => verDetalleParticipante(p.id);
+        card.onclick = () => verDetalleParticipante(p.row);
         
         card.innerHTML = `
           <div class="participante-header">
@@ -469,7 +469,7 @@ async function cargarListaParticipantes() {
               <p>Edad: ${p.edad} | Género: ${p.genero} | País: ${p.pais}</p>
               <p style="font-size: 0.9em; color: #9080d0;">
                 Fecha: ${new Date(p.timestamp).toLocaleDateString()} | 
-                Mach: ${p.mach} | Narc: ${p.narc} | Psych: ${p.psych}
+                Mach: ${p.mach.toFixed(2)} | Narc: ${p.narc.toFixed(2)} | Psych: ${p.psych.toFixed(2)}
               </p>
             </div>
             <button class="view-btn">Ver Detalles</button>
@@ -494,14 +494,14 @@ async function cargarListaParticipantes() {
 // ========================================
 // VER DETALLE DE PARTICIPANTE
 // ========================================
-async function verDetalleParticipante(id) {
+async function verDetalleParticipante(row) {
   mostrarPantalla('investigador-detalle');
   
   const detalleDiv = document.getElementById('detalle-participante');
   detalleDiv.innerHTML = '<p style="text-align: center; padding: 40px;">Cargando detalles...</p>';
   
   try {
-    const url = `${GOOGLE_SHEETS_URL}?action=detail&id=${encodeURIComponent(id)}&password=${encodeURIComponent(RESEARCHER_PASSWORD)}`;
+    const url = `${GOOGLE_SHEETS_URL}?action=detail&row=${encodeURIComponent(row)}&password=${encodeURIComponent(RESEARCHER_PASSWORD)}`;
     const response = await fetch(url);
     const data = await response.json();
     
