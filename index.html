@@ -3,263 +3,116 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DARKLENS - Investigación & Panel Investigadores</title>
+  <title>DARKLENS - Explorador de Personalidad</title>
   <style>
-    /* Reset básico */
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
     body {
-      background: linear-gradient(135deg, #0a0a0a 0%, #2a004f 50%, #1a0033 100%);
-      color: #e0e0ff;
+      margin: 0; padding: 0;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e0e0ff;
       min-height: 100vh;
-      line-height: 1.6;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
       padding: 20px;
-    }
-    a {
-      color: #c080ff;
-      text-decoration: none;
-    }
-    a:hover {
-      text-decoration: underline;
-    }
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    h1, h2, h3, h4 {
-      color: #c080ff;
+      text-align: center;
     }
     h1 {
-      font-size: 3.5em;
-      text-align: center;
-      margin-bottom: 10px;
-      text-shadow: 0 0 30px rgba(192, 128, 255, 0.8);
+      font-size: 3em;
+      margin-bottom: 0.1em;
+      background: linear-gradient(135deg, #c080ff 0%, #7f00ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 800;
     }
     h2 {
-      font-size: 1.5em;
-      font-weight: 300;
-      color: #b0a0ff;
-      margin-bottom: 25px;
-      text-align: center;
+      font-weight: 400;
+      color: #c080ff;
+      margin-top: 0;
+      margin-bottom: 1em;
     }
-    /* Secciones generales */
-    section {
-      background: rgba(30, 0, 60, 0.8);
-      border-radius: 15px;
+    .container {
+      max-width: 900px;
+      background: rgba(37, 37, 64, 0.9);
       padding: 30px;
-      margin-bottom: 40px;
-      box-shadow: 0 0 30px rgba(127, 0, 255, 0.4);
-      border: 1px solid rgba(192, 128, 255, 0.2);
+      border-radius: 15px;
+      box-shadow: 0 8px 32px rgba(127, 0, 255, 0.3);
+      border: 2px solid rgba(192, 128, 255, 0.3);
     }
-    .subtitle {
-      font-size: 1.1em;
-      color: #9080d0;
-      margin-top: 10px;
-      text-align: center;
-    }
-    .access-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 30px;
-      margin-top: 10px;
-    }
-    .access-card {
-      background: rgba(255, 255, 255, 0.03);
-      padding: 25px;
-      border-radius: 12px;
-      border: 2px solid rgba(127, 0, 255, 0.3);
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.3s;
-      user-select: none;
-    }
-    .access-card:hover {
-      box-shadow: 0 10px 30px rgba(127, 0, 255, 0.5);
-      border-color: #7f00ff;
-      transform: translateY(-5px);
-    }
-    .card-icon {
-      font-size: 4em;
+    p {
+      font-size: 1.05em;
+      line-height: 1.8;
       margin-bottom: 20px;
+      color: #d0d0ff;
     }
-    .btn-primary, .btn-secondary {
-      display: inline-block;
-      padding: 15px 30px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 1.1em;
-      margin-top: 20px;
-      transition: all 0.3s;
+    ol {
+      margin-left: 25px;
+      text-align: left;
+      color: #d0d0ff;
+      line-height: 1.8;
+      margin-bottom: 30px;
+    }
+    ol li {
+      margin-bottom: 12px;
+    }
+    .btn {
+      padding: 15px 40px;
+      font-size: 1.2em;
+      margin: 15px;
+      border-radius: 30px;
       cursor: pointer;
+      font-weight: 600;
       border: none;
       color: white;
+      background: linear-gradient(135deg, #7f00ff 0%, #6c63ff 100%);
+      box-shadow: 0 4px 15px rgba(127, 0, 255, 0.4);
+      transition: all 0.3s;
+      min-width: 180px;
     }
-    .btn-primary {
-      background: linear-gradient(135deg, #7f00ff 0%, #a040ff 100%);
-      box-shadow: 0 5px 20px rgba(127, 0, 255, 0.4);
+    .btn:hover {
+      background: linear-gradient(135deg, #9000ff 0%, #7c73ff 100%);
+      box-shadow: 0 6px 20px rgba(127, 0, 255, 0.6);
+      transform: translateY(-3px);
     }
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(127, 0, 255, 0.6);
-    }
-    .btn-secondary {
-      background: linear-gradient(135deg, #4a0080 0%, #6c0099 100%);
-      border: 2px solid rgba(192, 128, 255, 0.5);
-    }
-    .btn-secondary:hover {
-      transform: translateY(-2px);
-      border-color: #c080ff;
-      box-shadow: 0 8px 25px rgba(108, 0, 153, 0.6);
-    }
-    /* Panel Investigadores */
-    #panelInvestigadores {
-      display: none;
-    }
-    label {
-      display: block;
-      margin-top: 15px;
-      margin-bottom: 5px;
-      font-weight: 600;
-      color: #c0a0ff;
-    }
-    select, button#btnCargar {
-      padding: 10px;
-      font-size: 1em;
-      border-radius: 6px;
-      border: 1px solid #7f00ff;
-      background: #2a004f;
-      color: #e0e0ff;
-      cursor: pointer;
-      margin-bottom: 10px;
-      width: 100%;
-      max-width: 320px;
-    }
-    button#btnCargar:hover {
-      background: #7f00ff;
-    }
-    .resultado-item {
-      margin-top: 25px;
-      padding: 20px;
-      border: 1px solid #c080ff;
-      border-radius: 10px;
-      background: rgba(127, 0, 255, 0.12);
-      max-width: 900px;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      margin-top: 15px;
-    }
-    th, td {
-      border: 1px solid #7f00ff;
-      padding: 8px;
-      text-align: center;
-    }
-    th {
-      background-color: #7f00ff;
-    }
-    img {
-      max-width: 150px;
-      border-radius: 8px;
-      margin: 10px 8px 10px 0;
-      box-shadow: 0 0 8px rgba(127, 0, 255, 0.5);
-    }
-    .imagenes-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 10px;
-    }
-    /* Footer */
     footer {
-      text-align: center;
-      margin-top: 60px;
-      padding: 30px 20px;
-      border-top: 2px solid rgba(192, 128, 255, 0.3);
-      color: #9080d0;
+      margin-top: 40px;
       font-size: 0.9em;
-    }
-    .footer-links a {
-      text-decoration: none;
-      transition: color 0.3s;
-      margin: 0 8px;
       color: #c080ff;
     }
-    .footer-links a:hover {
-      color: #7f00ff;
-    }
-    /* Botón cerrar panel */
-    #btnCerrarPanel {
-      background: #ec4899;
-      border: none;
-      color: white;
-      padding: 10px 25px;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      margin-top: 10px;
-      transition: background 0.3s;
-    }
-    #btnCerrarPanel:hover {
-      background: #b83374;
-    }
-    /* Responsive */
-    @media (max-width: 768px) {
-      h1 {
-        font-size: 2.5em;
-      }
-      .access-grid {
-        grid-template-columns: 1fr;
-      }
-      select, button#btnCargar {
-        max-width: 100%;
-      }
+    footer a {
+      color: #c080ff;
+      text-decoration: underline;
     }
   </style>
 </head>
 <body>
-  <div class="container" id="paginaPrincipal">
-    <section class="hero-section">
-      <h1>DARKLENS</h1>
-      <h2>Explorador de rasgos de personalidad oscura mediante análisis de microexpresiones</h2>
-      <p class="subtitle">Proyecto de investigación académica - Universidad del Gran Rosario (UGR)</p>
-    </section>
+  <div class="container">
+    <h1>DARKLENS</h1>
+    <h2>Explorador de rasgos de personalidad oscura mediante análisis de microexpresiones</h2>
+
+    <p><strong>Proyecto de investigación académica - Universidad del Gran Rosario (UGR)</strong></p>
 
     <section>
       <h3>📚 Sobre el Proyecto</h3>
       <p>
-        DARKLENS es una herramienta experimental diseñada para explorar rasgos de personalidad oscura mediante 
-        el análisis automatizado de microexpresiones faciales. Esta investigación forma parte de la 
-        <strong>Licenciatura en Ciencia de Datos</strong> de la <strong>Universidad del Gran Rosario (UGR)</strong>.
+        DARKLENS es una herramienta experimental diseñada para explorar rasgos de personalidad oscura mediante el análisis automatizado de microexpresiones faciales. Esta investigación forma parte de la <strong>Licenciatura en Ciencia de Datos</strong> de la <strong>Universidad del Gran Rosario (UGR)</strong>.
       </p>
       <p>
-        El sistema utiliza modelos de inteligencia artificial entrenados para detectar emociones sutiles en expresiones 
-        faciales y relacionarlas con dimensiones de la tríada oscura de la personalidad (maquiavelismo, narcisismo y psicopatía subclínica).
+        El sistema utiliza modelos de inteligencia artificial entrenados para detectar emociones sutiles en expresiones faciales y relacionarlas con dimensiones de la tríada oscura de la personalidad (maquiavelismo, narcisismo y psicopatía subclínica).
       </p>
     </section>
 
-    <section class="access-grid">
-      <div class="access-card participante-card" id="btnParticipar">
-        <div class="card-icon">🧪</div>
-        <h4>Participar en el Estudio</h4>
-        <p>Realizá el análisis de microexpresiones y contribuí a la investigación académica.</p>
-        <button class="btn-primary" onclick="window.open('https://darklnesapp-api.onrender.com', '_blank')">
-          Ir a la Aplicación
-        </button>
-        <p class="note">⚠️ La participación es voluntaria y anónima</p>
-      </div>
+    <section>
+      <h3>🧪 Participar en el Estudio</h3>
+      <p>Realizá el análisis de microexpresiones y contribuí a la investigación académica.</p>
+      <button class="btn" id="btn-participante">Ir a la Aplicación</button>
+    </section>
 
-      <div class="access-card investigador-card" id="btnMostrarPanel">
-        <div class="card-icon">🔬</div>
-        <h4>Panel de Investigadores</h4>
-        <p>Acceso restringido para visualizar y analizar los resultados de la investigación.</p>
-        <button class="btn-secondary">Acceso Restringido</button>
-        <p class="note">🔒 Solo personal autorizado</p>
-      </div>
+    <section>
+      <h3>🔬 Panel de Investigadores</h3>
+      <p>Acceso restringido para visualizar y analizar los resultados de la investigación.</p>
+      <button class="btn" id="btn-investigador">Acceso Restringido</button>
     </section>
 
     <section>
@@ -273,185 +126,27 @@
 
     <section>
       <h3>⚖️ Consideraciones Éticas</h3>
-      <ul>
+      <ul style="list-style-type: disc; padding-left: 20px; text-align: left; color:#d0d0ff;">
         <li><strong>Consentimiento informado:</strong> Todos los participantes aceptan voluntariamente los términos antes de comenzar.</li>
         <li><strong>Anonimato:</strong> Los datos personales se tratan de forma confidencial y no permiten identificación individual.</li>
         <li><strong>Uso académico:</strong> Toda la información recopilada se utiliza exclusivamente con fines de investigación.</li>
-        <li><strong>No diagnóstico:</strong> Esta herramienta NO sustituye evaluaciones psicológicas profesionales.</li>
+        <li><strong>No diagnóstico:</strong> Esta herramienta <em>NO</em> sustituye evaluaciones psicológicas profesionales.</li>
       </ul>
     </section>
 
-    <section style="text-align:center; font-size: 1.1em; margin-top: 40px; color: #c080ff;">
-      Proyecto desarrollado en el marco de la Licenciatura en Ciencia de Datos - Universidad del Gran Rosario (UGR) - 2024/2025
-    </section>
+    <footer>
+      <p>Proyecto desarrollado en la Licenciatura en Ciencia de Datos - Universidad del Gran Rosario (UGR) - 2024/2025</p>
+      <p>© 2025 DARKLENS - Todos los derechos reservados</p>
+      <p>Universidad del Gran Rosario | Licenciatura en Ciencia de Datos | <a href="#">Política de Privacidad</a></p>
+    </footer>
   </div>
-
-  <!-- PANEL INVESTIGADORES -->
-  <div class="container" id="panelInvestigadores" style="display:none;">
-    <h1>Panel de Investigadores - DARKLENS</h1>
-    <label for="participanteSelect">Seleccione un participante:</label>
-    <select id="participanteSelect">
-      <option value="">-- Seleccione participante --</option>
-    </select>
-    <button id="btnCargar">Cargar Análisis</button>
-    <button id="btnCerrarPanel">Cerrar Panel</button>
-    <div id="analisisContainer"></div>
-  </div>
-
-  <footer>
-    <p>© 2025 DARKLENS - Todos los derechos reservados</p>
-    <p>Universidad del Gran Rosario | Licenciatura en Ciencia de Datos</p>
-    <div class="footer-links">
-      <a href="mailto:investigacion@darklens.edu">Contacto</a> |
-      <a href="#">Política de Privacidad</a>
-    </div>
-  </footer>
 
   <script>
-    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyUN26Mhvtou1srbuDARQGAZW_3rR3cW7GYOo0oUvV4XBSRZlCZAFIiqdPrXCkFXz9S/exec?action=leerDatos';
-
-    const paginaPrincipal = document.getElementById('paginaPrincipal');
-    const panelInvestigadores = document.getElementById('panelInvestigadores');
-    const participanteSelect = document.getElementById('participanteSelect');
-    const btnCargar = document.getElementById('btnCargar');
-    const btnCerrarPanel = document.getElementById('btnCerrarPanel');
-    const analisisContainer = document.getElementById('analisisContainer');
-
-    let datosGlobales = [];
-
-    // Mostrar panel investigadores y ocultar página principal
-    document.getElementById('btnMostrarPanel').addEventListener('click', () => {
-      paginaPrincipal.style.display = 'none';
-      panelInvestigadores.style.display = 'block';
-      cargarDatos();
+    document.getElementById('btn-participante').addEventListener('click', () => {
+      window.location.href = 'participante.html';
     });
-
-    // Cerrar panel investigadores y volver a página principal
-    btnCerrarPanel.addEventListener('click', () => {
-      panelInvestigadores.style.display = 'none';
-      paginaPrincipal.style.display = 'block';
-      analisisContainer.innerHTML = '';
-      participanteSelect.innerHTML = '<option value="">-- Seleccione participante --</option>';
-    });
-
-    // Cargar datos desde Google Apps Script
-    async function cargarDatos() {
-      try {
-        const res = await fetch(GOOGLE_SCRIPT_URL);
-        if (!res.ok) throw new Error('Error al obtener datos');
-        const datos = await res.json();
-        datosGlobales = datos;
-        cargarParticipantes(datos);
-      } catch (error) {
-        alert('Error al cargar datos: ' + error.message);
-      }
-    }
-
-    // Rellenar select con participantes únicos
-    function cargarParticipantes(datos) {
-      const participantesUnicos = [...new Set(datos.map(d => d.Participante))].sort();
-      participantesUnicos.forEach(p => {
-        const option = document.createElement('option');
-        option.value = p;
-        option.textContent = p;
-        participanteSelect.appendChild(option);
-      });
-    }
-
-    // Mostrar análisis completo de participante
-    function mostrarAnalisis(participante) {
-      analisisContainer.innerHTML = '';
-      if (!participante) {
-        analisisContainer.innerHTML = '<p style="color:#ec4899;">Por favor, seleccione un participante.</p>';
-        return;
-      }
-      const datosPart = datosGlobales.filter(d => d.Participante === participante);
-      if (datosPart.length === 0) {
-        analisisContainer.innerHTML = '<p style="color:#ec4899;">No hay datos para este participante.</p>';
-        return;
-      }
-
-      // Tomamos el primer registro para info general y SD3
-      const infoGeneral = datosPart[0];
-
-      const mach = parseFloat(infoGeneral.mach) || 0;
-      const narc = parseFloat(infoGeneral.narc) || 0;
-      const psych = parseFloat(infoGeneral.psych) || 0;
-      const tiempoTotal = infoGeneral.tiempo_total_seg || '-';
-      const emocionPrincipal = infoGeneral.emocion_princ || '-';
-      const pais = infoGeneral.pais || '-';
-      const genero = infoGeneral.genero || '-';
-      const edad = infoGeneral.edad || '-';
-
-      // Imágenes de microexpresiones (pueden venir en varios registros)
-      let imagenesHtml = '<div class="imagenes-container">';
-      datosPart.forEach(item => {
-        if (item.images) {
-          imagenesHtml += `<img src="${item.images}" alt="Microexpresión" title="Microexpresión">`;
-        }
-      });
-      imagenesHtml += '</div>';
-
-      // Tabla tiempos de reacción (27 items)
-      let tablaTiempos = '<table><thead><tr><th>Ítem</th><th>Tiempo de Reacción (segundos)</th></tr></thead><tbody>';
-      for (let i = 1; i <= 27; i++) {
-        const key = `tiempo_item_${i}`;
-        let tiempoItem = infoGeneral[key] || '-';
-        tablaTiempos += `<tr><td>Ítem ${i}</td><td>${tiempoItem}</td></tr>`;
-      }
-      tablaTiempos += '</tbody></table>';
-
-      // Explicación
-      const explicacion = `
-        <div style="margin-top:20px; padding:15px; background:#4b007f22; border-radius: 10px;">
-          <h3>Interpretación General</h3>
-          <p>Este participante presenta un perfil con:</p>
-          <ul>
-            <li><strong>Machiavelismo:</strong> ${mach.toFixed(2)}</li>
-            <li><strong>Narcisismo:</strong> ${narc.toFixed(2)}</li>
-            <li><strong>Psicopatía:</strong> ${psych.toFixed(2)}</li>
-          </ul>
-          <p>La emoción predominante detectada en las microexpresiones es <strong>${emocionPrincipal}</strong>, lo cual puede indicar tendencias emocionales específicas.</p>
-          <p>El tiempo total invertido fue de ${tiempoTotal} segundos.</p>
-        </div>
-      `;
-
-      analisisContainer.innerHTML = `
-        <div class="resultado-item">
-          <h2>Datos Generales</h2>
-          <p><strong>Participante:</strong> ${participante}</p>
-          <p><strong>Edad:</strong> ${edad} | <strong>Género:</strong> ${genero} | <strong>País:</strong> ${pais}</p>
-          <p><strong>Tiempo Total (segundos):</strong> ${tiempoTotal}</p>
-        </div>
-
-        <div class="resultado-item">
-          <h2>Resultados SD3</h2>
-          <table>
-            <thead><tr><th>Machiavelismo</th><th>Narcisismo</th><th>Psicopatía</th></tr></thead>
-            <tbody>
-              <tr><td>${mach.toFixed(2)}</td><td>${narc.toFixed(2)}</td><td>${psych.toFixed(2)}</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="resultado-item">
-          <h2>Análisis de Microexpresiones</h2>
-          <p><strong>Emoción Principal Detectada:</strong> ${emocionPrincipal}</p>
-          ${imagenesHtml}
-        </div>
-
-        <div class="resultado-item">
-          <h2>Tiempos de Reacción por Ítem</h2>
-          ${tablaTiempos}
-        </div>
-
-        ${explicacion}
-      `;
-    }
-
-    btnCargar.addEventListener('click', () => {
-      const participante = participanteSelect.value;
-      mostrarAnalisis(participante);
+    document.getElementById('btn-investigador').addEventListener('click', () => {
+      window.location.href = 'investigador.html';
     });
   </script>
 </body>
