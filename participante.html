@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DARKLENS - Participante</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>DARKLENS</h1>
+      <p class="subtitle">Test SD3 - Triada Oscura de Personalidad</p>
+    </div>
+
+    <!-- Sección Bienvenida y Datos Personales -->
+    <div id="seccion-bienvenida" class="content-box">
+      <h2>Bienvenido/a al Estudio</h2>
+      <p>Antes de comenzar, necesitamos algunos datos básicos y tu consentimiento informado.</p>
+      
+      <form id="form-datos-basicos">
+        <div class="form-group">
+          <label for="nombre">Nombre (opcional):</label>
+          <input type="text" id="nombre" name="nombre" placeholder="Puede ser un seudónimo">
+        </div>
+        
+        <div class="form-group">
+          <label for="edad">Edad:</label>
+          <input type="number" id="edad" name="edad" min="18" max="100" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="genero">Género:</label>
+          <select id="genero" name="genero" required>
+            <option value="">Seleccionar</option>
+            <option value="masculino">Masculino</option>
+            <option value="femenino">Femenino</option>
+            <option value="otro">Otro</option>
+            <option value="prefiero-no-decir">Prefiero no decir</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="pais">País de residencia:</label>
+          <input type="text" id="pais" name="pais" required>
+        </div>
+
+        <div class="consent-box">
+          <h3>Consentimiento Informado</h3>
+          <p><strong>Declaro que:</strong></p>
+          <p>✓ Participo voluntariamente en este estudio de investigación</p>
+          <p>✓ Comprendo que mis datos serán tratados de forma anónima y confidencial</p>
+          <p>✓ Acepto que mi imagen facial sea analizada por el sistema de IA</p>
+          <p>✓ Entiendo que los resultados tienen fines académicos y no constituyen diagnóstico psicológico</p>
+          <p>✓ Puedo retirarme del estudio en cualquier momento sin penalización</p>
+          
+          <div class="checkbox-group">
+            <input type="checkbox" id="consentimiento" name="consentimiento" required>
+            <label for="consentimiento">Acepto los términos del consentimiento informado y doy mi autorización para participar en el estudio</label>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary">Comenzar Test SD3</button>
+      </form>
+    </div>
+
+    <!-- Sección Test SD3 -->
+    <div id="seccion-test" class="content-box hidden">
+      <h2>Test SD3 - Triada Oscura</h2>
+      
+      <div class="escala-info">
+        <p><strong>Instrucciones:</strong> Lee cada afirmación y selecciona qué tan en desacuerdo o de acuerdo estás usando la escala del 1 al 5:</p>
+        <div class="escala">
+          <span>1 - Totalmente en desacuerdo</span>
+          <span>2 - En desacuerdo</span>
+          <span>3 - Neutral</span>
+          <span>4 - De acuerdo</span>
+          <span>5 - Totalmente de acuerdo</span>
+        </div>
+      </div>
+
+      <form id="form-sd3">
+        <!-- Los ítems del test se generan aquí con JavaScript -->
+      </form>
+
+      <div id="resultado-sd3" class="hidden"></div>
+      <div id="grafico-container" class="hidden">
+        <canvas id="grafico-sd3" width="400" height="400"></canvas>
+      </div>
+      <div id="narrativa-sd3" class="hidden"></div>
+
+      <div class="button-group">
+        <button id="btn-continuar-micro" class="btn-primary hidden">Continuar con Análisis de Microexpresiones</button>
+      </div>
+    </div>
+
+    <!-- Sección Microexpresiones -->
+    <div id="seccion-micro" class="content-box hidden">
+      <h2>Análisis de Microexpresiones Faciales</h2>
+      
+      <div class="instrucciones">
+        <h3>📸 Captura de Imagen</h3>
+        <p><strong>Instrucciones para una captura óptima:</strong></p>
+        <ul>
+          <li>Buenas condiciones de iluminación (evitar sombras en el rostro)</li>
+          <li>Rostro frontal, mirando directamente a la cámara</li>
+          <li>Expresión neutra (sin sonreír exageradamente)</li>
+          <li>Sin accesorios que oculten el rostro (lentes oscuros, gorras)</li>
+          <li>Fondo simple y sin distracciones</li>
+        </ul>
+      </div>
+
+      <div class="camera-container">
+        <video id="video" class="hidden" autoplay playsinline></video>
+        <canvas id="canvas" class="hidden"></canvas>
+        <div id="camera-placeholder">
+          <p>Selecciona una opción para capturar tu imagen</p>
+        </div>
+      </div>
+
+      <div class="button-group">
+        <button id="btn-activar-camara" class="btn-primary">Activar Cámara</button>
+        <button id="btn-tomar-foto" class="btn-primary hidden">Tomar Foto</button>
+        <button id="btn-subir-imagen" class="btn-secondary">Subir Imagen</button>
+        <input type="file" id="input-imagen" accept="image/*" class="hidden">
+      </div>
+
+      <div class="button-group">
+        <button id="btn-analizar" class="btn-primary hidden" disabled>Analizar Microexpresiones</button>
+      </div>
+
+      <div id="resultado-micro" class="hidden"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="js/participante.js"></script>
+</body>
+</html>
