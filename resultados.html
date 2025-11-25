@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tus Resultados - DarklnessApp</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Tus Resultados Completos</h1>
+            <p class="subtitle">Análisis detallado de personalidad y microexpresiones</p>
+        </div>
+
+        <!-- INFORMACIÓN DEL PARTICIPANTE -->
+        <div class="content-box">
+            <h3>👤 Información del participante</h3>
+            <div id="info-participante"></div>
+        </div>
+
+        <!-- RESULTADOS SD3 -->
+        <div class="content-box">
+            <h3>📝 Resultados del Test SD3</h3>
+            <div id="resultados-sd3-detalle"></div>
+            <canvas id="grafico-sd3-resultados" style="max-width: 500px; margin: 30px auto;"></canvas>
+        </div>
+
+        <!-- TIEMPOS DE RESPUESTA -->
+        <div class="content-box">
+            <h3>⏱️ Análisis de Tiempos de Respuesta</h3>
+            <div id="tiempos-detalle"></div>
+            <canvas id="grafico-tiempos" style="max-width: 600px; margin: 30px auto;"></canvas>
+        </div>
+
+        <!-- MICROEXPRESIONES -->
+        <div class="content-box">
+            <h3>🎭 Análisis de Microexpresiones</h3>
+            <div id="microexpresiones-detalle"></div>
+            <canvas id="grafico-emociones" style="max-width: 600px; margin: 30px auto;"></canvas>
+        </div>
+
+        <!-- ANÁLISIS FACS -->
+        <div class="content-box">
+            <h3>😊 Análisis FACS (Facial Action Coding System)</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                Sistema de codificación de acciones faciales según la teoría de Paul Ekman
+            </p>
+            <div id="facs-detalle"></div>
+        </div>
+
+        <!-- ANÁLISIS FINAL -->
+        <div class="content-box" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));">
+            <h3>🔍 Análisis Integrado Final</h3>
+            <div id="analisis-final"></div>
+        </div>
+
+        <div class="button-group">
+            <button onclick="window.print()" class="btn-secondary">🖨️ Imprimir resultados</button>
+            <button onclick="descargarResultados()" class="btn-secondary">💾 Descargar PDF</button>
+            <button onclick="window.location.href='index.html'" class="btn-primary">🏠 Volver al inicio</button>
+        </div>
+    </div>
+
+    <footer>
+        <p>DarklnessApp © 2024 | Investigación Académica</p>
+    </footer>
+
+    <script src="resultados.js"></script>
+</body>
+</html>
