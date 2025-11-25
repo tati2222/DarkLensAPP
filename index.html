@@ -1,14 +1,20 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DARKLENS – Explorador de Personalidad</title>
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- TensorFlow.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.20.0"></script>
+  
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1"></script>
+
   <style>
     /* ========================================
-       ESTILOS BASE
+       ESTILOS CRÍTICOS INLINE
        ======================================== */
     .hidden {
       display: none !important;
@@ -27,6 +33,24 @@
       max-width: 1200px;
       margin: 0 auto;
       padding: 20px;
+    }
+
+    .hero {
+      width: 100%;
+      height: 300px;
+      overflow: hidden;
+      position: relative;
+      background: linear-gradient(135deg, rgba(127, 0, 255, 0.2) 0%, rgba(108, 99, 255, 0.2) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hero-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.7;
     }
 
     .section {
@@ -73,51 +97,37 @@
       text-align: center;
     }
 
-    /* ========================================
-       BOTONES PRINCIPALES (INICIO)
-       ======================================== */
-    .main-buttons {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 30px;
-      margin: 50px 0;
+    h4 {
+      font-size: 1.3em;
+      margin: 20px 0 10px 0;
+      color: #b0a0ff;
     }
 
-    .main-btn-card {
-      background: rgba(255, 255, 255, 0.05);
-      padding: 50px 30px;
-      border-radius: 15px;
-      border: 2px solid rgba(127, 0, 255, 0.4);
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.4s ease;
+    .explicacion {
+      background: rgba(26, 26, 46, 0.5);
+      padding: 30px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+      border: 1px solid rgba(192, 128, 255, 0.2);
     }
 
-    .main-btn-card:hover {
-      transform: translateY(-10px) scale(1.02);
-      box-shadow: 0 15px 50px rgba(127, 0, 255, 0.6);
-      border-color: #7f00ff;
-      background: rgba(127, 0, 255, 0.1);
-    }
-
-    .main-btn-card .icon {
-      font-size: 5em;
-      margin-bottom: 20px;
-    }
-
-    .main-btn-card h3 {
+    .explicacion p {
       margin-bottom: 15px;
-      font-size: 1.8em;
-    }
-
-    .main-btn-card p {
+      line-height: 1.8;
       color: #d0d0ff;
-      font-size: 1.1em;
+      font-size: 1.05em;
     }
 
-    /* ========================================
-       FORMULARIOS
-       ======================================== */
+    .explicacion ol {
+      margin-left: 25px;
+      color: #d0d0ff;
+      line-height: 2;
+    }
+
+    .explicacion ol li {
+      margin-bottom: 10px;
+    }
+
     form {
       display: flex;
       flex-direction: column;
@@ -132,8 +142,6 @@
 
     input[type="text"],
     input[type="number"],
-    input[type="password"],
-    input[type="email"],
     select {
       padding: 12px 15px;
       border: 2px solid rgba(192, 128, 255, 0.3);
@@ -144,11 +152,18 @@
       transition: all 0.3s;
     }
 
-    input:focus, select:focus {
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus {
       outline: none;
       border-color: #7f00ff;
       box-shadow: 0 0 15px rgba(127, 0, 255, 0.3);
       background: rgba(26, 26, 46, 1);
+    }
+
+    select option {
+      background: #1a1a2e;
+      color: #e0e0ff;
     }
 
     .checkbox-label {
@@ -174,10 +189,15 @@
       accent-color: #7f00ff;
     }
 
-    /* ========================================
-       BOTONES
-       ======================================== */
-    .btn-primary, button[type="submit"], button[type="button"] {
+    .checkbox-label span {
+      color: #d0d0ff;
+      line-height: 1.6;
+      font-size: 0.95em;
+    }
+
+    .btn-primary,
+    button[type="submit"],
+    button[type="button"] {
       padding: 15px 40px;
       font-size: 1.1em;
       background: linear-gradient(135deg, #7f00ff 0%, #6c63ff 100%);
@@ -192,27 +212,21 @@
       margin: 20px auto;
     }
 
-    .btn-primary:hover, button:hover {
+    .btn-primary:hover,
+    button[type="submit"]:hover,
+    button[type="button"]:hover {
       transform: translateY(-3px);
       box-shadow: 0 6px 20px rgba(127, 0, 255, 0.6);
       background: linear-gradient(135deg, #9000ff 0%, #7c73ff 100%);
     }
 
-    .btn-primary:disabled, button:disabled {
+    .btn-primary:disabled,
+    button:disabled {
       opacity: 0.5;
       cursor: not-allowed;
       transform: none;
     }
 
-    .btn-back {
-      background: rgba(255, 255, 255, 0.1);
-      color: #c080ff;
-      border: 2px solid rgba(192, 128, 255, 0.3);
-    }
-
-    /* ========================================
-       TEST SD3
-       ======================================== */
     .test-item {
       margin-bottom: 25px;
       padding: 25px;
@@ -233,6 +247,12 @@
       font-size: 1.1em;
       margin-bottom: 15px;
       line-height: 1.6;
+    }
+
+    .test-item strong {
+      color: #c080ff;
+      font-size: 1.2em;
+      margin-right: 8px;
     }
 
     .opciones {
@@ -272,12 +292,87 @@
     .opciones label:hover {
       background: rgba(127, 0, 255, 0.4);
       border-color: #c080ff;
+      transform: translateY(-2px);
       color: #ffffff;
     }
 
-    /* ========================================
-       CÁMARA
-       ======================================== */
+    .analisis-loading {
+      font-weight: bold;
+      color: #c080ff;
+      margin-top: 10px;
+      text-align: center;
+      font-size: 1.2em;
+      padding: 25px;
+      background: rgba(127, 0, 255, 0.15);
+      border-radius: 10px;
+      border: 2px solid rgba(192, 128, 255, 0.3);
+    }
+
+    .resultado-box {
+      border: 2px solid #6c63ff;
+      padding: 25px;
+      border-radius: 12px;
+      background: rgba(37, 37, 64, 0.9);
+      margin-top: 20px;
+      box-shadow: 0 4px 15px rgba(127, 0, 255, 0.2);
+    }
+
+    .resultado-box h4 {
+      color: #c080ff;
+      margin-bottom: 20px;
+      font-size: 1.5em;
+    }
+
+    .resultado-box p {
+      color: #d0d0ff;
+      line-height: 1.8;
+      margin-bottom: 12px;
+      font-size: 1.05em;
+    }
+
+    .resultado-box strong {
+      color: #e0e0ff;
+    }
+
+    .emocion-bar {
+      margin-bottom: 12px;
+      background: rgba(26, 26, 46, 0.8);
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+      height: 35px;
+      border: 1px solid rgba(192, 128, 255, 0.2);
+    }
+
+    .emocion-bar-fill {
+      background: linear-gradient(90deg, #7f00ff 0%, #6c63ff 100%);
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      transition: width 0.8s ease;
+    }
+
+    .emocion-bar-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      justify-content: space-between;
+      padding: 7px 15px;
+      font-size: 1em;
+      color: #e0e0ff;
+      font-weight: 600;
+    }
+
+    .grafico-container {
+      max-width: 600px;
+      margin: 30px auto;
+      padding: 20px;
+      background: rgba(26, 26, 46, 0.6);
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(127, 0, 255, 0.2);
+    }
+
     .camera-section {
       text-align: center;
       padding: 30px;
@@ -286,7 +381,8 @@
       border: 1px solid rgba(192, 128, 255, 0.2);
     }
 
-    #video, #canvas {
+    #video,
+    #canvas {
       border-radius: 12px;
       margin: 20px auto;
       display: block;
@@ -294,6 +390,10 @@
       border: 2px solid rgba(192, 128, 255, 0.3);
       max-width: 100%;
       height: auto;
+    }
+
+    #input-imagen {
+      display: none;
     }
 
     .button-group {
@@ -304,68 +404,48 @@
       margin: 20px 0;
     }
 
-    /* ========================================
-       MENSAJE FINAL
-       ======================================== */
-    .thank-you-box {
-      background: rgba(76, 175, 80, 0.2);
-      border-left: 4px solid #4CAF50;
-      padding: 50px;
-      border-radius: 15px;
-      text-align: center;
+    .spinner {
+      border: 4px solid rgba(0,0,0,0.1);
+      border-left-color: #ff6384;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: girar 1s linear infinite;
+      display: inline-block;
+      margin-right: 10px;
+      vertical-align: middle;
     }
 
-    .thank-you-box h2 {
-      color: #4CAF50;
-      font-size: 2.5em;
-      margin-bottom: 30px;
-    }
-
-    .thank-you-box p {
-      font-size: 1.2em;
-      line-height: 1.8;
-      color: #d0d0ff;
-      margin-bottom: 20px;
-    }
-
-    .privacy-info {
-      background: rgba(33, 150, 243, 0.2);
-      border-left: 4px solid #2196F3;
-      padding: 30px;
-      border-radius: 12px;
-      margin-top: 30px;
-      text-align: left;
-    }
-
-    .privacy-info h4 {
-      color: #2196F3;
-      margin-bottom: 20px;
-      font-size: 1.5em;
-    }
-
-    .privacy-info ul {
-      list-style: none;
-      padding: 0;
-    }
-
-    .privacy-info li {
-      padding: 10px 0;
-      padding-left: 30px;
-      position: relative;
-    }
-
-    .privacy-info li:before {
-      content: "✓";
-      position: absolute;
-      left: 0;
-      color: #4CAF50;
-      font-weight: bold;
-      font-size: 1.3em;
+    @keyframes girar {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
 
     /* ========================================
        ZONA INVESTIGADOR
        ======================================== */
+    .btn-investigador-flotante {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, #ff6384 0%, #ff4757 100%);
+      color: white;
+      padding: 12px 25px;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(255, 99, 132, 0.4);
+      border: none;
+      font-weight: 600;
+      z-index: 1000;
+      transition: all 0.3s;
+      font-size: 0.95em;
+    }
+
+    .btn-investigador-flotante:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(255, 99, 132, 0.6);
+    }
+
     .login-box {
       max-width: 500px;
       margin: 100px auto;
@@ -405,6 +485,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
     }
 
     .detalle-grid {
@@ -429,70 +511,58 @@
       padding-bottom: 10px;
     }
 
-    .grafico-container {
-      max-width: 600px;
-      margin: 30px auto;
-      padding: 20px;
-      background: rgba(26, 26, 46, 0.6);
-      border-radius: 12px;
+    .btn-back {
+      background: linear-gradient(135deg, #6c63ff 0%, #7f00ff 100%);
+      color: white;
+      padding: 12px 30px;
+      border-radius: 25px;
+      cursor: pointer;
+      border: none;
+      font-weight: 600;
+      font-size: 1em;
+      transition: all 0.3s;
+      margin-bottom: 20px;
+    }
+
+    .btn-back:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(127, 0, 255, 0.5);
     }
   </style>
 </head>
 <body>
+
+  <!-- BOTÓN FLOTANTE INVESTIGADOR -->
+  <button class="btn-investigador-flotante" id="btn-investigador">
+    🔒 Acceso Investigador
+  </button>
+
   <div class="container">
-    <!-- ========================================
-         PANTALLA INICIAL
-         ======================================== -->
-    <div id="pantalla-inicial">
-      <h1>DARKLENS</h1>
-      <h2>Explorador de rasgos de personalidad oscura mediante análisis de microexpresiones</h2>
+
+    <!-- ============================================
+         SECCIÓN PARTICIPANTE
+         ============================================ -->
+    <div id="seccion-participante">
       
-      <div class="main-buttons">
-        <div class="main-btn-card" onclick="iniciarParticipante()">
-          <div class="icon">🧪</div>
-          <h3>Participar en la Investigación</h3>
-          <p>Contribuí al proyecto académico</p>
-        </div>
+      <!-- BIENVENIDA -->
+      <section class="bienvenida" id="seccion-bienvenida">
+        <h1>DARKLENS</h1>
+        <h2>Explorador de rasgos de personalidad oscura mediante test psicométrico y análisis de microexpresiones</h2>
 
-        <div class="main-btn-card" onclick="mostrarLoginInvestigador()">
-          <div class="icon">🔬</div>
-          <h3>Panel de Investigadores</h3>
-          <p>Acceso restringido con contraseña</p>
-        </div>
-      </div>
-
-      <div class="bienvenida">
-        <h3>¿En qué consiste esta experiencia?</h3>
-        <p style="line-height: 1.8; color: #d0d0ff;">
-          DARKLENS es una herramienta experimental diseñada para explorar rasgos de personalidad oscura mediante 
-          la integración de evaluación psicométrica y análisis automatizado de microexpresiones faciales. 
-          Esta experiencia forma parte de una investigación académica en el marco de la 
-          <strong>Licenciatura en Ciencia de Datos</strong> de la <strong>Universidad del Gran Rosario (UGR)</strong>.
-        </p>
-      </div>
-    </div>
-
-    <!-- ========================================
-         PASO 1: CONSENTIMIENTO Y DATOS
-         ======================================== -->
-    <div id="paso-consentimiento" class="hidden">
-      <h1>DARKLENS</h1>
-      <section class="bienvenida">
-        <h3>Consentimiento Informado</h3>
-        
-        <div style="background: rgba(255, 255, 255, 0.05); padding: 25px; border-radius: 10px; margin-bottom: 30px;">
-          <p style="margin-bottom: 15px; line-height: 1.8;">
-            Esta investigación académica analiza rasgos de personalidad mediante test psicométrico (SD3) y 
-            análisis de microexpresiones faciales con inteligencia artificial.
+        <div class="explicacion">
+          <h3>¿En qué consiste esta experiencia?</h3>
+          <p>
+            DARKLENS es una herramienta experimental diseñada para explorar rasgos de personalidad oscura mediante la integración de dos enfoques complementarios: la evaluación psicométrica y el análisis automatizado de microexpresiones faciales. Esta experiencia forma parte de una investigación académica en el marco de la <strong>Licenciatura en Ciencia de Datos</strong> de la <strong>Universidad del Gran Rosario (UGR)</strong>.
           </p>
-          <h4 style="color: #c080ff; margin: 20px 0 10px 0;">Información importante:</h4>
-          <ul style="line-height: 2; color: #d0d0ff;">
-            <li>✓ La participación es <strong>voluntaria y anónima</strong></li>
-            <li>✓ Los datos se utilizan <strong>exclusivamente con fines académicos</strong></li>
-            <li>✓ Tu información será <strong>confidencial</strong> y protegida</li>
-            <li>✓ <strong>NO recibirás resultados individuales</strong> del análisis</li>
-            <li>✓ Esto <strong>NO es un diagnóstico clínico</strong></li>
-          </ul>
+          <p>La participación es voluntaria, anónima y no implica ningún tipo de diagnóstico clínico. El objetivo es ofrecer una interpretación combinada de tu perfil psicométrico y emocional, basada en modelos de inteligencia artificial entrenados para este fin.</p>
+          
+          <h4>La experiencia consta de tres pasos:</h4>
+          <ol>
+            <li><strong>Test SD3:</strong> Completás un cuestionario validado de 27 ítems que evalúa maquiavelismo, narcisismo y psicopatía subclínica.</li>
+            <li><strong>Análisis de microexpresiones:</strong> Subís una imagen facial que será procesada por un modelo entrenado para detectar emociones sutiles.</li>
+            <li><strong>Interpretación combinada:</strong> Recibís un resumen integrador de tus resultados psicométricos y emocionales.</li>
+          </ol>
+          <p><em>Esta herramienta no reemplaza evaluaciones psicológicas profesionales. Los resultados deben interpretarse como una aproximación exploratoria dentro de un contexto académico.</em></p>
         </div>
 
         <form id="form-datos-basicos">
@@ -517,134 +587,113 @@
           <label class="checkbox-label">
             <input type="checkbox" name="consentimiento" required>
             <span>
-              Acepto participar voluntariamente. Entiendo que NO recibiré resultados individuales, 
-              que mis datos serán anónimos y se usarán exclusivamente con fines académicos.
+              Acepto prestar mis datos personales, los resultados del test y mi imagen facial para participar voluntariamente en esta investigación académica. Entiendo que esta no es una evaluación clínica, y que la información recopilada será utilizada exclusivamente con fines de estudio, tratada de forma anónima y almacenada en una base de datos privada sin posibilidad de identificarme personalmente.
             </span>
           </label>
 
           <button type="submit" class="btn-primary">Entiendo y deseo continuar</button>
-          <button type="button" class="btn-back" onclick="volverInicio()">Cancelar</button>
         </form>
       </section>
-    </div>
 
-    <!-- ========================================
-         PASO 2: TEST SD3
-         ======================================== -->
-    <section class="section hidden" id="seccion-test">
-      <h3>Test SD3</h3>
-      <p style="text-align: center; margin-bottom: 30px; color: #c080ff; font-size: 1.1em;">
-        Indicá tu nivel de acuerdo con cada afirmación<br>
-        <strong>1 = Fuertemente en desacuerdo</strong> | <strong>5 = Fuertemente de acuerdo</strong>
-      </p>
-
-      <form id="form-sd3"></form>
-
-      <button type="button" class="btn-back" onclick="volverDatos()">Volver</button>
-    </section>
-
-    <!-- ========================================
-         PASO 3: ANÁLISIS DE MICROEXPRESIONES
-         ======================================== -->
-    <section class="section hidden" id="seccion-micro">
-      <h3>Análisis de Microexpresiones</h3>
-      <p style="text-align: center; margin-bottom: 30px; color: #c080ff; font-size: 1.1em;">
-        Tomá o subí una foto de tu rostro mirando a la cámara en un ambiente bien iluminado
-      </p>
-
-      <div class="camera-section">
-        <video id="video" width="480" height="360" autoplay class="hidden"></video>
-        <canvas id="canvas" width="480" height="360" class="hidden"></canvas>
-
-        <div class="button-group">
-          <button type="button" id="btn-activar-camara" class="btn-primary">📷 Activar cámara</button>
-          <button type="button" id="btn-tomar-foto" class="hidden btn-primary">📸 Capturar foto</button>
-          <button type="button" id="btn-subir-imagen" class="btn-primary">📁 Subir imagen</button>
-        </div>
-        <input type="file" id="input-imagen" accept="image/*" style="display: none;">
-
-        <button type="button" id="btn-enviar-todo" class="hidden btn-primary">📤 Enviar y Finalizar</button>
-      </div>
-
-      <button type="button" class="btn-back" onclick="volverTest()">Volver</button>
-    </section>
-
-    <!-- ========================================
-         PASO 4: MENSAJE FINAL
-         ======================================== -->
-    <div id="paso-final" class="hidden">
-      <section class="section thank-you-box">
-        <h2>🎉 ¡Muchas Gracias por Participar!</h2>
-        <p>
-          Tu colaboración es fundamental para el avance de este proyecto de investigación académica. 
-          Valoramos enormemente tu tiempo y confianza en contribuir al desarrollo científico.
+      <!-- TEST SD3 -->
+      <section class="section hidden" id="seccion-test">
+        <h3>Paso 1: Test SD3</h3>
+        <p style="text-align: center; margin-bottom: 30px; color: #c080ff; font-size: 1.1em;">
+          Indicá tu nivel de acuerdo con cada afirmación<br>
+          <strong>1 = Fuertemente en desacuerdo</strong> | <strong>5 = Fuertemente de acuerdo</strong>
         </p>
 
-        <div class="privacy-info">
-          <h4>🔒 Protección de tus datos</h4>
-          <p><strong>Todos tus datos están completamente protegidos:</strong></p>
-          <ul>
-            <li>Tus datos personales son <strong>anónimos</strong> y se almacenan de forma segura</li>
-            <li>La información será utilizada <strong>exclusivamente para análisis académico</strong></li>
-            <li><strong>Nunca se expondrán tus datos</strong> públicamente ni se compartirán con terceros</li>
-            <li>Tu imagen y resultados están protegidos bajo <strong>estricta confidencialidad</strong></li>
-            <li>El acceso a los datos está <strong>restringido únicamente al equipo de investigación</strong></li>
-          </ul>
-          <p style="margin-top: 20px; font-style: italic; color: #90CAF9;">
-            Este proyecto cumple con todas las normativas éticas de investigación académica y protección de datos personales.
-          </p>
+        <form id="form-sd3"></form>
+
+        <div id="resultado-sd3" class="hidden"></div>
+        <div class="grafico-container hidden" id="grafico-container">
+          <canvas id="grafico-sd3"></canvas>
+        </div>
+        <div id="narrativa-sd3" class="hidden"></div>
+
+        <button id="btn-continuar-micro" class="hidden btn-primary">Continuar al análisis facial</button>
+      </section>
+
+      <!-- MICROEXPRESIONES -->
+      <section class="section hidden" id="seccion-micro">
+        <h3>Paso 2: Análisis de Microexpresiones</h3>
+        <p style="text-align: center; margin-bottom: 30px; color: #c080ff; font-size: 1.1em;">
+          Tomá o subí una foto de tu rostro mirando a la cámara en un ambiente bien iluminado
+        </p>
+
+        <div class="camera-section">
+          <video id="video" width="480" height="360" autoplay class="hidden"></video>
+          <canvas id="canvas" width="480" height="360" class="hidden"></canvas>
+
+          <div class="button-group">
+            <button type="button" id="btn-activar-camara" class="btn-primary">📷 Activar cámara</button>
+            <button type="button" id="btn-tomar-foto" class="hidden btn-primary">📸 Capturar foto</button>
+            <button type="button" id="btn-subir-imagen" class="btn-primary">📁 Subir imagen</button>
+          </div>
+          <input type="file" id="input-imagen" accept="image/*">
+
+          <button type="button" id="btn-analizar" class="hidden btn-primary">🧠 Analizar microexpresiones</button>
         </div>
 
-        <button type="button" class="btn-primary" onclick="location.reload()">Volver al Inicio</button>
+        <div id="resultado-micro" class="hidden"></div>
       </section>
     </div>
 
-    <!-- ========================================
+    <!-- ============================================
          ZONA INVESTIGADOR: LOGIN
-         ======================================== -->
+         ============================================ -->
     <div id="investigador-login" class="hidden">
       <div class="login-box">
-        <h2 style="text-align: center;">🔒 Acceso Investigadores</h2>
-        <p style="text-align: center; color: #b0a0ff; margin-bottom: 30px;">Solo para personal autorizado</p>
+        <h1 style="font-size: 2.5em; margin-bottom: 10px;">🔒 DARKLENS</h1>
+        <h2 style="font-size: 1.2em; margin-bottom: 30px;">Panel de Investigación</h2>
+        
+        <form id="form-login">
+          <label>Usuario:</label>
+          <input type="text" id="username" required autocomplete="username">
+          
+          <label style="margin-top: 15px;">Contraseña:</label>
+          <input type="password" id="password" required autocomplete="current-password">
+          
+          <button type="submit" class="btn-primary" style="margin-top: 25px;">
+            Iniciar Sesión
+          </button>
+          
+          <div id="login-error" class="error-message hidden">
+            ❌ Usuario o contraseña incorrectos
+          </div>
 
-        <input type="password" id="password-investigador" placeholder="Contraseña">
-        <button type="button" class="btn-primary" onclick="loginInvestigador()">Ingresar</button>
-        <div id="error-login" class="error-message hidden"></div>
-        <button type="button" class="btn-back" onclick="volverInicio()">Volver</button>
+          <button type="button" onclick="volverAInicio()" class="btn-primary" style="margin-top: 15px; background: rgba(255, 99, 132, 0.8);">
+            ← Volver al inicio
+          </button>
+        </form>
       </div>
     </div>
 
-    <!-- ========================================
+    <!-- ============================================
          ZONA INVESTIGADOR: LISTA
-         ======================================== -->
+         ============================================ -->
     <div id="investigador-lista" class="hidden">
-      <h1>📊 Panel de Investigadores</h1>
-      <div style="text-align: right; margin-bottom: 20px;">
-        <button class="btn-back" onclick="cerrarSesion()" style="width: auto; padding: 10px 30px;">
-          Cerrar Sesión
-        </button>
-      </div>
-
-      <div class="section">
-        <h3>Participantes Registrados (<span id="total-participantes">0</span>)</h3>
-        <div id="loading-participantes" style="text-align: center; padding: 40px; color: #c080ff;">
-          <p>Cargando datos...</p>
-        </div>
-        <div id="lista-participantes"></div>
-      </div>
-    </div>
-
-    <!-- ========================================
-         ZONA INVESTIGADOR: DETALLE
-         ======================================== -->
-    <div id="investigador-detalle" class="hidden">
-      <h1>Análisis Completo</h1>
-      <button class="btn-back" onclick="volverListaParticipantes()" style="width: auto; padding: 10px 30px; margin-bottom: 20px;">
-        ← Volver a la Lista
+      <button class="btn-primary" id="btn-logout" style="position: fixed; top: 20px; right: 20px; width: auto; padding: 10px 20px; z-index: 1000;">
+        🚪 Cerrar Sesión
       </button>
 
+      <h1 style="margin-top: 60px;">DARKLENS - Panel de Investigación</h1>
+      <h2>Análisis de Datos Recopilados</h2>
+
+      <div id="lista-participantes"></div>
+    </div>
+
+    <!-- ============================================
+         ZONA INVESTIGADOR: DETALLE
+         ============================================ -->
+    <div id="investigador-detalle" class="hidden">
+      <h1>Análisis Completo del Participante</h1>
+      <button class="btn-back" onclick="volverListaParticipantes()">
+        ← Volver a la Lista
+      </button>
       <div id="detalle-participante"></div>
     </div>
+
   </div>
 
   <!-- JavaScript -->
