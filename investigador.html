@@ -1,125 +1,91 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Investigador - DarklnessApp</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DARKLENS - Investigador</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <!-- PANTALLA DE LOGIN -->
-    <div id="login-screen" class="container">
-        <div class="header">
-            <h1>🔒 Acceso Investigador</h1>
-            <p class="subtitle">Panel de administración y análisis de datos</p>
-        </div>
-
-        <div class="content-box" style="max-width: 500px; margin: 0 auto;">
-            <form id="form-login">
-                <div class="form-group">
-                    <label for="password">Contraseña:</label>
-                    <input type="password" id="password" name="password" required 
-                           placeholder="Ingresá la contraseña de investigador">
-                </div>
-                <button type="submit" class="btn-primary" style="width: 100%;">
-                    🔓 Ingresar
-                </button>
-            </form>
-            <p style="margin-top: 20px; text-align: center; color: var(--text-secondary);">
-                <a href="index.html" style="color: var(--primary); text-decoration: none;">← Volver al inicio</a>
-            </p>
-        </div>
+  <div class="container">
+    <div class="header">
+      <h1>DARKLENS</h1>
+      <p class="subtitle">Panel de Investigación - Acceso Restringido</p>
     </div>
 
-    <!-- PANEL DE INVESTIGADOR -->
-    <div id="panel-investigador" class="container hidden">
-        <div class="header">
-            <h1>📊 Panel de Investigador</h1>
-            <p class="subtitle">Análisis de datos de participantes</p>
-            <button onclick="cerrarSesion()" class="btn-secondary" style="margin-top: 15px;">
-                🚪 Cerrar sesión
-            </button>
+    <!-- Sección Login -->
+    <div id="seccion-login" class="content-box">
+      <h2>🔬 Acceso Investigador</h2>
+      <p>Ingresá la contraseña para acceder al panel de investigación.</p>
+      
+      <form id="form-login" class="login-form">
+        <div class="form-group">
+          <label for="password">Contraseña:</label>
+          <input type="password" id="password" name="password" required>
         </div>
-
-        <!-- ESTADÍSTICAS GENERALES -->
-        <div class="content-box">
-            <h3>📈 Estadísticas Generales</h3>
-            <div id="stats-generales"></div>
+        
+        <div class="button-group">
+          <button type="submit" class="btn-primary">Acceder</button>
+          <button type="button" class="btn-secondary" onclick="window.location.href='index.html'">Volver al Inicio</button>
         </div>
-
-        <!-- SELECTOR DE PARTICIPANTE -->
-        <div class="content-box">
-            <h3>👥 Seleccionar Participante</h3>
-            <div class="form-group">
-                <label for="select-participante">Participante:</label>
-                <select id="select-participante" class="form-control">
-                    <option value="">-- Seleccioná un participante --</option>
-                </select>
-            </div>
-            <button onclick="cargarParticipante()" class="btn-primary">
-                📄 Ver datos completos
-            </button>
-        </div>
-
-        <!-- DATOS DEL PARTICIPANTE -->
-        <div id="datos-participante" class="hidden">
-            <!-- Información básica -->
-            <div class="content-box">
-                <h3>👤 Información del Participante</h3>
-                <div id="info-basica"></div>
-            </div>
-
-            <!-- Resultados SD3 -->
-            <div class="content-box">
-                <h3>📝 Resultados Test SD3</h3>
-                <div id="resultados-sd3"></div>
-                <canvas id="grafico-sd3-investigador" style="max-width: 600px; margin: 30px auto;"></canvas>
-            </div>
-
-            <!-- Tiempos de reacción -->
-            <div class="content-box">
-                <h3>⏱️ Análisis de Tiempos de Reacción</h3>
-                <div id="tiempos-reaccion"></div>
-                <canvas id="grafico-tiempos-investigador" style="max-width: 700px; margin: 30px auto;"></canvas>
-            </div>
-
-            <!-- Microexpresiones -->
-            <div class="content-box">
-                <h3>🎭 Análisis de Microexpresiones</h3>
-                <div id="microexpresiones"></div>
-                <canvas id="grafico-emociones-investigador" style="max-width: 600px; margin: 30px auto;"></canvas>
-            </div>
-
-            <!-- FACS -->
-            <div class="content-box">
-                <h3>😊 Análisis FACS</h3>
-                <div id="facs"></div>
-            </div>
-
-            <!-- Análisis integrado -->
-            <div class="content-box" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));">
-                <h3>🔬 Análisis Integrado</h3>
-                <div id="analisis-integrado"></div>
-            </div>
-
-            <!-- Imagen del participante -->
-            <div class="content-box">
-                <h3>📸 Imagen Facial</h3>
-                <div id="imagen-participante" style="text-align: center;"></div>
-            </div>
-
-            <div class="button-group">
-                <button onclick="exportarDatos()" class="btn-secondary">💾 Exportar datos</button>
-                <button onclick="window.print()" class="btn-secondary">🖨️ Imprimir</button>
-            </div>
-        </div>
+      </form>
     </div>
 
-    <footer>
-        <p>DarklnessApp © 2024 | Investigación Académica</p>
-    </footer>
+    <!-- Dashboard Investigador -->
+    <div id="seccion-dashboard" class="hidden">
+      <div class="dashboard-header">
+        <h2>Panel del Investigador</h2>
+        <button id="btn-logout" class="btn-secondary">Cerrar Sesión</button>
+      </div>
 
-    <script src="investigador.js"></script>
+      <div class="content-box">
+        <h3>📊 Estadísticas Generales</h3>
+        <div id="estadisticas-generales" class="stats-container">
+          <div class="stat-card">
+            <h4>Total Participantes</h4>
+            <div class="stat-number" id="total-participantes">0</div>
+          </div>
+          <div class="stat-card">
+            <h4>Con Imágenes</h4>
+            <div class="stat-number" id="con-imagenes">0</div>
+          </div>
+          <div class="stat-card">
+            <h4>Completados</h4>
+            <div class="stat-number" id="completados">0</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="content-box">
+        <h3>👥 Lista de Participantes</h3>
+        <div class="filtros">
+          <input type="text" id="buscar-participante" placeholder="Buscar participante..." class="form-group">
+          <select id="filtro-estado" class="form-group">
+            <option value="todos">Todos los estados</option>
+            <option value="completo">Completado</option>
+            <option value="parcial">Parcial</option>
+          </select>
+        </div>
+        
+        <div id="lista-participantes" class="participants-list">
+          <!-- Los participantes se cargarán aquí -->
+        </div>
+      </div>
+
+      <div class="content-box">
+        <h3>📈 Análisis de Datos</h3>
+        <div class="button-group">
+          <button id="btn-exportar-datos" class="btn-primary">Exportar Datos CSV</button>
+          <button id="btn-analizar-correlaciones" class="btn-secondary">Analizar Correlaciones</button>
+        </div>
+        
+        <div id="resultados-analisis" class="hidden">
+          <!-- Resultados del análisis -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/investigador.js"></script>
 </body>
 </html>
