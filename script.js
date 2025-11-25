@@ -5,21 +5,25 @@ const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwfcPm38VaTFK
 const RENDER_URL = 'https://darklnesapp-api.onrender.com'; // Tu Streamlit
 const RESEARCHER_PASSWORD = 'investigador2025'; // 
 
+
 // ========================================
 // VARIABLES GLOBALES
 // ========================================
-let datosPersonales = {};
-let respuestasSD3 = {};
+const invertidos = [11, 15, 17, 20, 25];
+let graficoSD3;
+let resultadosSD3 = null;
+let resultadosMicro = null;
+let imagenCapturada = null;
+let stream = null;
 let tiemposRespuesta = {};
 let tiempoInicioItem = {};
 let testInicioTimestamp = null;
-let imagenCapturada = null;
-let stream = null;
-let graficoSD3 = null;
 
-const invertidos = [11, 15, 17, 20, 25];
+// Variables investigador
+let todosLosDatos = [];
+let datosFiltrados = [];
+let graficoParticipante = null;
 
-// Items SD3
 const itemsSD3 = [
   "No es prudente contar tus secretos.",
   "Me gusta usar manipulaciones ingeniosas para salirme con la mía.",
@@ -51,94 +55,92 @@ const itemsSD3 = [
 ];
 
 // ========================================
-// NAVEGACIÓN ENTRE PANTALLAS
+// INICIALIZACIÓN
 // ========================================
-function mostrarPantalla(idPantalla) {
-  // Ocultar todas
-  const pantallas = [
-    'pantalla-inicial', 'paso-consentimiento', 'seccion-test', 
-    'seccion-micro', 'paso-final', 'investigador-login', 
-    'investigador-lista', 'investigador-detalle'
-  ];
-  
-  pantallas.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.add('hidden');
-  });
-  
-  // Mostrar la solicitada
-  const pantalla = document.getElementById(idPantalla);
-  if (pantalla) pantalla.classList.remove('hidden');
-  
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function volverInicio() {
-  location.reload();
-}
-
-function volverDatos() {
-  mostrarPantalla('paso-consentimiento');
-}
-
-function volverTest() {
-  mostrarPantalla('seccion-test');
-}
-
-// ========================================
-// FLUJO PARTICIPANTE
-// ========================================
-function iniciarParticipante() {
-  mostrarPantalla('paso-consentimiento');
-}
-
-// ========================================
-// PASO 1: DATOS PERSONALES
-// ========================================
-document.addEventListener('DOMContentLoaded', () => {
-  const formDatos = document.getElementById('form-datos-basicos');
-  
+document.addEventListener("DOMContentLoaded", () => {
+  // === PARTE PARTICIPANTE ===
+  const formDatos = document.getElementById("form-datos-basicos");
   if (formDatos) {
-    formDatos.addEventListener('submit', (e) => {
-      e.preventDefault();
+    formDatos.addEventListener("submit", (event) => {
+      event.preventDefault();
       
       const consentimiento = formDatos.querySelector('input[name="consentimiento"]');
-      if (!consentimiento || !consentimiento.checked) {
-        alert('Debés aceptar el consentimiento para continuar.');
+      if (!consentimiento?.checked) {
+        alert("Debés aceptar el consentimiento para continuar.");
         return;
       }
-      
-      datosPersonales = {
+
+      const datos = {
         nombre: formDatos.querySelector('input[name="nombre"]').value.trim(),
         edad: formDatos.querySelector('input[name="edad"]').value,
         genero: formDatos.querySelector('select[name="genero"]').value,
         pais: formDatos.querySelector('input[name="pais"]').value.trim()
       };
-      
-      if (!datosPersonales.nombre || !datosPersonales.edad || !datosPersonales.genero || !datosPersonales.pais) {
-        alert('Completá todos los campos requeridos.');
+
+      if (!datos.nombre || !datos.edad || !datos.genero || !datos.pais) {
+        alert("Completá todos los datos requeridos.");
         return;
       }
+
+      sessionStorage.setItem('datos_personales', JSON.stringify(datos));
+      generarItemsTest();
       
-      generarTestSD3();
-      mostrarPantalla('seccion-test');
+      document.getElementById('seccion-bienvenida')?.classList.add("hidden");
+      document.getElementById('seccion-test')?.classList.remove("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     });
   }
-  
+
+  const formSD3 = document.getElementById('form-sd3');
+  if (formSD3) {
+    formSD3.addEventListener('submit', function(e) {
+      e.preventDefault();
+      calcularSD3();
+    });
+  }
+
+  const btnContinuar = document.getElementById('btn-continuar-micro');
+  if (btnContinuar) {
+    btnContinuar.addEventListener('click', function() {
+      document.getElementById('seccion-test')?.classList.add('hidden');
+      document.getElementById('seccion-micro')?.classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
   configurarCamaraYSubida();
+
+  // === PARTE INVESTIGADOR ===
+  const btnInvestigador = document.getElementById('btn-investigador');
+  if (btnInvestigador) {
+    btnInvestigador.addEventListener('click', mostrarLoginInvestigador);
+  }
+
+  const formLogin = document.getElementById('form-login');
+  if (formLogin) {
+    formLogin.addEventListener('submit', function(e) {
+      e.preventDefault();
+      validarLogin();
+    });
+  }
+
+  const btnLogout = document.getElementById('btn-logout');
+  if (btnLogout) {
+    btnLogout.addEventListener('click', cerrarSesionInvestigador);
+  }
 });
 
 // ========================================
-// PASO 2: TEST SD3
+// GENERAR ITEMS DEL TEST
 // ========================================
-function generarTestSD3() {
+function generarItemsTest() {
   const form = document.getElementById('form-sd3');
   form.innerHTML = '';
-  
+
   testInicioTimestamp = Date.now();
   tiemposRespuesta = {};
   tiempoInicioItem = {};
-  
+
   itemsSD3.forEach((texto, index) => {
     const num = index + 1;
     const div = document.createElement('div');
@@ -156,21 +158,19 @@ function generarTestSD3() {
     form.appendChild(div);
     tiempoInicioItem[num] = null;
   });
-  
+
   const btnSubmit = document.createElement('button');
   btnSubmit.type = 'submit';
-  btnSubmit.textContent = 'Continuar al análisis facial';
+  btnSubmit.textContent = 'Enviar respuestas del test';
   btnSubmit.className = 'btn-primary';
   form.appendChild(btnSubmit);
-  
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    calcularSD3();
-  });
-  
+
   configurarTrackingTiempos();
 }
 
+// ========================================
+// TRACKING DE TIEMPOS
+// ========================================
 function configurarTrackingTiempos() {
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
@@ -184,39 +184,38 @@ function configurarTrackingTiempos() {
       }
     });
   }, { threshold: 0.5 });
-  
-  document.querySelectorAll('.test-item').forEach(item => {
-    observer.observe(item);
-  });
-  
+
+  document.querySelectorAll('.test-item').forEach(item => observer.observe(item));
+
   for (let i = 1; i <= 27; i++) {
     const radios = document.querySelectorAll(`input[name="item${i}"]`);
     radios.forEach(radio => {
-      radio.addEventListener('change', () => registrarTiempoRespuesta(i));
+      radio.addEventListener('change', function() {
+        registrarTiempoRespuesta(i);
+      });
     });
   }
 }
 
 function registrarTiempoRespuesta(itemNum) {
   if (tiemposRespuesta[itemNum]) return;
-  
   const tiempoInicio = tiempoInicioItem[itemNum];
   if (tiempoInicio) {
     const tiempoFin = Date.now();
-    const tiempoRespuesta = tiempoFin - tiempoInicio;
     tiemposRespuesta[itemNum] = {
-      tiempo_ms: tiempoRespuesta,
-      tiempo_segundos: (tiempoRespuesta / 1000).toFixed(2),
-      timestamp_inicio: tiempoInicio,
-      timestamp_respuesta: tiempoFin
+      tiempo_ms: tiempoFin - tiempoInicio,
+      tiempo_segundos: ((tiempoFin - tiempoInicio) / 1000).toFixed(2)
     };
   }
 }
 
+// ========================================
+// CÁLCULO SD3
+// ========================================
 function calcularSD3() {
   const respuestas = [];
   const respuestasObj = {};
-  
+
   for (let i = 1; i <= 27; i++) {
     const input = document.querySelector(`input[name="item${i}"]:checked`);
     if (!input) {
@@ -228,57 +227,112 @@ function calcularSD3() {
     respuestas.push(val);
     respuestasObj[`item${i}`] = val;
   }
-  
+
   const mean = arr => arr.reduce((a, b) => a + b, 0) / arr.length;
   const mach = parseFloat(mean(respuestas.slice(0, 9)).toFixed(2));
   const narc = parseFloat(mean(respuestas.slice(9, 18)).toFixed(2));
   const psych = parseFloat(mean(respuestas.slice(18, 27)).toFixed(2));
-  
+
   const testFinTimestamp = Date.now();
   const tiempoTotalTest = testFinTimestamp - testInicioTimestamp;
-  
-  const tiemposArray = Object.values(tiemposRespuesta).map(t => t.tiempo_ms || 0);
-  const estadisticasTiempo = calcularEstadisticasTiempo(tiemposArray);
-  
-  respuestasSD3 = {
+
+  resultadosSD3 = {
     mach,
     narc,
     psych,
     respuestas: respuestasObj,
     tiempos_respuesta: tiemposRespuesta,
     tiempo_total_ms: tiempoTotalTest,
-    tiempo_total_segundos: (tiempoTotalTest / 1000).toFixed(2),
-    estadisticas_tiempo: estadisticasTiempo
+    tiempo_total_segundos: (tiempoTotalTest / 1000).toFixed(2)
   };
-  
-  mostrarPantalla('seccion-micro');
+
+  sessionStorage.setItem('resultadosSD3', JSON.stringify(resultadosSD3));
+  mostrarResultadosSD3(mach, narc, psych, tiempoTotalTest);
 }
 
-function calcularEstadisticasTiempo(tiemposArray) {
-  if (tiemposArray.length === 0) {
-    return {
-      promedio_ms: 0,
-      promedio_segundos: '0.00',
-      mediana_ms: 0,
-      mediana_segundos: '0.00'
-    };
+function mostrarResultadosSD3(mach, narc, psych, tiempoTotal) {
+  const resultadoSD3 = document.getElementById('resultado-sd3');
+  if (resultadoSD3) {
+    resultadoSD3.innerHTML = `
+      <div class="resultado-box">
+        <h4>Tus resultados SD3</h4>
+        <p><strong>Maquiavelismo:</strong> ${mach} / 5.0</p>
+        <p><strong>Narcisismo:</strong> ${narc} / 5.0</p>
+        <p><strong>Psicopatía:</strong> ${psych} / 5.0</p>
+        <p style="margin-top: 15px; font-size: 0.9em; color: #b0a0ff;">
+          <strong>Tiempo total:</strong> ${(tiempoTotal / 1000 / 60).toFixed(1)} minutos
+        </p>
+      </div>
+    `;
+    resultadoSD3.classList.remove('hidden');
   }
-  const suma = tiemposArray.reduce((a, b) => a + b, 0);
-  const promedio = suma / tiemposArray.length;
-  const sorted = [...tiemposArray].sort((a, b) => a - b);
-  const medio = Math.floor(sorted.length / 2);
-  const mediana = sorted.length % 2 === 0 ? (sorted[medio - 1] + sorted[medio]) / 2 : sorted[medio];
+
+  document.getElementById('grafico-container')?.classList.remove('hidden');
+  crearGraficoSD3(mach, narc, psych);
   
-  return {
-    promedio_ms: Math.round(promedio),
-    promedio_segundos: (promedio / 1000).toFixed(2),
-    mediana_ms: Math.round(mediana),
-    mediana_segundos: (mediana / 1000).toFixed(2)
-  };
+  const narrativa = document.getElementById('narrativa-sd3');
+  if (narrativa) {
+    narrativa.innerHTML = generarNarrativa(mach, narc, psych);
+    narrativa.classList.remove('hidden');
+  }
+
+  document.getElementById('btn-continuar-micro')?.classList.remove('hidden');
 }
 
 // ========================================
-// PASO 3: CÁMARA Y SUBIDA DE IMAGEN
+// GRÁFICO SD3
+// ========================================
+function crearGraficoSD3(mach, narc, psych) {
+  const canvas = document.getElementById('grafico-sd3');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (graficoSD3) graficoSD3.destroy();
+
+  graficoSD3 = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Maquiavelismo', 'Narcisismo', 'Psicopatía'],
+      datasets: [{
+        data: [mach, narc, psych],
+        backgroundColor: ['#ff6384', '#36a2eb', '#ffce56'],
+        borderColor: '#1a1a2e',
+        borderWidth: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { 
+          position: 'bottom', 
+          labels: { color: '#e0e0ff', font: { size: 14 }, padding: 15 } 
+        }
+      }
+    }
+  });
+}
+
+function generarNarrativa(mach, narc, psych) {
+  const interpretar = (valor, rasgo) => {
+    if (valor <= 2.4) return `puntaje bajo en ${rasgo}`;
+    if (valor <= 3.4) return `puntaje medio en ${rasgo}`;
+    return `puntaje alto en ${rasgo}`;
+  };
+  return `
+    <div class="resultado-box">
+      <h4>Interpretación Académica</h4>
+      <p><strong>Maquiavelismo:</strong> ${interpretar(mach, "manipulación estratégica")}.</p>
+      <p><strong>Narcisismo:</strong> ${interpretar(narc, "autoimagen grandiosa")}.</p>
+      <p><strong>Psicopatía:</strong> ${interpretar(psych, "impulsividad y búsqueda de sensaciones")}.</p>
+      <p style="margin-top: 20px; font-style: italic; color: #b0a0ff;">
+        Estos resultados son parte de una investigación académica y no constituyen un diagnóstico clínico.
+      </p>
+    </div>
+  `;
+}
+
+// ========================================
+// CÁMARA Y SUBIDA
 // ========================================
 function configurarCamaraYSubida() {
   const video = document.getElementById('video');
@@ -287,27 +341,27 @@ function configurarCamaraYSubida() {
   const btnTomarFoto = document.getElementById('btn-tomar-foto');
   const btnSubirImagen = document.getElementById('btn-subir-imagen');
   const inputImagen = document.getElementById('input-imagen');
-  const btnEnviarTodo = document.getElementById('btn-enviar-todo');
-  
+  const btnAnalizar = document.getElementById('btn-analizar');
+
   if (btnActivarCamara) {
-    btnActivarCamara.addEventListener('click', async () => {
+    btnActivarCamara.addEventListener('click', async function() {
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: true });
         if (video) {
           video.srcObject = stream;
           video.classList.remove('hidden');
         }
-        btnActivarCamara.classList.add('hidden');
-        if (btnTomarFoto) btnTomarFoto.classList.remove('hidden');
+        this.classList.add('hidden');
+        btnTomarFoto?.classList.remove('hidden');
       } catch (err) {
         alert('No se pudo acceder a la cámara. Por favor subí una imagen.');
         console.error(err);
       }
     });
   }
-  
+
   if (btnTomarFoto && video && canvas) {
-    btnTomarFoto.addEventListener('click', () => {
+    btnTomarFoto.addEventListener('click', function() {
       const ctx = canvas.getContext('2d');
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
@@ -315,32 +369,32 @@ function configurarCamaraYSubida() {
       imagenCapturada = canvas.toDataURL('image/jpeg', 0.9);
       video.classList.add('hidden');
       canvas.classList.remove('hidden');
-      if (btnEnviarTodo) btnEnviarTodo.classList.remove('hidden');
+      btnAnalizar?.classList.remove('hidden');
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
         stream = null;
       }
     });
   }
-  
+
   if (btnSubirImagen && inputImagen) {
     btnSubirImagen.addEventListener('click', () => inputImagen.click());
-    inputImagen.addEventListener('change', (e) => {
+    inputImagen.addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = function(event) {
           const img = new Image();
-          img.onload = () => {
+          img.onload = function() {
             if (canvas) {
               const ctx = canvas.getContext('2d');
               canvas.width = img.width;
               canvas.height = img.height;
               ctx.drawImage(img, 0, 0);
               imagenCapturada = canvas.toDataURL('image/jpeg', 0.9);
-              if (video) video.classList.add('hidden');
+              video?.classList.add('hidden');
               canvas.classList.remove('hidden');
-              if (btnEnviarTodo) btnEnviarTodo.classList.remove('hidden');
+              btnAnalizar?.classList.remove('hidden');
             }
           };
           img.src = event.target.result;
@@ -349,280 +403,456 @@ function configurarCamaraYSubida() {
       }
     });
   }
-  
-  if (btnEnviarTodo) {
-    btnEnviarTodo.addEventListener('click', enviarTodoAGoogleSheets);
+
+  if (btnAnalizar) {
+    btnAnalizar.addEventListener('click', () => analizarMicroexpresiones());
   }
 }
 
 // ========================================
-// ENVIAR TODO A GOOGLE SHEETS
+// ANALIZAR Y ENVIAR A RENDER + GOOGLE SHEETS
 // ========================================
-async function enviarTodoAGoogleSheets() {
-  if (!imagenCapturada) {
-    alert('Por favor capturá o subí una imagen primero.');
-    return;
-  }
-  
-  const btnEnviar = document.getElementById('btn-enviar-todo');
-  if (btnEnviar) {
-    btnEnviar.disabled = true;
-    btnEnviar.textContent = 'Enviando...';
-  }
-  
+async function analizarMicroexpresiones() {
+  const resultadoDiv = document.getElementById('resultado-micro');
+  if (!resultadoDiv) return;
+
+  resultadoDiv.innerHTML = `
+    <div class="analisis-loading">
+      <div class="spinner"></div>
+      Analizando microexpresiones con IA...
+    </div>
+  `;
+  resultadoDiv.classList.remove('hidden');
+
   try {
-    const payload = {
-      persona: datosPersonales,
-      sd3: respuestasSD3,
-      microexpresiones: {
-        // Aquí podrías agregar análisis si conectas con tu modelo
-        // Por ahora guardamos solo la imagen
-      },
-      imagen: imagenCapturada
-    };
-    
-    const response = await fetch(GOOGLE_SHEETS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      mode: 'no-cors' // Importante para CORS
-    });
-    
-    console.log('✅ Datos enviados correctamente');
-    mostrarPantalla('paso-final');
-    
-  } catch (error) {
-    console.error('Error al enviar datos:', error);
-    alert('Hubo un error al enviar los datos. Por favor intentá nuevamente.');
-    if (btnEnviar) {
-      btnEnviar.disabled = false;
-      btnEnviar.textContent = '📤 Enviar y Finalizar';
+    if (!imagenCapturada) {
+      throw new Error("No hay imagen para analizar.");
     }
+
+    // 1) Enviar imagen a Render
+    const blob = dataURLtoBlob(imagenCapturada);
+    const formData = new FormData();
+    formData.append('image', blob, 'foto.jpg');
+
+    const res = await fetch(RENDER_PREDICT_URL, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Error del servidor: ${res.status} - ${errorText}`);
+    }
+
+    const prediccion = await res.json();
+    resultadosMicro = prediccion;
+
+    // 2) Preparar datos completos
+    const datosPersonales = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
+    const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || 'null');
+
+    const datosCompletos = {
+      timestamp: new Date().toISOString(),
+      datos_personales: datosPersonales,
+      resultados_sd3: sd3,
+      resultados_micro: resultadosMicro,
+      imagen_base64: imagenCapturada
+    };
+
+    // 3) Enviar a Google Sheets
+    try {
+      await fetch(GOOGLE_SHEETS_WEBAPP_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(datosCompletos)
+      });
+      console.log('Datos enviados a Google Sheets');
+    } catch(err) {
+      console.warn("Advertencia al guardar en Sheets:", err);
+    }
+
+    // 4) Guardar en sessionStorage y mostrar mensaje
+    sessionStorage.setItem('resultadosMicro', JSON.stringify(resultadosMicro));
+
+    resultadoDiv.innerHTML = `
+      <div class="resultado-box" style="border-color: #4caf50;">
+        <h4>✅ Análisis completado</h4>
+        <p>Tu imagen ha sido procesada y los datos fueron guardados correctamente.</p>
+        <p style="margin-top: 20px; color: #b0a0ff;">
+          <strong>Emoción detectada:</strong> ${prediccion.emocion_principal || 'No disponible'}
+        </p>
+        <p style="margin-top: 15px; font-style: italic; color: #888;">
+          Gracias por participar en esta investigación. La experiencia ha finalizado para vos.
+        </p>
+      </div>
+    `;
+
+  } catch (err) {
+    console.error(err);
+    resultadoDiv.innerHTML = `
+      <div class="resultado-box" style="border-color: #ff6384;">
+        <h4>❌ Error en el análisis</h4>
+        <p>${err.message}</p>
+        <button onclick="location.reload()" class="btn-primary" style="margin-top: 20px;">
+          🔄 Reintentar
+        </button>
+      </div>
+    `;
   }
+}
+
+function dataURLtoBlob(dataurl) {
+  const arr = dataurl.split(',');
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while(n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], { type: mime });
 }
 
 // ========================================
 // ZONA INVESTIGADOR
 // ========================================
 function mostrarLoginInvestigador() {
-  mostrarPantalla('investigador-login');
-  document.getElementById('password-investigador').value = '';
-  document.getElementById('error-login').classList.add('hidden');
+  document.getElementById('seccion-participante')?.classList.add('hidden');
+  document.getElementById('investigador-login')?.classList.remove('hidden');
 }
 
-async function loginInvestigador() {
-  const password = document.getElementById('password-investigador').value;
-  const errorDiv = document.getElementById('error-login');
-  
-  if (password === RESEARCHER_PASSWORD) {
-    errorDiv.classList.add('hidden');
-    await cargarListaParticipantes();
+function validarLogin() {
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+  const errorDiv = document.getElementById('login-error');
+
+  if (username === VALID_CREDENTIALS.username && password === VALID_CREDENTIALS.password) {
+    document.getElementById('investigador-login').classList.add('hidden');
+    document.getElementById('investigador-lista').classList.remove('hidden');
+    cargarDatosParticipantes();
   } else {
-    errorDiv.textContent = '❌ Contraseña incorrecta';
     errorDiv.classList.remove('hidden');
   }
 }
 
-// Enter para login
-document.addEventListener('DOMContentLoaded', () => {
-  const passwordInput = document.getElementById('password-investigador');
-  if (passwordInput) {
-    passwordInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') loginInvestigador();
-    });
-  }
-});
-
-function cerrarSesion() {
-  mostrarPantalla('pantalla-inicial');
+function cerrarSesionInvestigador() {
+  document.getElementById('investigador-lista').classList.add('hidden');
+  document.getElementById('investigador-detalle').classList.add('hidden');
+  document.getElementById('seccion-participante').classList.remove('hidden');
+  todosLosDatos = [];
+  datosFiltrados = [];
 }
 
-// ========================================
-// CARGAR LISTA DE PARTICIPANTES
-// ========================================
-async function cargarListaParticipantes() {
-  mostrarPantalla('investigador-lista');
-  
-  const loadingDiv = document.getElementById('loading-participantes');
+async function cargarDatosParticipantes() {
+  const listaDiv = document.getElementById('lista-participantes');
+  listaDiv.innerHTML = '<p style="text-align: center; padding: 40px;"><div class="spinner"></div> Cargando datos...</p>';
+
+  try {
+    const response = await fetch(GOOGLE_SHEETS_WEBAPP_URL);
+    const data = await response.json();
+    
+    if (data.participantes && Array.isArray(data.participantes)) {
+      todosLosDatos = data.participantes;
+      datosFiltrados = [...todosLosDatos];
+      renderizarListaParticipantes();
+    } else {
+      throw new Error('Formato de datos inválido');
+    }
+  } catch (err) {
+    console.error('Error cargando datos:', err);
+    listaDiv.innerHTML = `
+      <div class="error-message">
+        <h4>❌ Error de conexión</h4>
+        <p>No se pudieron cargar los datos desde Google Sheets.</p>
+        <p style="font-size: 0.9em; margin-top: 10px;">Detalles: ${err.message}</p>
+        <p style="font-size: 0.9em; margin-top: 10px;">Verificá que:</p>
+        <ul style="margin-top: 10px; padding-left: 20px;">
+          <li>La URL de Google Sheets esté correctamente configurada en script.js</li>
+          <li>El Google Apps Script esté deployado como Web App</li>
+          <li>Los permisos estén otorgados correctamente</li>
+        </ul>
+        <button onclick="cargarDatosParticipantes()" class="btn-primary" style="margin-top: 20px;">
+          🔄 Reintentar
+        </button>
+      </div>
+    `;
+  }
+}
+
+function renderizarListaParticipantes() {
   const listaDiv = document.getElementById('lista-participantes');
   
-  loadingDiv.classList.remove('hidden');
-  listaDiv.innerHTML = '';
-  
-  try {
-    const url = `${GOOGLE_SHEETS_URL}?action=list&password=${encodeURIComponent(RESEARCHER_PASSWORD)}`;
-    const response = await fetch(url);
-    const data = await response.json();
-    
-    if (data.success && data.participantes) {
-      document.getElementById('total-participantes').textContent = data.participantes.length;
-      
-      data.participantes.forEach(p => {
-        const card = document.createElement('div');
-        card.className = 'participante-card';
-        card.onclick = () => verDetalleParticipante(p.row);
-        
-        card.innerHTML = `
-          <div class="participante-header">
-            <div class="participante-info">
-              <h4>${p.nombre}</h4>
-              <p>Edad: ${p.edad} | Género: ${p.genero} | País: ${p.pais}</p>
-              <p style="font-size: 0.9em; color: #9080d0;">
-                Fecha: ${new Date(p.timestamp).toLocaleDateString()} | 
-                Mach: ${p.mach.toFixed(2)} | Narc: ${p.narc.toFixed(2)} | Psych: ${p.psych.toFixed(2)}
-              </p>
-            </div>
-            <button class="view-btn">Ver Detalles</button>
-          </div>
-        `;
-        
-        listaDiv.appendChild(card);
-      });
-    } else {
-      listaDiv.innerHTML = '<p style="text-align: center; color: #ff6384;">Error al cargar participantes</p>';
-    }
-    
-    loadingDiv.classList.add('hidden');
-    
-  } catch (error) {
-    console.error('Error:', error);
-    listaDiv.innerHTML = '<p style="text-align: center; color: #ff6384;">Error de conexión</p>';
-    loadingDiv.classList.add('hidden');
+  if (datosFiltrados.length === 0) {
+    listaDiv.innerHTML = '<p style="text-align: center; padding: 40px; color: #888;">No hay participantes registrados aún.</p>';
+    return;
   }
+
+  listaDiv.innerHTML = datosFiltrados.map((p, index) => {
+    const datos = p.datos_personales || {};
+    const sd3 = p.resultados_sd3 || {};
+    return `
+      <div class="participante-card" onclick="mostrarDetalleParticipante(${index})">
+        <div class="participante-header">
+          <div>
+            <strong style="font-size: 1.2em; color: #c080ff;">${datos.nombre || 'Anónimo'}</strong>
+            <span style="color: #888; margin-left: 15px;">
+              ${datos.edad || '?'} años | ${datos.genero || '?'} | ${datos.pais || '?'}
+            </span>
+          </div>
+          <div style="color: #b0a0ff;">
+            Mach: ${sd3.mach || '?'} | Narc: ${sd3.narc || '?'} | Psych: ${sd3.psych || '?'}
+          </div>
+        </div>
+        <p style="font-size: 0.9em; color: #888; margin-top: 10px;">
+          ${p.timestamp ? new Date(p.timestamp).toLocaleString('es-AR') : 'Fecha desconocida'}
+        </p>
+      </div>
+    `;
+  }).join('');
 }
 
-// ========================================
-// VER DETALLE DE PARTICIPANTE
-// ========================================
-async function verDetalleParticipante(row) {
-  mostrarPantalla('investigador-detalle');
+function mostrarDetalleParticipante(index) {
+  const participante = datosFiltrados[index];
   
-  const detalleDiv = document.getElementById('detalle-participante');
-  detalleDiv.innerHTML = '<p style="text-align: center; padding: 40px;">Cargando detalles...</p>';
+  document.getElementById('investigador-lista').classList.add('hidden');
+  document.getElementById('investigador-detalle').classList.remove('hidden');
   
-  try {
-    const url = `${GOOGLE_SHEETS_URL}?action=detail&row=${encodeURIComponent(row)}&password=${encodeURIComponent(RESEARCHER_PASSWORD)}`;
-    const response = await fetch(url);
-    const data = await response.json();
-    
-    if (data.success && data.participante) {
-      const p = data.participante;
-      
-      detalleDiv.innerHTML = `
-        <div class="section">
-          <h3>Datos Personales</h3>
-          <p><strong>Nombre:</strong> ${p.persona.nombre}</p>
-          <p><strong>Edad:</strong> ${p.persona.edad}</p>
-          <p><strong>Género:</strong> ${p.persona.genero}</p>
-          <p><strong>País:</strong> ${p.persona.pais}</p>
-          <p><strong>Fecha:</strong> ${new Date(p.timestamp).toLocaleString()}</p>
-        </div>
-        
-        <div class="detalle-grid">
-          <div class="detalle-card">
-            <h4>📊 Resultados SD3</h4>
-            <div class="detalle-item">
-              <strong>Maquiavelismo:</strong> ${p.sd3.mach} / 5.0
-            </div>
-            <div class="detalle-item">
-              <strong>Narcisismo:</strong> ${p.sd3.narc} / 5.0
-            </div>
-            <div class="detalle-item">
-              <strong>Psicopatía:</strong> ${p.sd3.psych} / 5.0
-            </div>
-          </div>
-          
-          <div class="detalle-card">
-            <h4>⏱️ Tiempos de Respuesta</h4>
-            <div class="detalle-item">
-              <strong>Tiempo total:</strong> ${p.sd3.tiempo_total_segundos}s
-            </div>
-            <div class="detalle-item">
-              <strong>Promedio por ítem:</strong> ${p.sd3.estadisticas_tiempo?.promedio_segundos || 'N/A'}s
-            </div>
-          </div>
-          
-          <div class="detalle-card">
-            <h4>😊 Microexpresiones</h4>
-            <p style="color: #d0d0ff;">
-              ${p.microexpresiones?.emocionDominante || 'Análisis pendiente'}
-            </p>
-          </div>
-          
-          <div class="detalle-card">
-            <h4>📸 Imagen</h4>
-            ${p.imagen ? '<p style="color: #4CAF50;">✓ Disponible</p>' : '<p style="color: #ff6384;">✗ No disponible</p>'}
-          </div>
-        </div>
-        
-        <div class="grafico-container">
-          <canvas id="grafico-detalle"></canvas>
-        </div>
-      `;
-      
-      // Crear gráfico
-      crearGraficoDetalle(p.sd3.mach, p.sd3.narc, p.sd3.psych);
-      
-    } else {
-      detalleDiv.innerHTML = '<p style="text-align: center; color: #ff6384;">Error al cargar detalles</p>';
-    }
-    
-  } catch (error) {
-    console.error('Error:', error);
-    detalleDiv.innerHTML = '<p style="text-align: center; color: #ff6384;">Error de conexión</p>';
-  }
-}
-
-function crearGraficoDetalle(mach, narc, psych) {
-  const canvas = document.getElementById('grafico-detalle');
-  if (!canvas) return;
-  
-  const ctx = canvas.getContext('2d');
-  if (graficoSD3) graficoSD3.destroy();
-  
-  graficoSD3 = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: ['Maquiavelismo', 'Narcisismo', 'Psicopatía'],
-      datasets: [{
-        label: 'Puntaje SD3',
-        data: [mach, narc, psych],
-        backgroundColor: [
-          'rgba(255, 99, 132, 0.7)',
-          'rgba(54, 162, 235, 0.7)',
-          'rgba(255, 206, 86, 0.7)'
-        ],
-        borderColor: [
-          'rgba(255, 99, 132, 1)',
-          'rgba(54, 162, 235, 1)',
-          'rgba(255, 206, 86, 1)'
-        ],
-        borderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        y: {
-          beginAtZero: true,
-          max: 5,
-          ticks: { color: '#e0e0ff' },
-          grid: { color: 'rgba(192, 128, 255, 0.2)' }
-        },
-        x: {
-          ticks: { color: '#e0e0ff' },
-          grid: { color: 'rgba(192, 128, 255, 0.2)' }
-        }
-      },
-      plugins: {
-        legend: {
-          labels: { color: '#e0e0ff', font: { size: 14 } }
-        }
-      }
-    }
-  });
+  generarAnalisisCompleto(participante);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function volverListaParticipantes() {
-  cargarListaParticipantes();
+  document.getElementById('investigador-detalle').classList.add('hidden');
+  document.getElementById('investigador-lista').classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function generarAnalisisCompleto(p) {
+  const detalleDiv = document.getElementById('detalle-participante');
+  const datos = p.datos_personales || {};
+  const sd3 = p.resultados_sd3 || {};
+  const micro = p.resultados_micro || {};
+  const tiempos = sd3.tiempos_respuesta || {};
+
+  // Analizar tendencias
+  const respuestas = sd3.respuestas || {};
+  const valoresRespuestas = Object.values(respuestas);
+  const promedioRespuestas = valoresRespuestas.reduce((a,b) => a+b, 0) / valoresRespuestas.length;
+  const respuestasExtremas = valoresRespuestas.filter(v => v === 1 || v === 5).length;
+  const respuestasNeutrales = valoresRespuestas.filter(v => v === 3).length;
+
+  // Analizar tiempos
+  const tiemposArray = Object.values(tiempos).map(t => parseFloat(t.tiempo_segundos) || 0);
+  const tiempoPromedio = tiemposArray.reduce((a,b) => a+b, 0) / tiemposArray.length;
+  const tiempoMin = Math.min(...tiemposArray);
+  const tiempoMax = Math.max(...tiemposArray);
+
+  detalleDiv.innerHTML = `
+    <div class="detalle-grid">
+      <!-- DATOS PERSONALES -->
+      <div class="detalle-card">
+        <h4>👤 Datos Personales</h4>
+        <p><strong>Nombre:</strong> ${datos.nombre || 'N/A'}</p>
+        <p><strong>Edad:</strong> ${datos.edad || 'N/A'} años</p>
+        <p><strong>Género:</strong> ${datos.genero || 'N/A'}</p>
+        <p><strong>País:</strong> ${datos.pais || 'N/A'}</p>
+        <p><strong>Fecha:</strong> ${p.timestamp ? new Date(p.timestamp).toLocaleString('es-AR') : 'N/A'}</p>
+      </div>
+
+      <!-- RESULTADOS SD3 -->
+      <div class="detalle-card">
+        <h4>📊 Resultados SD3</h4>
+        <p><strong>Maquiavelismo:</strong> ${sd3.mach || 'N/A'} / 5.0</p>
+        <p><strong>Narcisismo:</strong> ${sd3.narc || 'N/A'} / 5.0</p>
+        <p><strong>Psicopatía:</strong> ${sd3.psych || 'N/A'} / 5.0</p>
+        <p style="margin-top: 15px;"><strong>Tiempo total:</strong> ${sd3.tiempo_total_segundos || 'N/A'}s</p>
+        <div class="grafico-container" style="margin-top: 20px;">
+          <canvas id="grafico-detalle"></canvas>
+        </div>
+      </div>
+
+      <!-- MICROEXPRESIONES -->
+      <div class="detalle-card">
+        <h4>😊 Análisis Microexpresiones</h4>
+        <p><strong>Emoción principal:</strong> ${micro.emocion_principal || 'N/A'}</p>
+        ${micro.confianza ? `<p><strong>Confianza:</strong> ${(micro.confianza * 100).toFixed(1)}%</p>` : ''}
+        ${p.imagen_base64 ? `
+          <div style="margin-top: 20px;">
+            <img src="${p.imagen_base64}" style="max-width: 100%; border-radius: 10px; border: 2px solid rgba(127, 0, 255, 0.3);" alt="Imagen del participante">
+          </div>
+        ` : ''}
+      </div>
+
+      <!-- TIEMPO DE REACCIÓN -->
+      <div class="detalle-card">
+        <h4>⏱️ Tiempo de Reacción</h4>
+        <p><strong>Promedio:</strong> ${tiempoPromedio.toFixed(2)}s por ítem</p>
+        <p><strong>Mínimo:</strong> ${tiempoMin.toFixed(2)}s</p>
+        <p><strong>Máximo:</strong> ${tiempoMax.toFixed(2)}s</p>
+        <p style="margin-top: 15px; font-size: 0.9em; color: #888;">
+          ${tiempoPromedio < 3 ? '⚡ Respuestas muy rápidas - posible impulsividad' : 
+            tiempoPromedio > 10 ? '🤔 Respuestas lentas - posible reflexión profunda' : 
+            '✓ Tiempo de respuesta normal'}
+        </p>
+      </div>
+
+      <!-- TENDENCIAS -->
+      <div class="detalle-card">
+        <h4>📈 Tendencias de Respuestas</h4>
+        <p><strong>Promedio general:</strong> ${promedioRespuestas.toFixed(2)} / 5.0</p>
+        <p><strong>Respuestas extremas (1 o 5):</strong> ${respuestasExtremas} de 27 (${((respuestasExtremas/27)*100).toFixed(1)}%)</p>
+        <p><strong>Respuestas neutrales (3):</strong> ${respuestasNeutrales} de 27 (${((respuestasNeutrales/27)*100).toFixed(1)}%)</p>
+        <p style="margin-top: 15px; font-size: 0.9em; color: #888;">
+          ${respuestasExtremas > 15 ? '⚠️ Alta polarización en respuestas' : 
+            respuestasNeutrales > 15 ? '➡️ Tendencia a respuestas neutrales' : 
+            '✓ Patrón de respuestas equilibrado'}
+        </p>
+      </div>
+
+      <!-- ANÁLISIS INTEGRADOR -->
+      <div class="detalle-card" style="grid-column: 1 / -1;">
+        <h4>🧠 Análisis Final Integrador</h4>
+        ${generarAnalisisIntegrador(sd3, micro, tiempoPromedio, respuestasExtremas, respuestasNeutrales)}
+      </div>
+    </div>
+  `;
+
+  // Crear gráfico del participante
+  setTimeout(() => {
+    const canvas = document.getElementById('grafico-detalle');
+    if (canvas && sd3.mach && sd3.narc && sd3.psych) {
+      const ctx = canvas.getContext('2d');
+      if (graficoParticipante) graficoParticipante.destroy();
+      
+      graficoParticipante = new Chart(ctx, {
+        type: 'radar',
+        data: {
+          labels: ['Maquiavelismo', 'Narcisismo', 'Psicopatía'],
+          datasets: [{
+            label: 'Puntajes SD3',
+            data: [sd3.mach, sd3.narc, sd3.psych],
+            backgroundColor: 'rgba(127, 0, 255, 0.2)',
+            borderColor: '#7f00ff',
+            borderWidth: 2,
+            pointBackgroundColor: '#c080ff',
+            pointBorderColor: '#fff',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: '#7f00ff'
+          }]
+        },
+        options: {
+          scales: {
+            r: {
+              beginAtZero: true,
+              max: 5,
+              ticks: { color: '#e0e0ff', backdropColor: 'transparent' },
+              grid: { color: 'rgba(192, 128, 255, 0.2)' },
+              pointLabels: { color: '#c080ff', font: { size: 12 } }
+            }
+          },
+          plugins: {
+            legend: { labels: { color: '#e0e0ff' } }
+          }
+        }
+      });
+    }
+  }, 100);
+}
+
+function generarAnalisisIntegrador(sd3, micro, tiempoPromedio, respuestasExtremas, respuestasNeutrales) {
+  let analisis = '<div style="line-height: 1.8;">';
+
+  // Análisis SD3
+  const mach = sd3.mach || 0;
+  const narc = sd3.narc || 0;
+  const psych = sd3.psych || 0;
+
+  analisis += '<p><strong>Perfil Psicométrico (SD3):</strong> ';
+  
+  if (mach > 3.5) {
+    analisis += 'Se observa un maquiavelismo elevado, indicando tendencia a la manipulación estratégica y cálculo interpersonal. ';
+  } else if (mach < 2.5) {
+    analisis += 'Bajo maquiavelismo, sugiriendo menor tendencia a la manipulación interpersonal. ';
+  } else {
+    analisis += 'Maquiavelismo moderado, dentro de rangos típicos. ';
+  }
+
+  if (narc > 3.5) {
+    analisis += 'Narcisismo alto, asociado con búsqueda de admiración y autoimagen grandiosa. ';
+  } else if (narc < 2.5) {
+    analisis += 'Bajo narcisismo, menos énfasis en autopromoción. ';
+  } else {
+    analisis += 'Narcisismo moderado. ';
+  }
+
+  if (psych > 3.5) {
+    analisis += 'Psicopatía subclínica elevada, vinculada con impulsividad y búsqueda de estimulación intensa.';
+  } else if (psych < 2.5) {
+    analisis += 'Baja psicopatía subclínica, menor impulsividad.';
+  } else {
+    analisis += 'Psicopatía subclínica moderada.';
+  }
+  analisis += '</p>';
+
+  // Análisis emocional
+  const emocion = micro.emocion_principal || '';
+  if (emocion) {
+    analisis += `<p><strong>Expresión Facial:</strong> La microexpresión predominante de "${emocion}" `;
+    
+    if (emocion === 'feliz' && narc > 3) {
+      analisis += 'es consistente con la presentación positiva típica del narcisismo elevado.';
+    } else if (emocion === 'neutral' && mach > 3) {
+      analisis += 'puede reflejar el control emocional característico del maquiavelismo.';
+    } else if (emocion === 'enojado' && psych > 3) {
+      analisis += 'podría relacionarse con la irritabilidad asociada a rasgos psicopáticos.';
+    } else {
+      analisis += 'se registra como expresión facial predominante.';
+    }
+    analisis += '</p>';
+  }
+
+  // Análisis de tiempos
+  analisis += '<p><strong>Patrón de Respuesta:</strong> ';
+  if (tiempoPromedio < 3) {
+    analisis += 'Tiempo de reacción muy corto sugiere respuestas impulsivas, posiblemente relacionado con baja reflexividad.';
+  } else if (tiempoPromedio > 10) {
+    analisis += 'Tiempo de reacción extenso indica deliberación cuidadosa, posible sesgo de deseabilidad social.';
+  } else {
+    analisis += 'Tiempo de reacción normal indica procesamiento estándar de ítems.';
+  }
+  analisis += '</p>';
+
+  // Análisis de tendencias
+  analisis += '<p><strong>Consistencia:</strong> ';
+  if (respuestasExtremas > 15) {
+    analisis += 'Alta polarización en respuestas (muchos 1s y 5s) puede indicar pensamiento dicotómico o baja ambigüedad tolerada.';
+  } else if (respuestasNeutrales > 15) {
+    analisis += 'Exceso de respuestas neutrales puede sugerir indiferencia, cautela excesiva o dificultad para tomar posición.';
+  } else {
+    analisis += 'Patrón de respuestas equilibrado sugiere diferenciación adecuada entre ítems.';
+  }
+  analisis += '</p>';
+
+  // Integración final
+  analisis += '<p style="margin-top: 20px; padding-top: 20px; border-top: 2px solid rgba(127, 0, 255, 0.3);"><strong>Síntesis:</strong> ';
+  
+  const promedioDark = (mach + narc + psych) / 3;
+  if (promedioDark > 3.5) {
+    analisis += 'El perfil presenta rasgos de personalidad oscura por encima del promedio poblacional. ';
+  } else if (promedioDark < 2.5) {
+    analisis += 'El perfil muestra rasgos de personalidad oscura por debajo del promedio poblacional. ';
+  } else {
+    analisis += 'El perfil se encuentra dentro de rangos típicos en rasgos de personalidad oscura. ';
+  }
+
+  analisis += 'Este análisis es exploratorio y debe interpretarse exclusivamente en contexto de investigación académica, sin valor diagnóstico clínico.</p>';
+
+  analisis += '</div>';
+  return analisis;
+}
+
+// Función auxiliar para crear spinner
+function createSpinner() {
+  return '<div class="spinner"></div>';
 }
