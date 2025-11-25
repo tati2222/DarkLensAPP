@@ -1,32 +1,26 @@
 // ========================================
-// CONFIG — PONÉ TUS ENDPOINTS AQUÍ
+// CONFIG — CONFIGURÁ TUS ENDPOINTS AQUÍ
 // ========================================
 const RENDER_PREDICT_URL = "https://darklnesapp-api.onrender.com/run/predict"; 
-// ejemplo: https://darklnesapp-api.onrender.com/run/predict
-// Si tu endpoint es otro, reemplazalo.
+// URL de tu API en Render
 
-const GOOGLE_SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AAA.../exec";
-// Reemplazá por la URL de tu Google Apps Script web app que reciba POST y guarde filas en tu Sheet.
+const GOOGLE_SHEETS_WEBAPP_URL = "const GOOGLE_SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbypK9Rcy5S74-4ZxXmHyZTvnQ56BomZr5nou9iUEWH0yPu‑XK‑e2wKEZzj9Nk9EtlZb8Q/exec";
+";
+// Reemplazá con la URL de tu Google Apps Script
 
 // ========================================
 // VARIABLES GLOBALES
 // ========================================
 const invertidos = [11, 15, 17, 20, 25];
 let graficoSD3;
-let graficoEmociones;
 let resultadosSD3 = null;
 let resultadosMicro = null;
 let imagenCapturada = null;
 let stream = null;
-let audioNarrativa = null;
-let modeloCargado = false; // ya no usamos tf local
-
-// TRACKING TIEMPOS
 let tiemposRespuesta = {};
 let tiempoInicioItem = {};
 let testInicioTimestamp = null;
 
-// Items SD3 (igual que tenías)
 const itemsSD3 = [
   "No es prudente contar tus secretos.",
   "Me gusta usar manipulaciones ingeniosas para salirme con la mía.",
@@ -96,7 +90,7 @@ function generarItemsTest() {
 }
 
 // ========================================
-// TRACKING DE TIEMPOS DE RESPUESTA
+// TRACKING DE TIEMPOS
 // ========================================
 function configurarTrackingTiempos() {
   const observer = new IntersectionObserver((entries) => {
@@ -104,7 +98,6 @@ function configurarTrackingTiempos() {
       if (entry.isIntersecting) {
         const itemDiv = entry.target;
         const itemNum = parseInt(itemDiv.getAttribute('data-item'));
-
         const input = document.querySelector(`input[name="item${itemNum}"]:checked`);
         if (!input && !tiempoInicioItem[itemNum]) {
           tiempoInicioItem[itemNum] = Date.now();
@@ -113,9 +106,7 @@ function configurarTrackingTiempos() {
     });
   }, { threshold: 0.5 });
 
-  document.querySelectorAll('.test-item').forEach(item => {
-    observer.observe(item);
-  });
+  document.querySelectorAll('.test-item').forEach(item => observer.observe(item));
 
   for (let i = 1; i <= 27; i++) {
     const radios = document.querySelectorAll(`input[name="item${i}"]`);
@@ -129,71 +120,54 @@ function configurarTrackingTiempos() {
 
 function registrarTiempoRespuesta(itemNum) {
   if (tiemposRespuesta[itemNum]) return;
-
   const tiempoInicio = tiempoInicioItem[itemNum];
   if (tiempoInicio) {
     const tiempoFin = Date.now();
-    const tiempoRespuesta = tiempoFin - tiempoInicio;
     tiemposRespuesta[itemNum] = {
-      tiempo_ms: tiempoRespuesta,
-      tiempo_segundos: (tiempoRespuesta / 1000).toFixed(2),
-      timestamp_inicio: tiempoInicio,
-      timestamp_respuesta: tiempoFin
-    };
-  } else {
-    const tiempoDesdeInicio = Date.now() - testInicioTimestamp;
-    tiemposRespuesta[itemNum] = {
-      tiempo_ms: tiempoDesdeInicio,
-      tiempo_segundos: (tiempoDesdeInicio / 1000).toFixed(2),
-      timestamp_inicio: testInicioTimestamp,
-      timestamp_respuesta: Date.now(),
-      nota: 'Respondido antes de visualización completa'
+      tiempo_ms: tiempoFin - tiempoInicio,
+      tiempo_segundos: ((tiempoFin - tiempoInicio) / 1000).toFixed(2)
     };
   }
 }
 
 // ========================================
-// DOMContentLoaded - formularios y eventos
+// INICIALIZACIÓN
 // ========================================
 document.addEventListener("DOMContentLoaded", () => {
   const formDatos = document.getElementById("form-datos-basicos");
   const seccionBienvenida = document.getElementById("seccion-bienvenida");
   const seccionTest = document.getElementById("seccion-test");
 
-  if (!formDatos) {
-    console.error("No se encontró el formulario de datos básicos.");
-    return;
+  if (formDatos) {
+    formDatos.addEventListener("submit", (event) => {
+      event.preventDefault();
+      
+      const consentimiento = formDatos.querySelector('input[name="consentimiento"]');
+      if (!consentimiento?.checked) {
+        alert("Debés aceptar el consentimiento para continuar.");
+        return;
+      }
+
+      const datos = {
+        nombre: formDatos.querySelector('input[name="nombre"]').value.trim(),
+        edad: formDatos.querySelector('input[name="edad"]').value,
+        genero: formDatos.querySelector('select[name="genero"]').value,
+        pais: formDatos.querySelector('input[name="pais"]').value.trim()
+      };
+
+      if (!datos.nombre || !datos.edad || !datos.genero || !datos.pais) {
+        alert("Completá todos los datos requeridos.");
+        return;
+      }
+
+      sessionStorage.setItem('datos_personales', JSON.stringify(datos));
+      generarItemsTest();
+      
+      seccionBienvenida?.classList.add("hidden");
+      seccionTest?.classList.remove("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
   }
-
-  formDatos.addEventListener("submit", (event) => {
-    event.preventDefault();
-
-    const consentimiento = formDatos.querySelector('input[name="consentimiento"]');
-    if (!consentimiento || !consentimiento.checked) {
-      alert("Debés aceptar el consentimiento para continuar.");
-      return;
-    }
-
-    const nombre = formDatos.querySelector('input[name="nombre"]').value.trim();
-    const edad = formDatos.querySelector('input[name="edad"]').value;
-    const genero = formDatos.querySelector('select[name="genero"]').value;
-    const pais = formDatos.querySelector('input[name="pais"]').value.trim();
-
-    if (!nombre || !edad || !genero || !pais) {
-      alert("Completá todos los datos personales requeridos.");
-      return;
-    }
-
-    // Guardamos datos básicos en sessionStorage para la página de resultados
-    sessionStorage.setItem('datos_personales', JSON.stringify({ nombre, edad, genero, pais }));
-
-    generarItemsTest();
-
-    if (seccionBienvenida) seccionBienvenida.classList.add("hidden");
-    if (seccionTest) seccionTest.classList.remove("hidden");
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  });
 
   const formSD3 = document.getElementById('form-sd3');
   if (formSD3) {
@@ -203,26 +177,20 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Botón continuar
   const btnContinuar = document.getElementById('btn-continuar-micro');
   if (btnContinuar) {
     btnContinuar.addEventListener('click', function() {
-      const seccionTest = document.getElementById('seccion-test');
-      const seccionMicro = document.getElementById('seccion-micro');
-
-      if (seccionTest) seccionTest.classList.add('hidden');
-      if (seccionMicro) seccionMicro.classList.remove('hidden');
-
+      document.getElementById('seccion-test')?.classList.add('hidden');
+      document.getElementById('seccion-micro')?.classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   }
 
-  // Cámara y subida
   configurarCamaraYSubida();
 });
 
 // ========================================
-// CALCULO SD3
+// CÁLCULO SD3
 // ========================================
 function calcularSD3() {
   const respuestas = [];
@@ -232,8 +200,6 @@ function calcularSD3() {
     const input = document.querySelector(`input[name="item${i}"]:checked`);
     if (!input) {
       alert(`Por favor respondé el ítem ${i}`);
-      const firstRadio = document.querySelector(`input[name="item${i}"]`);
-      if (firstRadio) firstRadio.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
     let val = parseInt(input.value);
@@ -250,9 +216,6 @@ function calcularSD3() {
   const testFinTimestamp = Date.now();
   const tiempoTotalTest = testFinTimestamp - testInicioTimestamp;
 
-  const tiemposArray = Object.values(tiemposRespuesta).map(t => t.tiempo_ms || 0);
-  const estadisticasTiempo = calcularEstadisticasTiempo(tiemposArray);
-
   resultadosSD3 = {
     mach,
     narc,
@@ -260,14 +223,15 @@ function calcularSD3() {
     respuestas: respuestasObj,
     tiempos_respuesta: tiemposRespuesta,
     tiempo_total_ms: tiempoTotalTest,
-    tiempo_total_segundos: (tiempoTotalTest / 1000).toFixed(2),
-    estadisticas_tiempo: estadisticasTiempo
+    tiempo_total_segundos: (tiempoTotalTest / 1000).toFixed(2)
   };
 
-  // Guardamos en sessionStorage para pagina resultados
   sessionStorage.setItem('resultadosSD3', JSON.stringify(resultadosSD3));
 
-  // Mostrar resumen en la misma página
+  mostrarResultadosSD3(mach, narc, psych, tiempoTotalTest);
+}
+
+function mostrarResultadosSD3(mach, narc, psych, tiempoTotal) {
   const resultadoSD3 = document.getElementById('resultado-sd3');
   if (resultadoSD3) {
     resultadoSD3.innerHTML = `
@@ -277,74 +241,27 @@ function calcularSD3() {
         <p><strong>Narcisismo:</strong> ${narc} / 5.0</p>
         <p><strong>Psicopatía:</strong> ${psych} / 5.0</p>
         <p style="margin-top: 15px; font-size: 0.9em; color: #b0a0ff;">
-          <strong>Tiempo total:</strong> ${(tiempoTotalTest / 1000 / 60).toFixed(1)} minutos<br>
-          <strong>Tiempo promedio por ítem:</strong> ${estadisticasTiempo.promedio_segundos}s
+          <strong>Tiempo total:</strong> ${(tiempoTotal / 1000 / 60).toFixed(1)} minutos
         </p>
       </div>
     `;
     resultadoSD3.classList.remove('hidden');
   }
 
-  const graficoContainer = document.getElementById('grafico-container');
-  if (graficoContainer) {
-    graficoContainer.classList.remove('hidden');
-    crearGraficoSD3(mach, narc, psych);
+  document.getElementById('grafico-container')?.classList.remove('hidden');
+  crearGraficoSD3(mach, narc, psych);
+  
+  const narrativa = document.getElementById('narrativa-sd3');
+  if (narrativa) {
+    narrativa.innerHTML = generarNarrativa(mach, narc, psych);
+    narrativa.classList.remove('hidden');
   }
 
-  const narrativaSD3 = document.getElementById('narrativa-sd3');
-  if (narrativaSD3) {
-    narrativaSD3.innerHTML = generarNarrativa(mach, narc, psych);
-    narrativaSD3.classList.remove('hidden');
-  }
-
-  const btnContinuar = document.getElementById('btn-continuar-micro');
-  if (btnContinuar) btnContinuar.classList.remove('hidden');
+  document.getElementById('btn-continuar-micro')?.classList.remove('hidden');
 }
 
 // ========================================
-// ESTADISTICAS DE TIEMPO (igual que antes)
-// ========================================
-function calcularEstadisticasTiempo(tiemposArray) {
-  if (tiemposArray.length === 0) {
-    return {
-      promedio_ms: 0,
-      promedio_segundos: '0.00',
-      mediana_ms: 0,
-      mediana_segundos: '0.00',
-      minimo_ms: 0,
-      minimo_segundos: '0.00',
-      maximo_ms: 0,
-      maximo_segundos: '0.00',
-      desviacion_estandar_ms: 0,
-      desviacion_estandar_segundos: '0.00'
-    };
-  }
-  const suma = tiemposArray.reduce((a, b) => a + b, 0);
-  const promedio = suma / tiemposArray.length;
-  const sorted = [...tiemposArray].sort((a, b) => a - b);
-  const medio = Math.floor(sorted.length / 2);
-  const mediana = sorted.length % 2 === 0 ? (sorted[medio - 1] + sorted[medio]) / 2 : sorted[medio];
-  const minimo = Math.min(...tiemposArray);
-  const maximo = Math.max(...tiemposArray);
-  const varianza = tiemposArray.reduce((acc, val) => acc + Math.pow(val - promedio, 2), 0) / tiemposArray.length;
-  const desviacionEstandar = Math.sqrt(varianza);
-  return {
-    promedio_ms: Math.round(promedio),
-    promedio_segundos: (promedio / 1000).toFixed(2),
-    mediana_ms: Math.round(mediana),
-    mediana_segundos: (mediana / 1000).toFixed(2),
-    minimo_ms: minimo,
-    minimo_segundos: (minimo / 1000).toFixed(2),
-    maximo_ms: maximo,
-    maximo_segundos: (maximo / 1000).toFixed(2),
-    desviacion_estandar_ms: Math.round(desviacionEstandar),
-    desviacion_estandar_segundos: (desviacionEstandar / 1000).toFixed(2),
-    total_items: tiemposArray.length
-  };
-}
-
-// ========================================
-// GRAFICOS SD3 (igual que antes)
+// GRÁFICO SD3
 // ========================================
 function crearGraficoSD3(mach, narc, psych) {
   const canvas = document.getElementById('grafico-sd3');
@@ -367,8 +284,10 @@ function crearGraficoSD3(mach, narc, psych) {
       responsive: true,
       maintainAspectRatio: true,
       plugins: {
-        legend: { position: 'bottom', labels: { color: '#e0e0ff', font: { size: 14 }, padding: 15 } },
-        tooltip: { callbacks: { label: function(context) { return context.label + ': ' + context.parsed.toFixed(2); } } }
+        legend: { 
+          position: 'bottom', 
+          labels: { color: '#e0e0ff', font: { size: 14 }, padding: 15 } 
+        }
       }
     }
   });
@@ -383,16 +302,18 @@ function generarNarrativa(mach, narc, psych) {
   return `
     <div class="resultado-box">
       <h4>Interpretación Académica</h4>
-      <p><strong>Maquiavelismo:</strong> Tu resultado muestra un ${interpretar(mach, "manipulación estratégica y cálculo interpersonal")}. </p>
-      <p><strong>Narcisismo:</strong> Tu resultado muestra un ${interpretar(narc, "autoimagen grandiosa y búsqueda de admiración")}. </p>
-      <p><strong>Psicopatía:</strong> Tu resultado muestra un ${interpretar(psych, "impulsividad y búsqueda de sensaciones")}. </p>
-      <p style="margin-top: 20px; font-style: italic; color: #b0a0ff;">Recordá que estos resultados son parte de una investigación académica y no constituyen un diagnóstico clínico.</p>
+      <p><strong>Maquiavelismo:</strong> ${interpretar(mach, "manipulación estratégica")}.</p>
+      <p><strong>Narcisismo:</strong> ${interpretar(narc, "autoimagen grandiosa")}.</p>
+      <p><strong>Psicopatía:</strong> ${interpretar(psych, "impulsividad y búsqueda de sensaciones")}.</p>
+      <p style="margin-top: 20px; font-style: italic; color: #b0a0ff;">
+        Estos resultados son parte de una investigación académica y no constituyen un diagnóstico clínico.
+      </p>
     </div>
   `;
 }
 
 // ========================================
-// CÁMARA Y SUBIDA DE IMAGEN
+// CÁMARA Y SUBIDA
 // ========================================
 function configurarCamaraYSubida() {
   const video = document.getElementById('video');
@@ -407,9 +328,12 @@ function configurarCamaraYSubida() {
     btnActivarCamara.addEventListener('click', async function() {
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        if (video) { video.srcObject = stream; video.classList.remove('hidden'); }
+        if (video) {
+          video.srcObject = stream;
+          video.classList.remove('hidden');
+        }
         this.classList.add('hidden');
-        if (btnTomarFoto) btnTomarFoto.classList.remove('hidden');
+        btnTomarFoto?.classList.remove('hidden');
       } catch (err) {
         alert('No se pudo acceder a la cámara. Por favor subí una imagen.');
         console.error(err);
@@ -426,13 +350,16 @@ function configurarCamaraYSubida() {
       imagenCapturada = canvas.toDataURL('image/jpeg', 0.9);
       video.classList.add('hidden');
       canvas.classList.remove('hidden');
-      if (btnAnalizar) btnAnalizar.classList.remove('hidden');
-      if (stream) { stream.getTracks().forEach(track => track.stop()); stream = null; }
+      btnAnalizar?.classList.remove('hidden');
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
     });
   }
 
   if (btnSubirImagen && inputImagen) {
-    btnSubirImagen.addEventListener('click', function() { inputImagen.click(); });
+    btnSubirImagen.addEventListener('click', () => inputImagen.click());
     inputImagen.addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (file) {
@@ -446,10 +373,9 @@ function configurarCamaraYSubida() {
               canvas.height = img.height;
               ctx.drawImage(img, 0, 0);
               imagenCapturada = canvas.toDataURL('image/jpeg', 0.9);
-              if (video) video.classList.add('hidden');
+              video?.classList.add('hidden');
               canvas.classList.remove('hidden');
-              const btnAnalizarLocal = document.getElementById('btn-analizar');
-              if (btnAnalizarLocal) btnAnalizarLocal.classList.remove('hidden');
+              btnAnalizar?.classList.remove('hidden');
             }
           };
           img.src = event.target.result;
@@ -460,31 +386,34 @@ function configurarCamaraYSubida() {
   }
 
   if (btnAnalizar) {
-    btnAnalizar.addEventListener('click', async () => {
-      await analizarMicroexpresiones();
-    });
+    btnAnalizar.addEventListener('click', () => analizarMicroexpresiones());
   }
 }
 
 // ========================================
-// ANALIZAR: manda imagen a RENDER y guarda en Google Sheets
+// ANALIZAR Y ENVIAR A RENDER + GOOGLE SHEETS
 // ========================================
 async function analizarMicroexpresiones() {
   const resultadoDiv = document.getElementById('resultado-micro');
   if (!resultadoDiv) return;
 
-  resultadoDiv.innerHTML = `<div class="analisis-loading">Analizando microexpresiones...</div>`;
+  resultadoDiv.innerHTML = `
+    <div class="analisis-loading">
+      <div class="spinner"></div>
+      Analizando microexpresiones con IA...
+    </div>
+  `;
   resultadoDiv.classList.remove('hidden');
 
   try {
-    if (!imagenCapturada) throw new Error("No hay imagen para analizar. Capturá o subí una foto.");
+    if (!imagenCapturada) {
+      throw new Error("No hay imagen para analizar.");
+    }
 
-    // Convertir dataURL a Blob
+    // 1) Enviar imagen a Render
     const blob = dataURLtoBlob(imagenCapturada);
-
-    // 1) Enviar a Render
     const formData = new FormData();
-    formData.append('img', blob, 'foto.jpg');
+    formData.append('image', blob, 'foto.jpg');
 
     const res = await fetch(RENDER_PREDICT_URL, {
       method: 'POST',
@@ -492,88 +421,75 @@ async function analizarMicroexpresiones() {
     });
 
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Error en la API de Render: ${res.status} ${text}`);
-    }
-    const json = await res.json();
-
-    // Esperamos respuesta con {emociones: {...}, sd3: {...}} o similar
-    resultadosMicro = json.emociones || json;
-    // si tu API devuelve otro formato, ajustá acá.
-
-    // Guardar SD3 ya calculado (si tu API no devuelve sd3, usamos el que ya guardamos localmente)
-    const sd3_from_api = json.sd3 || null;
-    if (sd3_from_api) {
-      resultadosSD3 = sd3_from_api;
-      sessionStorage.setItem('resultadosSD3', JSON.stringify(resultadosSD3));
-    } else {
-      // si aun no lo tenés (pero lo deberías tener porque pasaste por el test)
-      if (!resultadosSD3) {
-        resultadosSD3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || 'null');
-      }
+      const errorText = await res.text();
+      throw new Error(`Error del servidor: ${res.status} - ${errorText}`);
     }
 
-    // 2) Enviar fila a Google Sheets (webapp)
+    const prediccion = await res.json();
+    resultadosMicro = prediccion;
+
+    // 2) Preparar datos completos
+    const datosPersonales = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
+    const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || 'null');
+
+    const datosCompletos = {
+      timestamp: new Date().toISOString(),
+      datos_personales: datosPersonales,
+      resultados_sd3: sd3,
+      resultados_micro: resultadosMicro,
+      imagen_base64: imagenCapturada
+    };
+
+    // 3) Enviar a Google Sheets
     try {
-      const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
-      const payload = {
-        timestamp: new Date().toISOString(),
-        persona,
-        sd3: resultadosSD3,
-        emociones: resultadosMicro
-      };
-      if (GOOGLE_SHEETS_WEBAPP_URL && GOOGLE_SHEETS_WEBAPP_URL.startsWith('https')) {
-        await fetch(GOOGLE_SHEETS_WEBAPP_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-      } else {
-        console.warn("No se ha configurado GOOGLE_SHEETS_WEBAPP_URL o no es válida. No se guardaron datos en Sheets.");
-      }
+      await fetch(GOOGLE_SHEETS_WEBAPP_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(datosCompletos)
+      });
     } catch(err) {
-      console.warn("Error al guardar en Google Sheets:", err);
+      console.warn("Advertencia al guardar en Sheets:", err);
     }
 
-    // Guardar en sessionStorage y redirigir a la página de resultados
+    // 4) Guardar en sessionStorage y mostrar mensaje
     sessionStorage.setItem('resultadosMicro', JSON.stringify(resultadosMicro));
-    // Si no tenés resultadosSD3 en memoria, ya lo guardamos en el paso de SD3
-    if (!resultadosSD3) resultadosSD3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || 'null');
 
-    // Redirigir a resultados.html
-    window.location.href = 'resultados.html';
+    resultadoDiv.innerHTML = `
+      <div class="resultado-box" style="border-color: #4caf50;">
+        <h4>✅ Análisis completado</h4>
+        <p>Tu imagen ha sido procesada y los datos fueron guardados correctamente.</p>
+        <p style="margin-top: 20px; color: #b0a0ff;">
+          <strong>Emoción detectada:</strong> ${prediccion.emocion_principal || 'No disponible'}
+        </p>
+        <p style="margin-top: 15px; font-style: italic; color: #888;">
+          Gracias por participar en esta investigación. La experiencia ha finalizado para vos.
+        </p>
+      </div>
+    `;
 
   } catch (err) {
     console.error(err);
     resultadoDiv.innerHTML = `
       <div class="resultado-box" style="border-color: #ff6384;">
-        <h4>Error en el análisis</h4>
-        <p>No se pudo realizar el análisis. Por favor intentá de nuevo.</p>
-        <p style="font-size: 0.9em; color: #ff6384;">${err.message}</p>
-        <button onclick="location.reload()" class="btn-primary" style="margin-top: 20px;">🔄 Recargar página</button>
+        <h4>❌ Error en el análisis</h4>
+        <p>${err.message}</p>
+        <button onclick="location.reload()" class="btn-primary" style="margin-top: 20px;">
+          🔄 Reintentar
+        </button>
       </div>
     `;
   }
 }
 
-// Helper: dataURL -> Blob
 function dataURLtoBlob(dataurl) {
   const arr = dataurl.split(',');
   const mime = arr[0].match(/:(.*?);/)[1];
   const bstr = atob(arr[1]);
   let n = bstr.length;
   const u8arr = new Uint8Array(n);
-  while(n--){
+  while(n--) {
     u8arr[n] = bstr.charCodeAt(n);
   }
   return new Blob([u8arr], { type: mime });
-}
-
-// ========================================
-// MOSTRAR RESULTADO INTEGRADO (pagina resultados.html lo hará)
-// ========================================
-function mostrarResultadoIntegrado() {
-  // esta función ahora es reemplazada por resultados.html que lee sessionStorage
-  // pero la dejo por compatibilidad
-  window.location.href = 'resultados.html';
 }
