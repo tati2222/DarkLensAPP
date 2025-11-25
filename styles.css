@@ -1,0 +1,439 @@
+/* ========================================
+   VARIABLES Y RESET
+   ======================================== */
+:root {
+    --primary: #667eea;
+    --secondary: #764ba2;
+    --dark-bg: #0f0f1e;
+    --card-bg: #1a1a2e;
+    --text-primary: #e0e0ff;
+    --text-secondary: #b0a0ff;
+    --border: #2a2a3e;
+    --success: #4CAF50;
+    --error: #ff6384;
+    --warning: #ffce56;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, var(--dark-bg) 0%, #1a1a2e 50%, #16213e 100%);
+    color: var(--text-primary);
+    min-height: 100vh;
+    line-height: 1.6;
+}
+
+/* ========================================
+   UTILIDADES
+   ======================================== */
+.hidden {
+    display: none !important;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ========================================
+   HEADER
+   ======================================== */
+.header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding-bottom: 30px;
+    border-bottom: 2px solid var(--border);
+}
+
+.header h1 {
+    font-size: 2.5em;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 10px;
+}
+
+.subtitle {
+    color: var(--text-secondary);
+    font-size: 1.1em;
+}
+
+/* ========================================
+   CONTENT BOXES
+   ======================================== */
+.content-box {
+    background: var(--card-bg);
+    border: 2px solid var(--border);
+    border-radius: 15px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.content-box h2, .content-box h3 {
+    color: var(--primary);
+    margin-bottom: 20px;
+}
+
+.content-box h3 {
+    font-size: 1.3em;
+    margin-top: 30px;
+}
+
+.content-box p, .content-box li {
+    margin-bottom: 15px;
+    color: var(--text-primary);
+}
+
+.content-box ul {
+    margin-left: 25px;
+}
+
+/* ========================================
+   CONSENT BOX
+   ======================================== */
+.consent-box {
+    background: rgba(102, 126, 234, 0.1);
+    border: 2px solid var(--primary);
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.consent-box p {
+    margin-bottom: 12px;
+    font-size: 0.95em;
+}
+
+.consent-box strong {
+    color: var(--primary);
+}
+
+/* ========================================
+   FORMS
+   ======================================== */
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 12px 15px;
+    background: var(--dark-bg);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 1em;
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 30px 0;
+    padding: 20px;
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 10px;
+}
+
+.checkbox-group input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin-top: 3px;
+    cursor: pointer;
+}
+
+.checkbox-group label {
+    flex: 1;
+    cursor: pointer;
+    color: var(--text-primary);
+}
+
+/* ========================================
+   BUTTONS
+   ======================================== */
+.btn-primary, .btn-secondary {
+    padding: 15px 30px;
+    font-size: 1.1em;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-block;
+    text-align: center;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.6);
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-secondary {
+    background: var(--card-bg);
+    color: var(--text-primary);
+    border: 2px solid var(--primary);
+}
+
+.btn-secondary:hover {
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.button-group {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 30px 0;
+}
+
+/* ========================================
+   TEST ITEMS
+   ======================================== */
+.escala-info {
+    background: rgba(102, 126, 234, 0.1);
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+}
+
+.escala {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.escala span {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+}
+
+.test-item {
+    background: rgba(255, 255, 255, 0.02);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+}
+
+.test-item:hover {
+    border-color: var(--primary);
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.test-item p {
+    margin-bottom: 15px;
+    font-size: 1.05em;
+}
+
+.opciones {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.opciones input[type="radio"] {
+    display: none;
+}
+
+.opciones label {
+    flex: 1;
+    min-width: 50px;
+    padding: 12px;
+    text-align: center;
+    background: var(--dark-bg);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+}
+
+.opciones input[type="radio"]:checked + label {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    border-color: var(--primary);
+    color: white;
+    transform: scale(1.05);
+}
+
+.opciones label:hover {
+    border-color: var(--primary);
+    background: rgba(102, 126, 234, 0.1);
+}
+
+/* ========================================
+   RESULTADO BOXES
+   ======================================== */
+.resultado-box {
+    background: var(--card-bg);
+    border: 2px solid var(--primary);
+    border-radius: 15px;
+    padding: 25px;
+    margin: 20px 0;
+    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
+}
+
+.resultado-box h4 {
+    color: var(--primary);
+    font-size: 1.4em;
+    margin-bottom: 15px;
+}
+
+.resultado-box p {
+    margin-bottom: 10px;
+}
+
+/* ========================================
+   CAMERA
+   ======================================== */
+.instrucciones {
+    background: rgba(255, 206, 86, 0.1);
+    border: 2px solid var(--warning);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+}
+
+.instrucciones h3 {
+    color: var(--warning);
+    margin-bottom: 15px;
+}
+
+.camera-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+    background: var(--dark-bg);
+    border-radius: 15px;
+    overflow: hidden;
+    margin: 30px 0;
+}
+
+#video, #canvas {
+    max-width: 100%;
+    max-height: 500px;
+    border-radius: 10px;
+}
+
+/* ========================================
+   LOADING
+   ======================================== */
+.analisis-loading {
+    text-align: center;
+    padding: 40px;
+    font-size: 1.3em;
+    color: var(--primary);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* ========================================
+   FOOTER
+   ======================================== */
+footer {
+    text-align: center;
+    padding: 30px 20px;
+    color: var(--text-secondary);
+    border-top: 2px solid var(--border);
+    margin-top: 60px;
+}
+
+footer p {
+    margin: 5px 0;
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+@media (max-width: 768px) {
+    .header h1 {
+        font-size: 2em;
+    }
+    
+    .content-box {
+        padding: 20px;
+    }
+    
+    .escala {
+        grid-template-columns: 1fr;
+    }
+    
+    .opciones {
+        flex-direction: row;
+    }
+    
+    .opciones label {
+        min-width: 40px;
+        padding: 10px 5px;
+        font-size: 0.9em;
+    }
+    
+    .button-group {
+        flex-direction: column;
+    }
+    
+    .btn-primary, .btn-secondary {
+        width: 100%;
+    }
+}
+
+/* ========================================
+   CHART CONTAINER
+   ======================================== */
+#grafico-container {
+    margin-top: 30px;
+}
+
+#grafico-sd3 {
+    max-width: 500px;
+    margin: 0 auto;
+    display: block;
+}
