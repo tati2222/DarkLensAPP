@@ -1,7 +1,7 @@
 // ========================================
 // CONFIGURACIÓN
 // ========================================
-const PASSWORD_INVESTIGADOR = "DarkLness2024"; // ⚠️ Cambiá esta contraseña
+const PASSWORD_INVESTIGADOR = "investigador2025"; // ⚠️ Cambiá esta contraseña
 const GOOGLE_SHEETS_READ_URL = "https://script.google.com/macros/s/AKfycbwm8kIl1h0Avas55eNI0dbiKj-MPCbuXyQp7ndsQYiDdmcsmDGYgyirgt2sorvOFLEZgA/exec";
 
 let participantesData = [];
