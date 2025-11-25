@@ -1,13 +1,13 @@
 // ========================================
 // CONFIG — CONFIGURÁ TUS ENDPOINTS AQUÍ
 // ========================================
-const RENDER_PREDICT_URL = "https://tu-app.onrender.com/predict"; 
-const GOOGLE_SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/TU_DEPLOYMENT_ID/exec";
+const RENDER_PREDICT_URL = "https://darklnesapp-api.onrender.com/run/predict"; 
+const GOOGLE_SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwm8kIl1h0Avas55eNI0dbiKj-MPCbuXyQp7ndsQYiDdmcsmDGYgyirgt2sorvOFLEZgA/exec";
 
 // Credenciales investigador (⚠️ CAMBIAR EN PRODUCCIÓN)
 const VALID_CREDENTIALS = {
   username: "investigador",
-  password: "darklens2024"
+  password: "darklens2025"
 };
 
 // ========================================
