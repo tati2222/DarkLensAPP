@@ -1140,16 +1140,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Ejecutar solo si estamos realmente en la página correcta
-const url = location.href;
-
-if (url.includes("participante.html")) {
+ // Detectar automáticamente en qué página estamos sin depender del nombre del archivo
+if (document.getElementById("btn-subir-imagen")) {
+    console.log("📸 Inicializando captura y subida…");
     configurarCamaraYSubida();
 }
 
-if (url.includes("resultados.html")) {
+if (document.getElementById("resultados-sd3-detalle")) {
+    console.log("📊 Cargando página de resultados…");
     cargarResultadosPageIfAny();
 }
+
 
   const btnLoginInv = document.getElementById('btn-login-investigador');
   const inputPasswordInv = document.getElementById('password-investigador');
