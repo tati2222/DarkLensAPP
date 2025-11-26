@@ -1140,8 +1140,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  configurarCamaraYSubida();
-  cargarResultadosPageIfAny();
+  // Ejecutar solo si estamos realmente en la página correcta
+const url = location.href;
+
+if (url.includes("participante.html")) {
+    configurarCamaraYSubida();
+}
+
+if (url.includes("resultados.html")) {
+    cargarResultadosPageIfAny();
+}
 
   const btnLoginInv = document.getElementById('btn-login-investigador');
   const inputPasswordInv = document.getElementById('password-investigador');
