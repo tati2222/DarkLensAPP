@@ -1141,10 +1141,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
  // Detectar automáticamente en qué página estamos sin depender del nombre del archivo
-if (document.getElementById("btn-subir-imagen")) {
-    console.log("📸 Inicializando captura y subida…");
-    configurarCamaraYSubida();
-}
+document.addEventListener("click", () => {
+    const subir = document.getElementById("btn-subir-imagen");
+    if (subir && !window._capturaInicializada) {
+        console.log("📸 Inicializando captura y subida…");
+        configurarCamaraYSubida();
+        window._capturaInicializada = true;
+    }
+});
 
 if (document.getElementById("resultados-sd3-detalle")) {
     console.log("📊 Cargando página de resultados…");
