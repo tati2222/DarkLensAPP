@@ -1,16 +1,11 @@
-/* app.js - UNIFICADO
-   Mantener diseño intacto. Endpoints provistos por la usuaria.
-*/
-
+/* app.js - UNIFICADO CORREGIDO */
 /* ========================================
    CONFIG — ENDPOINTS & CONSTANTES
    ======================================== */
 const RENDER_PREDICT_URL = "https://darklnesapp-api.onrender.com/run/predict";
 const GOOGLE_SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwm8kIl1h0Avas55eNI0dbiKj-MPCbuXyQp7ndsQYiDdmcsmDGYgyirgt2sorvOFLEZgA/exec";
-// Para lectura en panel investigador (usa action=getAll)
 const GOOGLE_SHEETS_READ_URL = GOOGLE_SHEETS_WEBAPP_URL;
-
-const PASSWORD_INVESTIGADOR = "investigador2025"; // ⚠️ cambiá si querés
+const PASSWORD_INVESTIGADOR = "investigador2025";
 
 /* ========================================
    VARIABLES GLOBALES
@@ -149,7 +144,6 @@ function generarItemsTest() {
    TRACKING DE TIEMPOS (IntersectionObserver + change)
    ======================================== */
 function configurarTrackingTiempos() {
-  // Reinicio estructuras
   tiemposRespuesta = {};
   tiempoInicioItem = {};
 
@@ -180,7 +174,7 @@ function configurarTrackingTiempos() {
 }
 
 function registrarTiempoRespuesta(itemNum) {
-  if (tiemposRespuesta[itemNum]) return; // ya registrado
+  if (tiemposRespuesta[itemNum]) return;
 
   const tiempoInicio = tiempoInicioItem[itemNum];
   if (tiempoInicio) {
@@ -193,7 +187,6 @@ function registrarTiempoRespuesta(itemNum) {
       timestamp_respuesta: tiempoFin
     };
   } else {
-    // si no se registró visibilidad, calculamos desde inicio del test
     const tiempoDesdeInicio = testInicioTimestamp ? (Date.now() - testInicioTimestamp) : 0;
     tiemposRespuesta[itemNum] = {
       tiempo_ms: tiempoDesdeInicio,
@@ -247,7 +240,6 @@ function calcularSD3() {
 
   sessionStorage.setItem('resultadosSD3', JSON.stringify(resultadosSD3));
 
-  // Mostrar resultados inmediatos en la página si existe el contenedor
   const resultadoSD3 = document.getElementById('resultado-sd3');
   if (resultadoSD3) {
     resultadoSD3.innerHTML = `
@@ -282,8 +274,7 @@ function calcularSD3() {
 }
 
 /* ========================================
-   GRAFICOS SD3 (canvas id="grafico-sd3")
-   - Usa Chart.js (debe estar incluido en HTML)
+   GRAFICOS SD3
    ======================================== */
 function crearGraficoSD3(mach, narc, psych) {
   const canvas = document.getElementById('grafico-sd3');
@@ -309,7 +300,7 @@ function crearGraficoSD3(mach, narc, psych) {
 }
 
 /* ========================================
-   GENERAR NARRATIVA (texto interpretativo)
+   GENERAR NARRATIVA
    ======================================== */
 function generarNarrativa(mach,narc,psych) {
   const interpretar = (valor, rasgo) => {
@@ -330,7 +321,6 @@ function generarNarrativa(mach,narc,psych) {
 
 /* ========================================
    CÁMARA Y SUBIDA DE IMAGEN
-   - busca elementos por id y sólo se activa si están presentes
    ======================================== */
 function configurarCamaraYSubida() {
   const video = document.getElementById('video');
@@ -426,7 +416,6 @@ async function analizarMicroexpresiones() {
   try {
     if (!imagenCapturada || imagenCapturada.length < 100) throw new Error("No hay imagen válida para analizar.");
 
-    // 1) Enviar a Render
     const blob = dataURLtoBlob(imagenCapturada);
     const formData = new FormData();
     formData.append('img', blob, 'foto.jpg');
@@ -451,7 +440,6 @@ async function analizarMicroexpresiones() {
 
     sessionStorage.setItem('resultadosMicro', JSON.stringify(resultadosMicro));
 
-    // 2) Guardar en Google Sheets (no-cors)
     const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
     const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
 
@@ -479,7 +467,6 @@ async function analizarMicroexpresiones() {
       console.warn('⚠️ Error enviando a Google Sheets:', sheetErr.message || sheetErr);
     }
 
-    // 3) Mostrar resultados y botón ver análisis completo
     mostrarResultadosMicroLocal(resultadosMicro);
   } catch (err) {
     console.error('❌ Error en análisis:', err);
@@ -545,7 +532,6 @@ function mostrarResultadosMicroLocal(datos) {
 
 /* ========================================
    GUARDAR DATOS Y REDIRIGIR A RESULTADOS
-   - valida sessionStorage y redirige a resultados.html
    ======================================== */
 function guardarYRedirigir() {
   const datosPersonales = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
@@ -557,19 +543,15 @@ function guardarYRedirigir() {
     return;
   }
 
-  // redirige a resultados (si la app es single-page, se puede mostrar la sección)
   if (location.pathname.endsWith('resultados.html') || location.href.includes('resultados.html')) {
-    // ya estamos en resultados: recargar para que lea sessionStorage
     window.location.reload();
   } else {
-    // cambiar página
     window.location.href = 'resultados.html';
   }
 }
 
 /* ========================================
    INVESTIGADOR: cargar participantes desde Google Sheets
-   - si falla, usa datos de ejemplo
    ======================================== */
 let participantesData = [];
 let participanteSeleccionado = null;
@@ -611,20 +593,11 @@ function generarDatosEjemplo() {
         facs: [{ codigo:'AU6', nombre:'Elevación mejillas', descripcion:'Indica sonrisa genuina' }, { codigo:'AU12', nombre:'Comisura labial', descripcion:'Sonrisa' }]
       },
       imagen: null
-    },
-    {
-      id: 2,
-      timestamp: new Date(Date.now() - 86400000).toISOString(),
-      persona: { nombre: 'Participante Demo 2', edad: 35, genero: 'femenino', pais: 'Argentina' },
-      sd3: { mach:2.1, narc:3.5, psych:1.8, respuestas:{}, tiempos_respuesta:{}, tiempo_total_ms:380000,
-            estadisticas_tiempo:{ promedio_segundos:'6.80', mediana_segundos:'6.00', minimo_segundos:'1.50', maximo_segundos:'15.20', desviacion_estandar_segundos:'2.90'}},
-      microexpresiones: { emociones:{ 'Neutral':0.50, 'Felicidad':0.25, 'Tristeza':0.15, 'Miedo':0.10}, emocion_dominante:'Neutral', confianza:0.78, facs:[{codigo:'AU1', nombre:'Elevación ceja', descripcion:'Preocupación leve'}] },
-      imagen: null
     }
   ];
 }
 
-/* Poblar lista en panel investigador (lista simple con botones) */
+/* Poblar lista en panel investigador */
 function poblarListaInvestigador() {
   const listaDiv = document.getElementById('lista-participantes');
   if (!listaDiv) return;
@@ -654,7 +627,6 @@ function poblarListaInvestigador() {
     listaDiv.appendChild(item);
   });
 
-  // listeners para botones ver/export
   document.querySelectorAll('#lista-participantes .btn-ver').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const idx = parseInt(e.currentTarget.getAttribute('data-index'));
@@ -673,13 +645,11 @@ function mostrarParticipanteEnPanel(idx) {
   participanteSeleccionado = participantesData[idx];
   if (!participanteSeleccionado) return;
 
-  // mostrar sección resultados (si existe)
   const seccionResultados = document.getElementById('seccion-resultados');
   const seccionInvestigador = document.getElementById('seccion-investigador');
   if (seccionInvestigador) seccionInvestigador.classList.add('hidden');
   if (seccionResultados) seccionResultados.classList.remove('hidden');
 
-  // rellenar info básica y componentes (usa mismas funciones de resultados)
   mostrarInfoBasicaInvestigador(participanteSeleccionado);
   mostrarResultadosSD3Investigador(participanteSeleccionado.sd3);
   mostrarTiemposReaccionInvestigador(participanteSeleccionado.sd3);
@@ -703,9 +673,7 @@ function exportarParticipanteJson(idx) {
   URL.revokeObjectURL(url);
 }
 
-/* FUNCIONES para panel investigador: mostrar secciones (similares a tu resultados.js)
-   Nota: se llaman desde mostrarParticipanteEnPanel. Mantuve nombres separados para evitar colisiones.
-*/
+/* FUNCIONES para panel investigador */
 function mostrarInfoBasicaInvestigador(p) {
   const div = document.getElementById('info-participante');
   if (!div) return;
@@ -757,11 +725,9 @@ function mostrarResultadosSD3Investigador(sd3) {
     </div>
   `;
 
-  // Radar chart (si existe el canvas)
   setTimeout(() => {
     const canvas = document.getElementById('grafico-sd3-resultados');
     if (!canvas) return;
-    // destruir si existe
     try { const old = Chart.getChart(canvas); if (old) old.destroy(); } catch(e){}
     new Chart(canvas, {
       type: 'radar',
@@ -917,7 +883,6 @@ function mostrarImagenInvestigador(p) {
 
 /* ========================================
    PAGINA DE RESULTADOS (participante -> resultados.html)
-   - función cargarResultados lee sessionStorage y renderiza
    ======================================== */
 function cargarResultadosPageIfAny() {
   const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
@@ -925,16 +890,14 @@ function cargarResultadosPageIfAny() {
   const micro = JSON.parse(sessionStorage.getItem('resultadosMicro') || '{}');
 
   const infoCont = document.getElementById('info-participante');
-  if (!infoCont) return; // no estamos en resultados.html
+  if (!infoCont) return;
 
-  // validación
   if (!persona.nombre || !sd3.mach) {
     alert('No se encontraron resultados. Por favor completá el test primero.');
     window.location.href = 'participante.html';
     return;
   }
 
-  // llamar funciones de render (reuso de funciones ya definidas)
   mostrarInfoParticipanteEnResultados(persona);
   mostrarResultadosSD3EnResultados(sd3);
   mostrarTiemposEnResultados(sd3);
@@ -943,7 +906,7 @@ function cargarResultadosPageIfAny() {
   mostrarAnalisisFinalEnResultados(sd3, micro);
 }
 
-/* funciones usadas por resultados.html (nombres distintos a investigador para evitar colisiones) */
+/* funciones usadas por resultados.html */
 function mostrarInfoParticipanteEnResultados(persona) {
   const div = document.getElementById('info-participante');
   if (!div) return;
@@ -991,7 +954,6 @@ function mostrarResultadosSD3EnResultados(sd3) {
     </div>
   `;
 
-  // radar chart
   setTimeout(() => {
     const canvas = document.getElementById('grafico-sd3-resultados');
     if (!canvas) return;
@@ -1131,7 +1093,6 @@ function mostrarAnalisisFinalEnResultados(sd3, micro) {
    INICIALIZACIÓN: agregar listeners generales al DOM
    ======================================== */
 document.addEventListener('DOMContentLoaded', () => {
-  // Si estamos en la página participante (formulario de datos)
   const formDatos = document.getElementById('form-datos-basicos');
   if (formDatos) {
     const seccionBienvenida = document.getElementById('seccion-bienvenida');
@@ -1150,7 +1111,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const pais = formDatos.querySelector('input[name="pais"]').value.trim();
       if (!nombre || !edad || !genero || !pais) { alert("Completá todos los datos personales requeridos."); return; }
       sessionStorage.setItem('datos_personales', JSON.stringify({ nombre, edad, genero, pais }));
-      // generar items y configurar tracking
       testInicioTimestamp = Date.now();
       generarItemsTest();
       configurarTrackingTiempos();
@@ -1161,13 +1121,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Si existe el formulario SD3 (por seguridad, por si HTML separado)
   const formSD3 = document.getElementById('form-sd3');
   if (formSD3) {
     formSD3.addEventListener('submit', function(e){ e.preventDefault(); calcularSD3(); });
   }
 
-  // botón para pasar a micro (participante)
   const btnContinuar = document.getElementById('btn-continuar-micro');
   if (btnContinuar) {
     btnContinuar.addEventListener('click', function() {
@@ -1179,68 +1137,51 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // configurar cámara y controles (si existen)
   configurarCamaraYSubida();
-
-  // En la página resultados: cargar desde sessionStorage
   cargarResultadosPageIfAny();
 
-/* INVESTIGADOR: iniciar login y panel si existen elementos */
-const btnLoginInv = document.getElementById('btn-login-investigador');
-const inputPasswordInv = document.getElementById('password-investigador');
+  const btnLoginInv = document.getElementById('btn-login-investigador');
+  const inputPasswordInv = document.getElementById('password-investigador');
+  if (btnLoginInv && inputPasswordInv) {
+    btnLoginInv.addEventListener('click', () => {
+      const pw = inputPasswordInv.value.trim();
+      if (pw === PASSWORD_INVESTIGADOR) {
+        document.getElementById('seccion-login')?.classList.add('hidden');
+        document.getElementById('seccion-investigador')?.classList.remove('hidden');
+        cargarDatosParticipantes();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        alert('❌ Contraseña incorrecta');
+        inputPasswordInv.value = '';
+      }
+    });
+  }
 
-if (btnLoginInv && inputPasswordInv) {
-  btnLoginInv.addEventListener('click', () => {
-    const pw = inputPasswordInv.value.trim();
-
-    if (pw === PASSWORD_INVESTIGADOR) {
-      // Mostrar panel del investigador
+  const btnVolverInicio2 = document.getElementById('btn-volver-inicio-2');
+  if (btnVolverInicio2) {
+    btnVolverInicio2.addEventListener('click', () => {
       document.getElementById('seccion-login')?.classList.add('hidden');
-      document.getElementById('seccion-investigador')?.classList.remove('hidden');
-
-      // Cargar lista de participantes
-      cargarDatosParticipantes();
-
+      document.getElementById('pagina-inicio')?.classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
 
-    } else {
-      alert('❌ Contraseña incorrecta');
-      inputPasswordInv.value = '';
-    }
-  });
-}
+  const btnVolverPanel = document.getElementById('btn-volver-panel');
+  if (btnVolverPanel) {
+    btnVolverPanel.addEventListener('click', () => {
+      document.getElementById('seccion-resultados')?.classList.add('hidden');
+      document.getElementById('seccion-investigador')?.classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
 
-// volver al inicio desde login
-const btnVolverInicio2 = document.getElementById('btn-volver-inicio-2');
-if (btnVolverInicio2) {
-  btnVolverInicio2.addEventListener('click', () => {
-    document.getElementById('seccion-login')?.classList.add('hidden');
-    document.getElementById('pagina-inicio')?.classList.remove('hidden');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
-}
-
-// botones para salir/volver en investigador
-const btnVolverPanel = document.getElementById('btn-volver-panel');
-if (btnVolverPanel) {
-  btnVolverPanel.addEventListener('click', () => {
-    document.getElementById('seccion-resultados')?.classList.add('hidden');
-    document.getElementById('seccion-investigador')?.classList.remove('hidden');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
-}
-
-const btnVolverLogin = document.getElementById('btn-volver-login');
-if (btnVolverLogin) {
-  btnVolverLogin.addEventListener('click', () => {
-    // cerrar sesión simple
-    document.getElementById('seccion-investigador')?.classList.add('hidden');
-    document.getElementById('seccion-login')?.classList.remove('hidden');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
-}
-
-}); 
-
-
+  const btnVolverLogin = document.getElementById('btn-volver-login');
+  if (btnVolverLogin) {
+    btnVolverLogin.addEventListener('click', () => {
+      document.getElementById('seccion-investigador')?.classList.add('hidden');
+      document.getElementById('seccion-login')?.classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+});
 
