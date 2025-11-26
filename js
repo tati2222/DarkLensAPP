@@ -1185,65 +1185,60 @@ document.addEventListener('DOMContentLoaded', () => {
   // En la página resultados: cargar desde sessionStorage
   cargarResultadosPageIfAny();
 
-  /* INVESTIGADOR: iniciar login y panel si existen elementos */
- document.addEventListener("DOMContentLoaded", () => {
-  const btnLoginInv = document.getElementById('btn-login-investigador');
-  const inputPasswordInv = document.getElementById('password-investigador');
+/* INVESTIGADOR: iniciar login y panel si existen elementos */
+const btnLoginInv = document.getElementById('btn-login-investigador');
+const inputPasswordInv = document.getElementById('password-investigador');
 
-  if (btnLoginInv && inputPasswordInv) {
-    btnLoginInv.addEventListener('click', () => {
-      const pw = inputPasswordInv.value.trim();
+if (btnLoginInv && inputPasswordInv) {
+  btnLoginInv.addEventListener('click', () => {
+    const pw = inputPasswordInv.value.trim();
 
-      if (pw === PASSWORD_INVESTIGADOR) {
-        // Mostrar panel del investigador
-        document.getElementById('seccion-login')?.classList.add('hidden');
-        document.getElementById('seccion-investigador')?.classList.remove('hidden');
-
-        // Cargar lista de participantes
-        cargarDatosParticipantes();
-
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-
-      } else {
-        alert('❌ Contraseña incorrecta');
-        inputPasswordInv.value = '';
-      }
-    });
-  }
-});
-
-
-    // volver al inicio
-    document.getElementById('btn-volver-inicio-2')?.addEventListener('click', () => {
+    if (pw === PASSWORD_INVESTIGADOR) {
+      // Mostrar panel del investigador
       document.getElementById('seccion-login')?.classList.add('hidden');
-      document.getElementById('seccion-bienvenida')?.classList.remove('hidden');
-      window.scrollTo({ top:0, behavior:'smooth' });
-    });
-  }
+      document.getElementById('seccion-investigador')?.classList.remove('hidden');
 
-  // botones para salir/volver en investigador
-  document.getElementById('btn-volver-panel')?.addEventListener('click', () => {
+      // Cargar lista de participantes
+      cargarDatosParticipantes();
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    } else {
+      alert('❌ Contraseña incorrecta');
+      inputPasswordInv.value = '';
+    }
+  });
+}
+
+// volver al inicio desde login
+const btnVolverInicio2 = document.getElementById('btn-volver-inicio-2');
+if (btnVolverInicio2) {
+  btnVolverInicio2.addEventListener('click', () => {
+    document.getElementById('seccion-login')?.classList.add('hidden');
+    document.getElementById('pagina-inicio')?.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+}
+
+// botones para salir/volver en investigador
+const btnVolverPanel = document.getElementById('btn-volver-panel');
+if (btnVolverPanel) {
+  btnVolverPanel.addEventListener('click', () => {
     document.getElementById('seccion-resultados')?.classList.add('hidden');
     document.getElementById('seccion-investigador')?.classList.remove('hidden');
-    window.scrollTo({ top:0, behavior:'smooth' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   });
-  document.getElementById('btn-volver-login')?.addEventListener('click', () => {
+}
+
+const btnVolverLogin = document.getElementById('btn-volver-login');
+if (btnVolverLogin) {
+  btnVolverLogin.addEventListener('click', () => {
     // cerrar sesión simple
     document.getElementById('seccion-investigador')?.classList.add('hidden');
     document.getElementById('seccion-login')?.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   });
-
-  // btn cerrar sesión panel investigador (si existe)
-  document.getElementById('btn-volver-panel')?.addEventListener('click', () => {
-    document.getElementById('seccion-resultados')?.classList.add('hidden');
-    document.getElementById('seccion-investigador')?.classList.remove('hidden');
-  });
-
-  // btn guardar y redirigir (desde mostrarResultados)
-  // — ya está inline en el HTML generado, llama a guardarYRedirigir()
-
-  // Si hay un botón de "Analizar" en participante lo dejamos ya conectado por configurarCamaraYSubida
-});
+}
 
 /* ========================================
    Fin de archivo app.js
