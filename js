@@ -1186,21 +1186,32 @@ document.addEventListener('DOMContentLoaded', () => {
   cargarResultadosPageIfAny();
 
   /* INVESTIGADOR: iniciar login y panel si existen elementos */
+ document.addEventListener("DOMContentLoaded", () => {
   const btnLoginInv = document.getElementById('btn-login-investigador');
   const inputPasswordInv = document.getElementById('password-investigador');
+
   if (btnLoginInv && inputPasswordInv) {
     btnLoginInv.addEventListener('click', () => {
-      const pw = inputPasswordInv.value || '';
+      const pw = inputPasswordInv.value.trim();
+
       if (pw === PASSWORD_INVESTIGADOR) {
-        // mostrar panel investigador
+        // Mostrar panel del investigador
         document.getElementById('seccion-login')?.classList.add('hidden');
         document.getElementById('seccion-investigador')?.classList.remove('hidden');
+
+        // Cargar lista de participantes
         cargarDatosParticipantes();
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
       } else {
         alert('❌ Contraseña incorrecta');
         inputPasswordInv.value = '';
       }
     });
+  }
+});
+
 
     // volver al inicio
     document.getElementById('btn-volver-inicio-2')?.addEventListener('click', () => {
