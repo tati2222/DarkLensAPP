@@ -892,11 +892,14 @@ function cargarResultadosPageIfAny() {
   const infoCont = document.getElementById('info-participante');
   if (!infoCont) return;
 
-  if (!persona.nombre || !sd3.mach) {
+ // Solo redirigir si ESTAMOS en resultados.html
+if ((location.pathname.endsWith('resultados.html') || location.href.includes('resultados.html'))
+    && (!persona.nombre || !sd3.mach)) {
     alert('No se encontraron resultados. Por favor completá el test primero.');
     window.location.href = 'participante.html';
     return;
-  }
+}
+
 
   mostrarInfoParticipanteEnResultados(persona);
   mostrarResultadosSD3EnResultados(sd3);
