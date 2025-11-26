@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DARKLENS - Participante</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* ========================================
+       MISMOS ESTILOS QUE INDEX.HTML
+       ======================================== */
+    body {
+      margin: 0; 
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e0e0ff;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    h1 {
+      font-size: 3em;
+      margin-bottom: 0.1em;
+      background: linear-gradient(135deg, #c080ff 0%, #7f00ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 800;
+      text-align: center;
+    }
+    
+    h2 {
+      font-weight: 400;
+      color: #c080ff;
+      margin-top: 0;
+      margin-bottom: 1em;
+      text-align: center;
+      font-size: 1.5em;
+    }
+
+    h3 {
+      color: #c080ff;
+      font-size: 1.5em;
+      margin-top: 30px;
+      margin-bottom: 15px;
+    }
+    
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: rgba(37, 37, 64, 0.9);
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 8px 32px rgba(127, 0, 255, 0.3);
+      border: 2px solid rgba(192, 128, 255, 0.3);
+    }
+    
+    p {
+      font-size: 1.05em;
+      line-height: 1.8;
+      margin-bottom: 20px;
+      color: #d0d0ff;
+    }
+
+    .section {
+      background: rgba(31, 43, 71, 0.5);
+      padding: 25px;
+      border-radius: 12px;
+      margin: 25px 0;
+      border: 1px solid rgba(192, 128, 255, 0.2);
+    }
+
+    /* FORMULARIOS */
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #c080ff;
+      font-size: 1.05em;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid rgba(192, 128, 255, 0.3);
+      border-radius: 8px;
+      background: rgba(26, 26, 46, 0.8);
+      color: #e0e0ff;
+      font-size: 1em;
+      transition: all 0.3s;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #7f00ff;
+      box-shadow: 0 0 15px rgba(127, 0, 255, 0.3);
+    }
+
+    select {
+      cursor: pointer;
+    }
+
+    /* CONSENT BOX */
+    .consent-box {
+      background: rgba(127, 0, 255, 0.1);
+      border: 2px solid rgba(192, 128, 255, 0.3);
+      border-radius: 12px;
+      padding: 25px;
+      margin: 25px 0;
+    }
+
+    .consent-box h3 {
+      color: #c080ff;
+      margin-top: 0;
+      text-align: center;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-top: 20px;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      min-width: 20px;
+      min-height: 20px;
+      cursor: pointer;
+      accent-color: #7f00ff;
+    }
+
+    .checkbox-group label {
+      cursor: pointer;
+      margin: 0;
+    }
+
+    /* BOTONES */
+    .btn-primary {
+      padding: 15px 40px;
+      font-size: 1.1em;
+      border-radius: 30px;
+      cursor: pointer;
+      font-weight: 600;
+      border: none;
+      color: white;
+      background: linear-gradient(135deg, #7f00ff 0%, #6c63ff 100%);
+      box-shadow: 0 4px 15px rgba(127, 0, 255, 0.4);
+      transition: all 0.3s;
+      display: block;
+      width: 100%;
+      margin-top: 20px;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #9000ff 0%, #7c73ff 100%);
+      box-shadow: 0 6px 20px rgba(127, 0, 255, 0.6);
+      transform: translateY(-3px);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-secondary {
+      padding: 12px 30px;
+      font-size: 1em;
+      border-radius: 30px;
+      cursor: pointer;
+      font-weight: 600;
+      border: 2px solid rgba(192, 128, 255, 0.4);
+      color: #e0e0ff;
+      background: rgba(31, 43, 71, 0.6);
+      transition: all 0.3s;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(127, 0, 255, 0.2);
+      border-color: #7f00ff;
+      transform: translateY(-2px);
+    }
+
+    /* HIDDEN */
+    .hidden {
+      display: none !important;
+    }
+
+    /* ESCALA INFO */
+    .escala-info {
+      background: rgba(102, 126, 234, 0.1);
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 25px;
+      border: 1px solid rgba(192, 128, 255, 0.2);
+    }
+
+    .escala {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .escala span {
+      text-align: center;
+      font-size: 0.9em;
+      color: #b0a0ff;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+    }
+
+    /* TEST ITEMS */
+    .test-item {
+      background: rgba(31, 43, 71, 0.5);
+      padding: 25px;
+      margin: 20px 0;
+      border-radius: 12px;
+      border: 1px solid rgba(192, 128, 255, 0.2);
+      transition: all 0.3s;
+    }
+
+    .test-item:hover {
+      background: rgba(37, 37, 64, 0.7);
+      border-color: rgba(192, 128, 255, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .test-item p {
+      font-size: 1.1em;
+      margin-bottom: 15px;
+    }
+
+    .test-item strong {
+      color: #c080ff;
+      margin-right: 8px;
+    }
+
+    /* OPCIONES */
+    .opciones {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 15px;
+    }
+
+    .opciones input[type="radio"] {
+      display: none;
+    }
+
+    .opciones label {
+      padding: 12px 24px;
+      border: 2px solid rgba(192, 128, 255, 0.6);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: rgba(37, 37, 64, 0.9);
+      color: #e0e0ff;
+      min-width: 55px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 1.1em;
+    }
+
+    .opciones input[type="radio"]:checked + label {
+      background: linear-gradient(135deg, #7f00ff 0%, #6c63ff 100%);
+      color: #ffffff;
+      transform: scale(1.1);
+      border-color: #ffffff;
+      box-shadow: 0 0 20px rgba(127, 0, 255, 0.6);
+    }
+
+    .opciones label:hover {
+      background: rgba(127, 0, 255, 0.4);
+      border-color: #c080ff;
+      transform: translateY(-2px);
+    }
+
+    /* INSTRUCCIONES */
+    .instrucciones {
+      background: rgba(102, 126, 234, 0.1);
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(192, 128, 255, 0.2);
+    }
+
+    .instrucciones ul {
+      margin-left: 25px;
+      margin-top: 10px;
+    }
+
+    .instrucciones li {
+      margin-bottom: 8px;
+      color: #d0d0ff;
+    }
+
+    /* CUADRADO PARA IMAGEN */
+    .camera-container {
+      background: rgba(31, 43, 71, 0.5);
+      border: 3px dashed rgba(192, 128, 255, 0.5);
+      border-radius: 15px;
+      padding: 40px;
+      text-align: center;
+      margin: 30px 0;
+      min-height: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .camera-container.has-image {
+      border-style: solid;
+      border-color: #7f00ff;
+    }
+
+    #video, #canvas {
+      max-width: 100%;
+      max-height: 400px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(127, 0, 255, 0.3);
+      border: 2px solid rgba(192, 128, 255, 0.3);
+    }
+
+    #camera-placeholder {
+      padding: 60px 20px;
+    }
+
+    #camera-placeholder p {
+      font-size: 1.2em;
+      color: #b0a0ff;
+      margin: 10px 0;
+    }
+
+    /* BUTTON GROUP */
+    .button-group {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+
+    .button-group button {
+      flex: 1;
+      min-width: 180px;
+    }
+
+    /* RESULTADO BOX */
+    .resultado-box {
+      background: rgba(31, 43, 71, 0.5);
+      border: 2px solid #7f00ff;
+      padding: 25px;
+      border-radius: 12px;
+      margin-top: 20px;
+    }
+
+    .resultado-box h4 {
+      color: #c080ff;
+      margin-bottom: 15px;
+      font-size: 1.5em;
+    }
+
+    .analisis-loading {
+      text-align: center;
+      padding: 40px;
+      font-size: 1.2em;
+      color: #c080ff;
+    }
+
+    @media (max-width: 768px) {
+      h1 { font-size: 2.5em; }
+      .container { padding: 20px; }
+      .opciones label { padding: 10px 18px; min-width: 45px; }
+      .button-group { flex-direction: column; }
+      .button-group button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>DARKLENS</h1>
+    <h2>Test SD3 - Triada Oscura de Personalidad</h2>
+
+    <!-- ============================================
+         SECCIÓN 1: BIENVENIDA Y DATOS PERSONALES
+         ============================================ -->
+    <div id="seccion-bienvenida">
+      <h3>Bienvenido/a al Estudio</h3>
+      <p style="text-align: center;">Antes de comenzar, necesitamos algunos datos básicos y tu consentimiento informado.</p>
+      
+      <form id="form-datos-basicos">
+        <div class="section">
+          <div class="form-group">
+            <label for="nombre">Nombre (opcional):</label>
+            <input type="text" id="nombre" name="nombre" placeholder="Puede ser un seudónimo">
+          </div>
+          
+          <div class="form-group">
+            <label for="edad">Edad:</label>
+            <input type="number" id="edad" name="edad" min="18" max="100" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="genero">Género:</label>
+            <select id="genero" name="genero" required>
+              <option value="">Seleccionar</option>
+              <option value="masculino">Masculino</option>
+              <option value="femenino">Femenino</option>
+              <option value="otro">Otro</option>
+              <option value="prefiero-no-decir">Prefiero no decir</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="pais">País de residencia:</label>
+            <input type="text" id="pais" name="pais" required>
+          </div>
+        </div>
+
+        <div class="consent-box">
+          <h3>Consentimiento Informado</h3>
+          <p><strong>Declaro que:</strong></p>
+          <p>✓ Participo voluntariamente en este estudio de investigación</p>
+          <p>✓ Comprendo que mis datos serán tratados de forma anónima y confidencial</p>
+          <p>✓ Acepto que mi imagen facial sea analizada por el sistema de IA</p>
+          <p>✓ Entiendo que los resultados tienen fines académicos y no constituyen diagnóstico psicológico</p>
+          <p>✓ Puedo retirarme del estudio en cualquier momento sin penalización</p>
+          
+          <div class="checkbox-group">
+            <input type="checkbox" id="consentimiento" name="consentimiento" required>
+            <label for="consentimiento">Acepto los términos del consentimiento informado y doy mi autorización para participar en el estudio</label>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary">Comenzar Test SD3</button>
+      </form>
+    </div>
+
+    <!-- ============================================
+         SECCIÓN 2: TEST SD3
+         ============================================ -->
+    <div id="seccion-test" class="hidden">
+      <h3>Test SD3 - Triada Oscura</h3>
+      
+      <div class="escala-info">
+        <p><strong>Instrucciones:</strong> Lee cada afirmación y selecciona qué tan en desacuerdo o de acuerdo estás usando la escala del 1 al 5:</p>
+        <div class="escala">
+          <span>1 - Totalmente en desacuerdo</span>
+          <span>2 - En desacuerdo</span>
+          <span>3 - Neutral</span>
+          <span>4 - De acuerdo</span>
+          <span>5 - Totalmente de acuerdo</span>
+        </div>
+      </div>
+
+      <form id="form-sd3">
+        <!-- Los ítems del test se generan aquí con JavaScript -->
+      </form>
+
+      <div id="resultado-sd3" class="hidden"></div>
+      
+      <div id="grafico-container" class="hidden" style="max-width: 500px; margin: 30px auto;">
+        <canvas id="grafico-sd3"></canvas>
+      </div>
+      
+      <div id="narrativa-sd3" class="hidden"></div>
+
+      <button id="btn-continuar-micro" class="btn-primary hidden">Continuar al Análisis Facial</button>
+    </div>
+
+    <!-- ============================================
+         SECCIÓN 3: MICROEXPRESIONES
+         ============================================ -->
+    <div id="seccion-micro" class="hidden">
+      <h3>Análisis de Microexpresiones Faciales</h3>
+      
+      <div class="instrucciones">
+        <h3 style="margin-top: 0;">📸 Instrucciones para captura óptima</h3>
+        <ul>
+          <li>Buenas condiciones de iluminación (evitar sombras en el rostro)</li>
+          <li>Rostro frontal, mirando directamente a la cámara</li>
+          <li>Expresión neutra (sin sonreír exageradamente)</li>
+          <li>Sin accesorios que oculten el rostro (lentes oscuros, gorras)</li>
+          <li>Fondo simple y sin distracciones</li>
+        </ul>
+      </div>
+
+      <div class="camera-container" id="camera-container">
+        <video id="video" class="hidden" autoplay playsinline></video>
+        <canvas id="canvas" class="hidden"></canvas>
+        
+        <div id="camera-placeholder">
+          <p style="font-size: 3em; margin: 20px 0;">📷</p>
+          <p><strong>Selecciona una opción para capturar tu imagen</strong></p>
+          <p style="font-size: 0.95em; color: #888;">Usá la cámara o subí una imagen desde tu dispositivo</p>
+        </div>
+      </div>
+
+      <div class="button-group">
+        <button id="btn-activar-camara" class="btn-primary">📷 Activar Cámara</button>
+        <button id="btn-tomar-foto" class="btn-primary hidden">📸 Capturar Foto</button>
+        <button id="btn-subir-imagen" class="btn-secondary">📁 Subir Imagen</button>
+        <input type="file" id="input-imagen" accept="image/*" class="hidden">
+      </div>
+
+      <button id="btn-analizar" class="btn-primary hidden" disabled>🧠 Analizar Microexpresiones</button>
+
+      <div id="resultado-micro" class="hidden"></div>
+    </div>
+  </div>
+
+  <script src="js/participante.js"></script>
+</body>
+</html>
