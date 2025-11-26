@@ -6,29 +6,31 @@
   <title>DARKLENS - Investigador</title>
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  /* AGREGAR ESTO AL PRINCIPIO DEL <style> */
-:root {
-  --card-bg: #1a1a2e;
-  --primary-color: #667eea;
-  --accent-color: #764ba2;
-  --text-color: #ffffff;
-  --text-secondary: #b0b0cc;
-  --border-color: #2a2a3e;
-  --input-bg: #2a2a3e;
-  --secondary-color: #2a2a3e;
-  --secondary-dark: #3a3a4e;
-  --primary-dark: #5a6fd8;
-}
-
-body {
-  background: #0f0f1b;
-  color: var(--text-color);
-  margin: 0;
-  padding: 0;
-  min-height: 100vh;
-}
+  
   <style>
+    /* AGREGAR ESTO AL PRINCIPIO DEL <style> */
+    :root {
+      --card-bg: #1a1a2e;
+      --primary-color: #667eea;
+      --accent-color: #764ba2;
+      --text-color: #ffffff;
+      --text-secondary: #b0b0cc;
+      --border-color: #2a2a3e;
+      --input-bg: #2a2a3e;
+      --secondary-color: #2a2a3e;
+      --secondary-dark: #3a3a4e;
+      --primary-dark: #5a6fd8;
+    }
+
+    body {
+      background: #0f0f1b;
+      color: var(--text-color);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
     /* Estilos específicos para el panel del investigador */
     .investigador-container {
       max-width: 1200px;
@@ -43,6 +45,7 @@ body {
       background: var(--card-bg);
       border-radius: 10px;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      border: 1px solid var(--border-color);
     }
     
     .content-box {
@@ -226,11 +229,11 @@ body {
       <form id="form-login" class="login-form">
         <div class="form-group">
           <label for="password">🔑 Contraseña de Investigador:</label>
-         <input type="password" id="password" name="password" required 
-       placeholder="Ingresá la contraseña">
-         <small id="password-help" style="color: var(--text-secondary); margin-top: 5px; display: block;">
-    Contraseña proporcionada para investigadores autorizados
-</small>
+          <input type="password" id="password" name="password" required 
+                 placeholder="Ingresá la contraseña">
+          <small id="password-help" style="color: var(--text-secondary); margin-top: 5px; display: block;">
+            Contraseña proporcionada para investigadores autorizados
+          </small>
         </div>
         
         <div class="button-group">
