@@ -1068,28 +1068,37 @@
 
   <script src="app.js" defer></script>
   
-  <script>
-    // Script para manejar los botones de la página inicial
-    document.addEventListener('DOMContentLoaded', () => {
-      const cardParticipante = document.getElementById('card-participante');
-      const cardInvestigador = document.getElementById('card-investigador');
-      
-      if (cardParticipante) {
-        cardParticipante.querySelector('.btn-primary').addEventListener('click', () => {
-          document.getElementById('pagina-inicio').classList.add('hidden');
-          document.getElementById('seccion-bienvenida').classList.remove('hidden');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-      }
-      
-      if (cardInvestigador) {
-        cardInvestigador.querySelector('.btn-primary').addEventListener('click', () => {
-          document.getElementById('pagina-inicio').classList.add('hidden');
-          document.getElementById('seccion-login').classList.remove('hidden');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-      }
-    });
-  </script>
+ <script>
+  // Script para manejar los botones de la página inicial - CORREGIDO
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM cargado - configurando botones...');
+    
+    // Botón Participante
+    const btnParticipante = document.querySelector('#card-participante .btn-primary');
+    if (btnParticipante) {
+      btnParticipante.addEventListener('click', function() {
+        console.log('Botón participante clickeado');
+        document.getElementById('pagina-inicio').classList.add('hidden');
+        document.getElementById('seccion-bienvenida').classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    } else {
+      console.log('No se encontró botón participante');
+    }
+    
+    // Botón Investigador
+    const btnInvestigador = document.querySelector('#card-investigador .btn-primary');
+    if (btnInvestigador) {
+      btnInvestigador.addEventListener('click', function() {
+        console.log('Botón investigador clickeado');
+        document.getElementById('pagina-inicio').classList.add('hidden');
+        document.getElementById('seccion-login').classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    } else {
+      console.log('No se encontró botón investigador');
+    }
+  });
+</script>
 </body>
 </html>
