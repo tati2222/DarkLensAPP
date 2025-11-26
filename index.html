@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DARKLENS - Explorador de Personalidad</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ESTILOS ESPECÍFICOS SOLO PARA INDEX (manteniendo diseño original) */
+    body {
+      margin: 0; 
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e0e0ff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      text-align: center;
+    }
+    
+    h1 {
+      font-size: 3em;
+      margin-bottom: 0.1em;
+      background: linear-gradient(135deg, #c080ff 0%, #7f00ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 800;
+    }
+    
+    h2 {
+      font-weight: 400;
+      color: #c080ff;
+      margin-top: 0;
+      margin-bottom: 1em;
+    }
+    
+    .container {
+      max-width: 900px;
+      background: rgba(37, 37, 64, 0.9);
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 8px 32px rgba(127, 0, 255, 0.3);
+      border: 2px solid rgba(192, 128, 255, 0.3);
+    }
+    
+    p {
+      font-size: 1.05em;
+      line-height: 1.8;
+      margin-bottom: 20px;
+      color: #d0d0ff;
+    }
+    
+    ol, ul {
+      margin-left: 25px;
+      text-align: left;
+      color: #d0d0ff;
+      line-height: 1.8;
+      margin-bottom: 30px;
+    }
+    
+    ol li, ul li {
+      margin-bottom: 12px;
+    }
+
+    h3 {
+      color: #c080ff;
+      font-size: 1.5em;
+      margin-top: 30px;
+      margin-bottom: 15px;
+    }
+
+    /* BOTONES EN CUADRADOS (diseño original) */
+    .buttons-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 30px;
+      margin: 40px 0;
+    }
+
+    .btn-card {
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+      border: 2px solid rgba(192, 128, 255, 0.4);
+      border-radius: 15px;
+      padding: 40px 30px;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(127, 0, 255, 0.5);
+      border-color: #7f00ff;
+    }
+
+    .btn-card h3 {
+      margin: 0 0 15px 0;
+      font-size: 1.8em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+    }
+
+    /* SVG ICONS ANIMADOS */
+    .icon-svg {
+      width: 60px;
+      height: 60px;
+      animation: iconFloat 3s ease-in-out infinite;
+    }
+
+    @keyframes iconFloat {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .btn-card:hover .icon-svg {
+      animation: iconBounce 0.6s ease-in-out;
+    }
+
+    @keyframes iconBounce {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      25% { transform: translateY(-15px) rotate(-5deg); }
+      75% { transform: translateY(-15px) rotate(5deg); }
+    }
+
+    /* Animación del líquido del tubo de ensayo */
+    .liquid {
+      animation: liquidBubble 2s ease-in-out infinite;
+    }
+
+    @keyframes liquidBubble {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-2px); }
+    }
+
+    .btn-card p {
+      margin: 0 0 20px 0;
+      font-size: 1em;
+      color: #b0a0ff;
+    }
+
+    .btn {
+      padding: 15px 40px;
+      font-size: 1.1em;
+      border-radius: 30px;
+      cursor: pointer;
+      font-weight: 600;
+      border: none;
+      color: white;
+      background: linear-gradient(135deg, #7f00ff 0%, #6c63ff 100%);
+      box-shadow: 0 4px 15px rgba(127, 0, 255, 0.4);
+      transition: all 0.3s;
+      display: inline-block;
+      text-decoration: none;
+    }
+
+    .btn:hover {
+      background: linear-gradient(135deg, #9000ff 0%, #7c73ff 100%);
+      box-shadow: 0 6px 20px rgba(127, 0, 255, 0.6);
+      transform: translateY(-3px);
+    }
+
+    .btn-investigador {
+      background: linear-gradient(135deg, #ff6384 0%, #ff4757 100%);
+    }
+
+    .btn-investigador:hover {
+      background: linear-gradient(135deg, #ff7394 0%, #ff5767 100%);
+    }
+    
+    footer {
+      margin-top: 40px;
+      font-size: 0.9em;
+      color: #c080ff;
+    }
+    
+    footer a {
+      color: #c080ff;
+      text-decoration: underline;
+    }
+
+    @media (max-width: 768px) {
+      h1 { font-size: 2em; }
+      .buttons-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>DARKLENS</h1>
+    <h2>Explorador de rasgos de personalidad oscura mediante análisis de microexpresiones</h2>
+
+    <p><strong>Proyecto de investigación académica - Universidad del Gran Rosario (UGR)</strong></p>
+
+    <section>
+      <h3>📚 Sobre el Proyecto</h3>
+      <p>
+        DARKLENS es una herramienta experimental diseñada para explorar rasgos de personalidad oscura mediante el análisis automatizado de microexpresiones faciales. Esta investigación forma parte de la <strong>Licenciatura en Ciencia de Datos</strong> de la <strong>Universidad del Gran Rosario (UGR)</strong>.
+      </p>
+      <p>
+        El sistema utiliza modelos de inteligencia artificial entrenados para detectar emociones sutiles en expresiones faciales y relacionarlas con dimensiones de la tríada oscura de la personalidad (maquiavelismo, narcisismo y psicopatía subclínica).
+      </p>
+    </section>
+
+    <!-- BOTONES EN CUADRADOS (DISEÑO ORIGINAL) -->
+    <div class="buttons-grid">
+      <!-- PARTICIPANTE -->
+      <div class="btn-card">
+        <h3>
+          <!-- TUBO DE ENSAYO SVG -->
+          <svg class="icon-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+            <!-- Tubo de vidrio -->
+            <path d="M20 8 L20 50 Q20 56 26 56 L38 56 Q44 56 44 50 L44 8 Z" 
+                  fill="none" stroke="#c080ff" stroke-width="2.5" opacity="0.8"/>
+            
+            <!-- Líquido morado animado -->
+            <path class="liquid" d="M21 35 L21 50 Q21 55 26 55 L38 55 Q43 55 43 50 L43 35 Z" 
+                  fill="url(#liquidGradient)" opacity="0.7"/>
+            
+            <!-- Burbujas -->
+            <circle cx="28" cy="45" r="2" fill="#ffffff" opacity="0.4">
+              <animate attributeName="cy" values="45;30;45" dur="3s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.4;0;0.4" dur="3s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="36" cy="48" r="1.5" fill="#ffffff" opacity="0.3">
+              <animate attributeName="cy" values="48;33;48" dur="4s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.3;0;0.3" dur="4s" repeatCount="indefinite"/>
+            </circle>
+            
+            <!-- Tapa del tubo -->
+            <rect x="18" y="5" width="28" height="4" rx="2" fill="#7f00ff" opacity="0.9"/>
+            
+            <!-- Brillo del vidrio -->
+            <path d="M23 10 L23 50" stroke="#ffffff" stroke-width="1.5" opacity="0.2"/>
+            
+            <!-- Gradiente del líquido -->
+            <defs>
+              <linearGradient id="liquidGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style="stop-color:#a040ff;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#7f00ff;stop-opacity:1" />
+              </linearGradient>
+            </defs>
+          </svg>
+          Participar
+        </h3>
+        <p>Realizá el análisis de microexpresiones y contribuí a la investigación académica.</p>
+        <a href="participante.html" class="btn">Ir a la Aplicación</a>
+      </div>
+
+      <!-- INVESTIGADOR -->
+      <div class="btn-card">
+        <h3>
+          <!-- MICROSCOPIO SVG -->
+          <svg class="icon-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+            <!-- Base del microscopio -->
+            <rect x="20" y="54" width="24" height="4" rx="2" fill="#7f00ff"/>
+            
+            <!-- Brazo del microscopio -->
+            <path d="M32 54 L32 35 L38 25 L38 15" stroke="#c080ff" stroke-width="3" fill="none" stroke-linecap="round"/>
+            
+            <!-- Lentes -->
+            <circle cx="38" cy="12" r="5" fill="none" stroke="#a040ff" stroke-width="2.5"/>
+            <circle cx="38" cy="12" r="3" fill="#7f00ff" opacity="0.3">
+              <animate attributeName="opacity" values="0.3;0.6;0.3" dur="2s" repeatCount="indefinite"/>
+            </circle>
+            
+            <!-- Platina -->
+            <rect x="25" y="32" width="14" height="3" rx="1" fill="#c080ff"/>
+            
+            <!-- Objetivo -->
+            <circle cx="32" cy="40" r="4" fill="#7f00ff"/>
+            <circle cx="32" cy="40" r="2.5" fill="#a040ff"/>
+            
+            <!-- Tornillos de enfoque -->
+            <circle cx="42" cy="35" r="2" fill="#c080ff"/>
+            <circle cx="42" cy="40" r="2" fill="#c080ff"/>
+            
+            <!-- Luz -->
+            <circle cx="32" cy="30" r="1.5" fill="#ffff00" opacity="0.8">
+              <animate attributeName="opacity" values="0.8;0.3;0.8" dur="1.5s" repeatCount="indefinite"/>
+            </circle>
+          </svg>
+          Investigadores
+        </h3>
+        <p>Acceso restringido para visualizar y analizar los resultados de la investigación.</p>
+        <a href="investigador.html" class="btn btn-investigador">Acceso Restringido</a>
+      </div>
+    </div>
+
+    <section>
+      <h3>🔬 Metodología</h3>
+      <ol>
+        <li><strong>Captura de Imagen:</strong> El participante proporciona una imagen facial en condiciones controladas de iluminación.</li>
+        <li><strong>Análisis Automático:</strong> Un modelo de deep learning (EfficientNet-B0) entrenado en FER2013 detecta microexpresiones.</li>
+        <li><strong>Interpretación:</strong> Los resultados se mapean a dimensiones de personalidad según el sistema FACS.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h3>⚖️ Consideraciones Éticas</h3>
+      <ul>
+        <li><strong>Consentimiento informado:</strong> Todos los participantes aceptan voluntariamente los términos antes de comenzar.</li>
+        <li><strong>Anonimato:</strong> Los datos personales se tratan de forma confidencial y no permiten identificación individual.</li>
+        <li><strong>Uso académico:</strong> Toda la información recopilada se utiliza exclusivamente con fines de investigación.</li>
+        <li><strong>No diagnóstico:</strong> Esta herramienta <em>NO</em> sustituye evaluaciones psicológicas profesionales.</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>Proyecto desarrollado en la Licenciatura en Ciencia de Datos - Universidad del Gran Rosario (UGR) - 2024/2025</p>
+      <p>© 2025 DARKLENS - Todos los derechos reservados</p>
+      <p>Universidad del Gran Rosario | Licenciatura en Ciencia de Datos</p>
+    </footer>
+  </div>
+</body>
+</html>
