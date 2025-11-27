@@ -1,4 +1,4 @@
-/* app.js - UNIFICADO CORREGIDO */
+/* app.js - MODIFICADO PARA OCULTAR RESULTADOS A PARTICIPANTES */
 /* ========================================
    CONFIG — ENDPOINTS & CONSTANTES
    ======================================== */
@@ -240,75 +240,39 @@ function calcularSD3() {
 
   sessionStorage.setItem('resultadosSD3', JSON.stringify(resultadosSD3));
 
-  // Enviar datos a Google Sheets
+  // Enviar datos a Google Sheets y redirigir
   enviarResultadosAGoogleSheets(resultadosSD3);
 }
 
 function enviarResultadosAGoogleSheets(data) {
-  fetch('https://script.google.com/macros/s/AKfycbwm8kIl1h0Avas55eNI0dbiKj-MPCbuXyQp7ndsQYiDdmcsmDGYgyirgt2sorvOFLEZgA/exec', {
+  const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
+  
+  const payload = {
+    tipo: 'sd3',
+    timestamp: new Date().toISOString(),
+    persona: persona,
+    sd3: data
+  };
+
+  fetch(GOOGLE_SHEETS_WEBAPP_URL, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   })
   .then(response => {
     if (!response.ok) throw new Error('Error en la respuesta de Google Sheets');
     return response.json();
   })
   .then(res => {
-    alert("¡Gracias por participar! Tus datos fueron registrados correctamente.");
-    window.location.href = "index.html"; // Cambiá si querés otra página
+    console.log('✅ Datos SD3 enviados correctamente');
+    // Redirigir a la página de subir imagen
+    window.location.href = "subir_imagen.html";
   })
   .catch(error => {
-    alert("Hubo un error enviando los datos. Por favor, intentá nuevamente.");
-    console.error(error);
+    console.error('Error enviando datos SD3:', error);
+    // Continuar con el flujo aunque falle el envío
+    window.location.href = "subir_imagen.html";
   });
-}
-
-
-/* ========================================
-   GRAFICOS SD3
-   ======================================== */
-function crearGraficoSD3(mach, narc, psych) {
-  const canvas = document.getElementById('grafico-sd3');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  if (graficoSD3) {
-    try { graficoSD3.destroy(); } catch (e) {}
-  }
-  graficoSD3 = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: ['Maquiavelismo','Narcisismo','Psicopatía'],
-      datasets: [{ data: [mach,narc,psych], backgroundColor: ['#ff6384','#36a2eb','#ffce56'], borderColor:'#1a1a2e', borderWidth:3 }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { position: 'bottom', labels: { color: '#e0e0ff' } },
-        tooltip: { callbacks: { label: function(context){ return context.label + ': ' + context.parsed.toFixed(2); } } }
-      }
-    }
-  });
-}
-
-/* ========================================
-   GENERAR NARRATIVA
-   ======================================== */
-function generarNarrativa(mach,narc,psych) {
-  const interpretar = (valor, rasgo) => {
-    if (valor <= 2.4) return `puntaje bajo en ${rasgo}`;
-    if (valor <= 3.4) return `puntaje medio en ${rasgo}`;
-    return `puntaje alto en ${rasgo}`;
-  };
-  return `
-    <div class="resultado-box">
-      <h4>Interpretación Académica</h4>
-      <p><strong>Maquiavelismo:</strong> Tu resultado muestra un ${interpretar(mach, "manipulación estratégica y cálculo interpersonal")}. </p>
-      <p><strong>Narcisismo:</strong> Tu resultado muestra un ${interpretar(narc, "autoimagen grandiosa y búsqueda de admiración")}. </p>
-      <p><strong>Psicopatía:</strong> Tu resultado muestra un ${interpretar(psych, "impulsividad y búsqueda de sensaciones")}. </p>
-      <p style="margin-top:20px; font-style:italic; color:#b0a0ff;">Recordá que estos resultados son parte de una investigación académica y no constituyen un diagnóstico clínico.</p>
-    </div>
-  `;
 }
 
 /* ========================================
@@ -436,6 +400,7 @@ async function analizarMicroexpresiones() {
     const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
 
     const payload = {
+      tipo: 'microexpresiones',
       timestamp: new Date().toISOString(),
       persona,
       sd3,
@@ -443,23 +408,21 @@ async function analizarMicroexpresiones() {
       imagen: imagenCapturada
     };
 
+    // Enviar a Google Sheets
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
       await fetch(GOOGLE_SHEETS_WEBAPP_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-        mode: 'no-cors',
-        signal: controller.signal
       });
-      clearTimeout(timeout);
-      console.log('✅ Intento de envío a Google Sheets realizado (no-cors).');
+      console.log('✅ Datos de microexpresiones enviados a Google Sheets');
     } catch (sheetErr) {
-      console.warn('⚠️ Error enviando a Google Sheets:', sheetErr.message || sheetErr);
+      console.warn('⚠️ Error enviando a Google Sheets:', sheetErr);
     }
 
-    mostrarResultadosMicroLocal(resultadosMicro);
+    // Mostrar solo confirmación al usuario SIN RESULTADOS
+    mostrarConfirmacionParticipante();
+    
   } catch (err) {
     console.error('❌ Error en análisis:', err);
     resultadoDiv.innerHTML = `
@@ -475,25 +438,39 @@ async function analizarMicroexpresiones() {
   }
 }
 
-function mostrarResultadosMicroLocal(datos) {
+// Nueva función para mostrar solo confirmación SIN RESULTADOS
+function mostrarConfirmacionParticipante() {
   const resultadoDiv = document.getElementById('resultado-micro');
   if (!resultadoDiv) return;
 
   resultadoDiv.innerHTML = `
-    <div class="resultado-box" style="background:#222; color:#eee;">
-      <h4>Gracias por participar</h4>
-      <p>Tu imagen y tus respuestas fueron registradas de manera segura para la investigación.</p>
+    <div class="confirmacion-final" style="text-align: center; padding: 40px;">
+      <h3 style="color: var(--accent); margin-bottom: 20px;">¡Gracias por participar!</h3>
+      <p style="margin-bottom: 30px; font-size: 1.1em;">
+        Tu imagen y respuestas han sido registradas correctamente para la investigación.
+      </p>
+      <div class="imagen-confirmacion" style="margin: 30px 0;">
+        <img src="${imagenCapturada}" alt="Imagen subida" style="max-width: 300px; border-radius: 10px; border: 2px solid var(--border);">
+      </div>
+      <p style="color: var(--text-secondary); margin-bottom: 30px;">
+        Tu contribución es valiosa para nuestro estudio académico.
+      </p>
+      <button onclick="volverAlInicio()" class="btn-primary">
+        Volver al Inicio
+      </button>
     </div>
   `;
 }
 
-// luego de enviar resultados a Google Sheets (fetch)
-.then(res => {
-  // Aquí redirigimos a la página o sección de subir imagen
-  window.location.href = "subir_imagen.html"; // o el nombre real que uses
-})
-
-
+// Función para volver al inicio
+function volverAlInicio() {
+  // Limpiar sessionStorage
+  sessionStorage.removeItem('datos_personales');
+  sessionStorage.removeItem('resultadosSD3');
+  sessionStorage.removeItem('resultadosMicro');
+  
+  window.location.href = "index.html";
+}
 
 /* ========================================
    INVESTIGADOR: cargar participantes desde Google Sheets
@@ -564,8 +541,8 @@ function poblarListaInvestigador() {
           <div style="color:var(--text-secondary); font-size:0.9em;">${fecha}</div>
         </div>
         <div style="display:flex; gap:10px;">
-          <button class="btn-primary btn-ver" data-index="${idx}">Ver</button>
-          <button class="btn-secondary btn-export" data-index="${idx}">Export</button>
+          <button class="btn-primary btn-ver" data-index="${idx}">Ver Resultados</button>
+          <button class="btn-secondary btn-export" data-index="${idx}">Exportar</button>
         </div>
       </div>
     `;
@@ -827,216 +804,6 @@ function mostrarImagenInvestigador(p) {
 }
 
 /* ========================================
-   PAGINA DE RESULTADOS (participante -> resultados.html)
-   ======================================== */
-function cargarResultadosPageIfAny() {
-  const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
-  const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
-  const micro = JSON.parse(sessionStorage.getItem('resultadosMicro') || '{}');
-
-  const infoCont = document.getElementById('info-participante');
-  if (!infoCont) return;
-
- // Solo redirigir si ESTAMOS en resultados.html
-if (location.pathname.includes("resultados.html")) {
-  // ESTA PÁGINA YA NO ES PARA PARTICIPANTES
-  window.location.href = "index.html";
-  return;
-}
-
-
-  mostrarInfoParticipanteEnResultados(persona);
-  mostrarResultadosSD3EnResultados(sd3);
-  mostrarTiemposEnResultados(sd3);
-  mostrarMicroexpresionesEnResultados(micro);
-  mostrarFACSEnResultados(micro);
-  mostrarAnalisisFinalEnResultados(sd3, micro);
-}
-
-/* funciones usadas por resultados.html */
-function mostrarInfoParticipanteEnResultados(persona) {
-  const div = document.getElementById('info-participante');
-  if (!div) return;
-  div.innerHTML = `
-    <div class="info-grid">
-      <div class="info-item"><strong>Nombre:</strong><p>${persona.nombre || 'Anónimo'}</p></div>
-      <div class="info-item"><strong>Edad:</strong><p>${persona.edad || ''} años</p></div>
-      <div class="info-item"><strong>Género:</strong><p>${persona.genero || ''}</p></div>
-      <div class="info-item"><strong>País:</strong><p>${persona.pais || ''}</p></div>
-    </div>
-    <p style="margin-top:20px; text-align:center; color:#888; font-size:0.95em;">
-      <strong>Fecha:</strong> ${new Date().toLocaleDateString('es-AR', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' })}
-    </p>
-  `;
-}
-
-function mostrarResultadosSD3EnResultados(sd3) {
-  const div = document.getElementById('resultados-sd3-detalle');
-  if (!div) return;
-  const interpretarNivel = (valor) => {
-    if (valor <= 2.4) return { nivel: 'Bajo', clase: 'nivel-bajo', emoji: '✅' };
-    if (valor <= 3.4) return { nivel: 'Medio', clase: 'nivel-medio', emoji: '⚡' };
-    return { nivel: 'Alto', clase: 'nivel-alto', emoji: '🔥' };
-  };
-  const mach = interpretarNivel(sd3.mach);
-  const narc = interpretarNivel(sd3.narc);
-  const psych = interpretarNivel(sd3.psych);
-
-  div.innerHTML = `
-    <div class="scores-grid">
-      <div class="score-card"><span class="score-icon">🎭</span><div class="score-label">Maquiavelismo</div><div class="score-value">${sd3.mach}</div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${(sd3.mach/5)*100}%"></div></div>
-        <span class="score-level ${mach.clase}">${mach.emoji} ${mach.nivel}</span>
-        <p style="margin-top:15px; font-size:0.9em; color:#b0a0ff;">Manipulación estratégica y pragmatismo</p></div>
-
-      <div class="score-card"><span class="score-icon">👑</span><div class="score-label">Narcisismo</div><div class="score-value">${sd3.narc}</div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${(sd3.narc/5)*100}%"></div></div>
-        <span class="score-level ${narc.clase}">${narc.emoji} ${narc.nivel}</span>
-        <p style="margin-top:15px; font-size:0.9em; color:#b0a0ff;">Grandiosidad y necesidad de admiración</p></div>
-
-      <div class="score-card"><span class="score-icon">⚡</span><div class="score-label">Psicopatía</div><div class="score-value">${sd3.psych}</div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${(sd3.psych/5)*100}%"></div></div>
-        <span class="score-level ${psych.clase}">${psych.emoji} ${psych.nivel}</span>
-        <p style="margin-top:15px; font-size:0.9em; color:#b0a0ff;">Impulsividad y búsqueda de sensaciones</p></div>
-    </div>
-  `;
-
-  setTimeout(() => {
-    const canvas = document.getElementById('grafico-sd3-resultados');
-    if (!canvas) return;
-    try { const old = Chart.getChart(canvas); if (old) old.destroy(); } catch(e){}
-    new Chart(canvas, {
-      type: 'radar',
-      data: {
-        labels:['Maquiavelismo','Narcisismo','Psicopatía'],
-        datasets:[{
-          label:'Tu perfil',
-          data:[sd3.mach, sd3.narc, sd3.psych],
-          backgroundColor:'rgba(127,0,255,0.2)',
-          borderColor:'#7f00ff',
-          borderWidth:3,
-          pointBackgroundColor:'#c080ff',
-          pointBorderColor:'#fff',
-          pointRadius:6
-        },{
-          label:'Promedio poblacional',
-          data:[3.0,2.8,2.5],
-          backgroundColor:'rgba(255,255,255,0.05)',
-          borderColor:'rgba(255,255,255,0.3)',
-          borderWidth:2,
-          pointRadius:4,
-          borderDash:[5,5]
-        }]
-      },
-      options: {
-        responsive:true,
-        scales:{ r:{ min:1, max:5, ticks:{ stepSize:1, color:'#b0a0ff' }, grid:{ color:'rgba(192,128,255,0.2)' }, pointLabels:{ color:'#c080ff', font:{ size:14, weight:'600' } } } },
-        plugins:{ legend:{ labels:{ color:'#e0e0ff', font:{ size:12 } } } }
-      }
-    });
-  }, 100);
-}
-
-function mostrarTiemposEnResultados(sd3) {
-  const div = document.getElementById('tiempos-detalle');
-  if (!div) return;
-  const stats = sd3.estadisticas_tiempo || {};
-  div.innerHTML = `
-    <div class="stats-mini">
-      <div class="stat-mini"><div class="stat-mini-label">Tiempo Total</div><div class="stat-mini-value">${(sd3.tiempo_total_ms/1000/60).toFixed(1)} min</div></div>
-      <div class="stat-mini"><div class="stat-mini-label">Promedio</div><div class="stat-mini-value">${stats.promedio_segundos}s</div></div>
-      <div class="stat-mini"><div class="stat-mini-label">Mediana</div><div class="stat-mini-value">${stats.mediana_segundos}s</div></div>
-      <div class="stat-mini"><div class="stat-mini-label">Mínimo</div><div class="stat-mini-value">${stats.minimo_segundos}s</div></div>
-      <div class="stat-mini"><div class="stat-mini-label">Máximo</div><div class="stat-mini-value">${stats.maximo_segundos}s</div></div>
-      <div class="stat-mini"><div class="stat-mini-label">Desv. Estándar</div><div class="stat-mini-value">${stats.desviacion_estandar_segundos}s</div></div>
-    </div>
-  `;
-
-  const tiempos = sd3.tiempos_respuesta || {};
-  const items = Object.keys(tiempos).map(k => parseInt(k)).sort((a,b)=>a-b);
-  const valores = items.map(i => parseFloat(tiempos[i]?.tiempo_segundos || 0));
-  setTimeout(() => {
-    const canvas = document.getElementById('grafico-tiempos');
-    if (!canvas || valores.length===0) return;
-    try { const old = Chart.getChart(canvas); if (old) old.destroy(); } catch(e){}
-    new Chart(canvas, {
-      type:'line',
-      data: { labels: items, datasets:[{ label:'Tiempo (segundos)', data:valores, borderColor:'#7f00ff', backgroundColor:'rgba(127,0,255,0.1)', borderWidth:3, fill:true, tension:0.4, pointRadius:4, pointBackgroundColor:'#c080ff' }] },
-      options: { responsive:true, plugins:{ legend:{ labels:{ color:'#e0e0ff' } } }, scales:{ x:{ title:{ display:true, text:'Ítem del Test', color:'#c080ff' }, ticks:{ color:'#b0a0ff' }, grid:{ color:'rgba(192,128,255,0.1)' } }, y:{ title:{ display:true, text:'Segundos', color:'#c080ff' }, ticks:{ color:'#b0a0ff' }, grid:{ color:'rgba(192,128,255,0.1)' } } } }
-    });
-  }, 100);
-}
-
-function mostrarMicroexpresionesEnResultados(micro) {
-  const div = document.getElementById('microexpresiones-detalle');
-  if (!div) return;
-  if (!micro || !micro.emociones) { div.innerHTML = '<p style="text-align:center; color:#888;">No hay datos de microexpresiones.</p>'; return; }
-
-  const dominante = micro.emocion_dominante || 'Desconocida';
-  const confianza = (micro.confianza || 0) * 100;
-  div.innerHTML = `
-    <div style="text-align:center; margin-bottom:30px; padding:30px; background:rgba(0,0,0,0.2); border-radius:15px;">
-      <div style="font-size:4em; margin-bottom:15px;">😊</div>
-      <h4 style="color:#c080ff; margin:10px 0;">Emoción Dominante</h4>
-      <p style="font-size:2em; font-weight:800; color:#7f00ff; margin:15px 0;">${dominante}</p>
-      <p style="font-size:1.1em; color:#b0a0ff;">Confianza: <strong>${confianza.toFixed(1)}%</strong></p>
-    </div>
-    <h4 style="text-align:center; margin:30px 0 20px;">Distribución de Emociones Detectadas</h4>
-  `;
-
-  const emociones = Object.entries(micro.emociones).sort((a,b)=>b[1]-a[1]);
-  emociones.forEach(([emocion, valor]) => {
-    const percentage = (valor * 100).toFixed(1);
-    div.innerHTML += `
-      <div class="emotion-bar">
-        <div class="emotion-label"><strong>${emocion}</strong><span>${percentage}%</span></div>
-        <div class="bar-container"><div class="bar-fill" style="width:${percentage}%">${percentage}%</div></div>
-      </div>
-    `;
-  });
-
-  setTimeout(() => {
-    const canvas = document.getElementById('grafico-emociones');
-    if (!canvas) return;
-    try { const old = Chart.getChart(canvas); if (old) old.destroy(); } catch(e){}
-    new Chart(canvas, {
-      type:'doughnut',
-      data:{ labels:Object.keys(micro.emociones), datasets:[{ data:Object.values(micro.emociones).map(v=> (v*100).toFixed(1)), backgroundColor:['rgba(255,99,132,0.8)','rgba(54,162,235,0.8)','rgba(255,206,86,0.8)','rgba(75,192,192,0.8)','rgba(153,102,255,0.8)','rgba(255,159,64,0.8)'], borderColor:'#1a1a2e', borderWidth:3 }] },
-      options:{ responsive:true, plugins:{ legend:{ position:'bottom', labels:{ color:'#e0e0ff' } } } }
-    });
-  }, 100);
-}
-
-function mostrarFACSEnResultados(micro) {
-  const div = document.getElementById('facs-detalle');
-  if (!div) return;
-  if (!micro || !micro.facs || micro.facs.length===0) { div.innerHTML = '<p style="text-align:center; color:#888;">No se detectaron unidades de acción FACS específicas.</p>'; return; }
-  div.innerHTML = '<div style="display:grid; gap:15px;">';
-  micro.facs.forEach(au => {
-    div.innerHTML += `<div class="info-item" style="padding:20px;"><h4 style="color:#c080ff; margin:0 0 10px 0;">${au.nombre || au.codigo}</h4><p style="color:#888; margin-bottom:10px;"><strong>Código:</strong> ${au.codigo}</p><p style="margin:0;">${au.descripcion || 'Unidad de acción facial detectada'}</p></div>`;
-  });
-  div.innerHTML += '</div>';
-}
-
-function mostrarAnalisisFinalEnResultados(sd3, micro) {
-  const div = document.getElementById('analisis-final');
-  if (!div) return;
-  const nivel = (val) => val > 3.4 ? 'alto' : val > 2.4 ? 'medio' : 'bajo';
-  const emocion = micro.emocion_dominante || 'neutral';
-  div.innerHTML = `
-    <p style="font-size:1.15em; line-height:1.9;">
-      <strong style="color:#c080ff;">Perfil de Personalidad:</strong> Tu evaluación muestra un nivel <strong>${nivel(sd3.mach)}</strong> en maquiavelismo, <strong>${nivel(sd3.narc)}</strong> en narcisismo y <strong>${nivel(sd3.psych)}</strong> en psicopatía subclínica.
-    </p>
-    <p style="font-size:1.15em; line-height:1.9;">
-      <strong style="color:#c080ff;">Expresión Emocional:</strong> El análisis de tu rostro reveló una expresión predominantemente <strong>${emocion}</strong> con una confianza del <strong>${((micro.confianza||0)*100).toFixed(1)}%</strong>.
-    </p>
-    <p style="font-size:1.15em; line-height:1.9;">
-      <strong style="color:#c080ff;">Patrón de Respuesta:</strong> Completaste el test en <strong>${(sd3.tiempo_total_ms/1000/60).toFixed(1)} minutos</strong>, con un tiempo promedio de <strong>${sd3.estadisticas_tiempo?.promedio_segundos || 'N/A'} segundos</strong> por ítem.
-    </p>
-  `;
-}
-
-/* ========================================
    INICIALIZACIÓN: agregar listeners generales al DOM
    ======================================== */
 document.addEventListener('DOMContentLoaded', () => {
@@ -1073,32 +840,15 @@ document.addEventListener('DOMContentLoaded', () => {
     formSD3.addEventListener('submit', function(e){ e.preventDefault(); calcularSD3(); });
   }
 
-  const btnContinuar = document.getElementById('btn-continuar-micro');
-  if (btnContinuar) {
-    btnContinuar.addEventListener('click', function() {
-      const seccionTest = document.getElementById('seccion-test');
-      const seccionMicro = document.getElementById('seccion-micro');
-      if (seccionTest) seccionTest.classList.add('hidden');
-      if (seccionMicro) seccionMicro.classList.remove('hidden');
-      window.scrollTo({ top:0, behavior:'smooth' });
-    });
-  }
-
- // Detectar automáticamente en qué página estamos sin depender del nombre del archivo
-document.addEventListener("click", () => {
-    const subir = document.getElementById("btn-subir-imagen");
-    if (subir && !window._capturaInicializada) {
-        console.log("📸 Inicializando captura y subida…");
-        configurarCamaraYSubida();
-        window._capturaInicializada = true;
-    }
-});
-
-if (document.getElementById("resultados-sd3-detalle")) {
-    console.log("📊 Cargando página de resultados…");
-    cargarResultadosPageIfAny();
-}
-
+  // Detectar automáticamente en qué página estamos sin depender del nombre del archivo
+  document.addEventListener("click", () => {
+      const subir = document.getElementById("btn-subir-imagen");
+      if (subir && !window._capturaInicializada) {
+          console.log("📸 Inicializando captura y subida…");
+          configurarCamaraYSubida();
+          window._capturaInicializada = true;
+      }
+  });
 
   const btnLoginInv = document.getElementById('btn-login-investigador');
   const inputPasswordInv = document.getElementById('password-investigador');
@@ -1144,4 +894,3 @@ if (document.getElementById("resultados-sd3-detalle")) {
     });
   }
 });
-
