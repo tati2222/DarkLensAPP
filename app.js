@@ -1,7 +1,7 @@
 /* ========================================
    CONFIG — ENDPOINTS & CONSTANTES
    ======================================== */
-const RENDER_PREDICT_URL = "const RENDER_PREDICT_URL = "https://darklnesapp-api-1.onrender.com/run/predict";
+const RENDER_PREDICT_URL = "https://darklnesapp-api-1.onrender.com/run/predict";
 const GOOGLE_SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwm8kIl1h0Avas55eNI0dbiKj-MPCbuXyQp7ndsQYiDdmcsmDGYgyirgt2sorvOFLEZgA/exec";
 const GOOGLE_SHEETS_READ_URL = GOOGLE_SHEETS_WEBAPP_URL; // endpoint para lectura si aplica
 const PASSWORD_INVESTIGADOR = "investigador2025";
@@ -310,6 +310,18 @@ function configurarCamaraYSubida() {
   const previewContainer = document.getElementById('preview-container');
   const previewImg = document.getElementById('preview-img');
 
+  // NUEVO: crear botón "Enviar Imagen"
+  let btnEnviarImagen = document.getElementById('btn-enviar-imagen');
+  if (!btnEnviarImagen) {
+    btnEnviarImagen = document.createElement('button');
+    btnEnviarImagen.id = 'btn-enviar-imagen';
+    btnEnviarImagen.className = 'btn-primary';
+    btnEnviarImagen.textContent = '📤 Enviar Imagen';
+    btnEnviarImagen.style.display = 'none';
+    btnEnviarImagen.style.marginTop = '15px';
+    previewContainer?.appendChild(btnEnviarImagen);
+  }
+
   // activar cámara
   if (btnActivarCamara) {
     btnActivarCamara.addEventListener('click', async function() {
@@ -322,7 +334,6 @@ function configurarCamaraYSubida() {
         }
         btnActivarCamara.classList.add('hidden');
         if (btnTomarFoto) btnTomarFoto.classList.remove('hidden');
-        // ocultar placeholder
         document.getElementById('camera-placeholder')?.classList?.add('hidden');
       } catch (err) {
         alert('No se pudo acceder a la cámara. Podés subir una imagen desde tu dispositivo.');
@@ -348,7 +359,11 @@ function configurarCamaraYSubida() {
         video.classList.add('hidden');
         canvas.classList.remove('hidden');
 
-        if (btnAnalizar) { btnAnalizar.classList.remove('hidden'); btnAnalizar.disabled = false; }
+        // MOSTRAR botón "Enviar Imagen"
+        btnEnviarImagen.style.display = 'block';
+
+        // ocultar botón analizar del investigador
+        if (btnAnalizar) { btnAnalizar.classList.add('hidden'); }
 
         // stop camera
         if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
@@ -385,7 +400,11 @@ function configurarCamaraYSubida() {
           if (video) video.classList.add('hidden');
           canvas.classList.remove('hidden');
 
-          if (btnAnalizar) { btnAnalizar.classList.remove('hidden'); btnAnalizar.disabled = false; }
+          // MOSTRAR botón "Enviar Imagen"
+          btnEnviarImagen.style.display = 'block';
+
+          // ocultar botón analizar del investigador
+          if (btnAnalizar) { btnAnalizar.classList.add('hidden'); }
         };
         img.onerror = function() {
           alert('Error cargando la imagen. Probá con otra.');
@@ -396,14 +415,50 @@ function configurarCamaraYSubida() {
     });
   }
 
-  // analizar -> envía a Render y guarda en Google Sheets
+  // NUEVO: evento click "Enviar Imagen" (para participantes)
+  btnEnviarImagen?.addEventListener('click', async () => {
+    if (!imagenCapturada) {
+      alert('No hay imagen para enviar');
+      return;
+    }
+    
+    btnEnviarImagen.disabled = true;
+    btnEnviarImagen.textContent = '⏳ Enviando...';
+
+    try {
+      // Preparar datos completos
+      const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
+      const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
+
+      const payload = {
+        tipo: 'imagen_participante',
+        timestamp: new Date().toISOString(),
+        persona,
+        sd3,
+        imagen: imagenCapturada
+      };
+
+      // Enviar a Google Sheets
+      await enviarResultadosAGoogleSheets(payload);
+      
+      // Mostrar confirmación
+      mostrarConfirmacionParticipante();
+      
+    } catch (err) {
+      console.error('Error enviando imagen:', err);
+      alert('Hubo un error al enviar la imagen. Por favor intentá nuevamente.');
+      btnEnviarImagen.disabled = false;
+      btnEnviarImagen.textContent = '📤 Enviar Imagen';
+    }
+  });
+
+  // analizar -> solo para investigador (ya no se usa en flujo participante)
   if (btnAnalizar) {
     btnAnalizar.addEventListener('click', async () => {
       await analizarMicroexpresiones();
     });
   }
 }
-
 /* ========================================
    ANALIZAR: envío a Render + guardar en Google Sheets + mostrar confirmación
    ======================================== */
@@ -413,20 +468,32 @@ async function analizarMicroexpresiones() {
 
   resultadoDiv.classList.remove('hidden');
   resultadoDiv.innerHTML = `<div class="analisis-loading">🧠 Analizando microexpresiones...</div>`;
+  
   try {
-    if (!imagenCapturada || imagenCapturada.length < 100) throw new Error('No hay imagen válida para analizar.');
+    // Obtener imagen del participante seleccionado (si estamos en panel investigador)
+    let imagenParaAnalizar = imagenCapturada;
+    
+    if (participanteSeleccionado && participanteSeleccionado.imagen) {
+      imagenParaAnalizar = participanteSeleccionado.imagen;
+    }
 
-    // Preparar FormData para Render (API que recibirá la imagen)
-    const blob = dataURLtoBlob(imagenCapturada);
+    if (!imagenParaAnalizar || imagenParaAnalizar.length < 100) {
+      throw new Error('No hay imagen válida para analizar.');
+    }
+
+    // Preparar FormData para Render
+    const blob = dataURLtoBlob(imagenParaAnalizar);
     const formData = new FormData();
     formData.append('img', blob, 'foto.jpg');
 
     console.log('Enviando imagen a Render:', RENDER_PREDICT_URL);
     const res = await fetch(RENDER_PREDICT_URL, { method: 'POST', body: formData });
+    
     if (!res.ok) {
       const texto = await res.text().catch(()=>'(sin texto)');
-      throw new Error(`Error en Render: ${res.status} - ${texto}`);
+      throw new Error(`Error en Render (${res.status}): ${texto}`);
     }
+    
     const json = await res.json();
     console.log('Respuesta Render:', json);
 
@@ -439,41 +506,56 @@ async function analizarMicroexpresiones() {
       sd3_micro: json.sd3 || {}
     };
 
-    // Guardar local (debug)
-    sessionStorage.setItem('resultadosMicro', JSON.stringify(resultadosMicro));
+    // Si estamos analizando desde el panel investigador
+    if (participanteSeleccionado) {
+      // Actualizar el participante seleccionado
+      participanteSeleccionado.microexpresiones = resultadosMicro;
+      
+      // Actualizar en el array principal
+      const idx = participantesData.findIndex(p => p.id === participanteSeleccionado.id);
+      if (idx !== -1) {
+        participantesData[idx].microexpresiones = resultadosMicro;
+      }
 
-    // Preparar payload combinado con persona + sd3
-    const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
-    const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
-
-    const payload = {
-      tipo: 'microexpresiones',
-      timestamp: new Date().toISOString(),
-      persona,
-      sd3,
-      microexpresiones: resultadosMicro,
-      imagen: imagenCapturada
-    };
-
-    // Envío a Sheets (no-cors fallback)
-    try {
-      await enviarResultadosAGoogleSheets(payload);
-      console.log('Intento de envío a Google Sheets realizado.');
-    } catch (sErr) {
-      console.warn('No se pudo asegurar envío a Sheets:', sErr);
+      // Mostrar resultados en el panel
+      mostrarMicroexpresionesInvestigador(resultadosMicro);
+      mostrarFACSInvestigador(resultadosMicro);
+      mostrarAnalisisIntegradoInvestigador(participanteSeleccionado);
+      
+      resultadoDiv.innerHTML = `
+        <div class="confirmacion-final" style="text-align:center; padding:20px; background:rgba(127,0,255,0.1); border-radius:10px;">
+          <h4 style="color:var(--accent);">✅ Análisis completado</h4>
+          <p>Los resultados se actualizaron en las secciones correspondientes.</p>
+        </div>
+      `;
+      
+      // Guardar análisis en Sheets
+      const payload = {
+        tipo: 'analisis_investigador',
+        timestamp: new Date().toISOString(),
+        participante_id: participanteSeleccionado.id,
+        microexpresiones: resultadosMicro
+      };
+      await enviarResultadosAGoogleSheets(payload).catch(err => 
+        console.warn('Error guardando análisis:', err)
+      );
+      
+    } else {
+      // Flujo participante (no debería llegar aquí normalmente)
+      sessionStorage.setItem('resultadosMicro', JSON.stringify(resultadosMicro));
+      mostrarConfirmacionParticipante();
     }
-
-    // Mostrar confirmación al participante (SIN resultados analíticos)
-    mostrarConfirmacionParticipante();
 
   } catch (err) {
     console.error('Error en análisis:', err);
     resultadoDiv.innerHTML = `
-      <div class="resultado-box" style="border-color: var(--error);">
+      <div class="resultado-box" style="border-color: var(--error); background:rgba(255,0,0,0.05);">
         <h4>❌ Error en el análisis</h4>
-        <p>${err.message}</p>
-        <p style="font-size:0.9em; margin-top:10px; color:var(--error);">
-          ${err.message.includes('Render') ? 'Verificá que el servicio de Render esté activo.' : 'Intentá nuevamente o subí otra imagen.'}
+        <p><strong>${err.message}</strong></p>
+        <p style="font-size:0.9em; margin-top:10px; color:var(--text-secondary);">
+          ${err.message.includes('Render') || err.message.includes('404') || err.message.includes('500') 
+            ? '⚠️ El servicio de análisis puede estar inactivo. Verificá que Render esté funcionando.' 
+            : 'Intentá nuevamente con otra imagen o verificá la conexión.'}
         </p>
         <div style="text-align:center; margin-top:20px;">
           <button class="btn-primary" onclick="location.reload()">🔄 Reintentar</button>
