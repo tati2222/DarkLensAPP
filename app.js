@@ -1,7 +1,7 @@
 /* ========================================
    CONFIG — ENDPOINTS & CONSTANTES
    ======================================== */
-const RENDER_PREDICT_URL = "https://darklnesapp-api-1.onrender.com/analyze";
+const RENDER_PREDICT_URL = "const RENDER_PREDICT_URL = "https://darklnesapp-api-1.onrender.com/run/predict";
 const GOOGLE_SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwm8kIl1h0Avas55eNI0dbiKj-MPCbuXyQp7ndsQYiDdmcsmDGYgyirgt2sorvOFLEZgA/exec";
 const GOOGLE_SHEETS_READ_URL = GOOGLE_SHEETS_WEBAPP_URL; // endpoint para lectura si aplica
 const PASSWORD_INVESTIGADOR = "investigador2025";
