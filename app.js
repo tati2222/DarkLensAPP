@@ -229,7 +229,7 @@ function calcularSD3() {
   const tiemposArray = Object.values(tiemposRespuesta).map(t => t?.tiempo_ms || 0);
   const estadisticasTiempo = calcularEstadisticasTiempo(tiemposArray);
 
-  resultadosSD3 = {
+  const resultadosSD3 = {
     mach, narc, psych,
     respuestas: respuestasObj,
     tiempos_respuesta: tiemposRespuesta,
@@ -240,16 +240,30 @@ function calcularSD3() {
 
   sessionStorage.setItem('resultadosSD3', JSON.stringify(resultadosSD3));
 
- // PARTICIPANTE NO DEBE VER RESULTADOS → NO SE MUESTRA NADA
-if (resultadoSD3) resultadoSD3.classList.add('hidden');
-
- if (graficoContainer) graficoContainer.classList.add('hidden');
-
-if (narrativaSD3) narrativaSD3.classList.add('hidden');
-
-  const btnContinuar = document.getElementById('btn-continuar-micro');
-  if (btnContinuar) btnContinuar.classList.remove('hidden');
+  // Enviar datos a Google Sheets
+  enviarResultadosAGoogleSheets(resultadosSD3);
 }
+
+function enviarResultadosAGoogleSheets(data) {
+  fetch('https://script.google.com/macros/s/AKfycbwm8kIl1h0Avas55eNI0dbiKj-MPCbuXyQp7ndsQYiDdmcsmDGYgyirgt2sorvOFLEZgA/exec', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data),
+  })
+  .then(response => {
+    if (!response.ok) throw new Error('Error en la respuesta de Google Sheets');
+    return response.json();
+  })
+  .then(res => {
+    alert("¡Gracias por participar! Tus datos fueron registrados correctamente.");
+    window.location.href = "index.html"; // Cambiá si querés otra página
+  })
+  .catch(error => {
+    alert("Hubo un error enviando los datos. Por favor, intentá nuevamente.");
+    console.error(error);
+  });
+}
+
 
 /* ========================================
    GRAFICOS SD3
@@ -473,10 +487,12 @@ function mostrarResultadosMicroLocal(datos) {
   `;
 }
 
-function guardarYRedirigir() {
-  alert("¡Gracias por participar! Tus datos fueron registrados correctamente.");
-  window.location.href = "index.html";
-}
+// luego de enviar resultados a Google Sheets (fetch)
+.then(res => {
+  // Aquí redirigimos a la página o sección de subir imagen
+  window.location.href = "subir_imagen.html"; // o el nombre real que uses
+})
+
 
 
 /* ========================================
