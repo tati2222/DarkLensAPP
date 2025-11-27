@@ -240,34 +240,12 @@ function calcularSD3() {
 
   sessionStorage.setItem('resultadosSD3', JSON.stringify(resultadosSD3));
 
-  const resultadoSD3 = document.getElementById('resultado-sd3');
-  if (resultadoSD3) {
-    resultadoSD3.innerHTML = `
-      <div class="resultado-box">
-        <h4>Tus resultados SD3</h4>
-        <p><strong>Maquiavelismo:</strong> ${mach} / 5.0</p>
-        <p><strong>Narcisismo:</strong> ${narc} / 5.0</p>
-        <p><strong>Psicopatía:</strong> ${psych} / 5.0</p>
-        <p style="margin-top:15px; font-size:0.9em; color:#b0a0ff;">
-          <strong>Tiempo total:</strong> ${(tiempoTotalTest/1000/60).toFixed(1)} minutos<br>
-          <strong>Tiempo promedio por ítem:</strong> ${estadisticasTiempo.promedio_segundos}s
-        </p>
-      </div>
-    `;
-    resultadoSD3.classList.remove('hidden');
-  }
+ // PARTICIPANTE NO DEBE VER RESULTADOS → NO SE MUESTRA NADA
+if (resultadoSD3) resultadoSD3.classList.add('hidden');
 
-  const graficoContainer = document.getElementById('grafico-container');
-  if (graficoContainer) {
-    graficoContainer.classList.remove('hidden');
-    crearGraficoSD3(mach, narc, psych);
-  }
+ if (graficoContainer) graficoContainer.classList.add('hidden');
 
-  const narrativaSD3 = document.getElementById('narrativa-sd3');
-  if (narrativaSD3) {
-    narrativaSD3.innerHTML = generarNarrativa(mach, narc, psych);
-    narrativaSD3.classList.remove('hidden');
-  }
+if (narrativaSD3) narrativaSD3.classList.add('hidden');
 
   const btnContinuar = document.getElementById('btn-continuar-micro');
   if (btnContinuar) btnContinuar.classList.remove('hidden');
@@ -483,72 +461,23 @@ async function analizarMicroexpresiones() {
   }
 }
 
-/* Mostrar resultados micro en la misma pantalla participante */
 function mostrarResultadosMicroLocal(datos) {
   const resultadoDiv = document.getElementById('resultado-micro');
   if (!resultadoDiv) return;
 
-  let html = `<div class="resultado-box"><h4>✅ Análisis completado</h4><p>Tus microexpresiones han sido procesadas exitosamente.</p></div>`;
-
-  if (datos.emociones && Object.keys(datos.emociones).length > 0) {
-    html += '<div class="resultado-box"><h4>🎭 Emociones detectadas:</h4>';
-    for (let [emocion, valor] of Object.entries(datos.emociones)) {
-      const percentage = (valor * 100).toFixed(1);
-      const barWidth = Math.min(percentage, 100);
-      html += `
-        <div style="margin-bottom:10px;">
-          <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-            <strong>${emocion}:</strong><span>${percentage}%</span>
-          </div>
-          <div style="background:#2a2a3e; border-radius:10px; height:8px; overflow:hidden;">
-            <div style="background:linear-gradient(90deg,#667eea 0%, #764ba2 100%); width:${barWidth}%; height:100%; transition:width 0.5s;"></div>
-          </div>
-        </div>
-      `;
-    }
-    html += '</div>';
-  }
-
-  if (datos.emocion_dominante) {
-    html += `
-      <div class="resultado-box">
-        <h4>🎯 Emoción dominante</h4>
-        <p style="font-size:1.2em; color:#667eea;"><strong>${datos.emocion_dominante}</strong>
-          ${datos.confianza ? ` (${(datos.confianza*100).toFixed(1)}% confianza)` : ''}
-        </p>
-      </div>
-    `;
-  }
-
-  html += `
-    <div class="resultado-box" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white;">
-      <p style="margin:0; font-size:0.9em;">✅ Tus datos han sido registrados de forma segura para la investigación.</p>
+  resultadoDiv.innerHTML = `
+    <div class="resultado-box" style="background:#222; color:#eee;">
+      <h4>Gracias por participar</h4>
+      <p>Tu imagen y tus respuestas fueron registradas de manera segura para la investigación.</p>
     </div>
-    <button onclick="guardarYRedirigir()" class="btn-primary" style="margin-top:20px;">📊 Ver análisis completo</button>
   `;
-
-  resultadoDiv.innerHTML = html;
 }
 
-/* ========================================
-   GUARDAR DATOS Y REDIRIGIR A RESULTADOS
-   ======================================== */
 function guardarYRedirigir() {
-  const datosPersonales = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
-  const resultadosSD3_local = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
-  const resultadosMicro_local = JSON.parse(sessionStorage.getItem('resultadosMicro') || '{}');
-
-  if (!datosPersonales.nombre || !resultadosSD3_local.mach || !resultadosMicro_local.emociones) {
-    alert('Error: No se encontraron todos los datos necesarios. Por favor completá el proceso nuevamente.');
-    return;
-  }
-
-  if (location.pathname.endsWith('resultados.html') || location.href.includes('resultados.html')) {
-    window.location.reload();
-  } else {
-    window.location.href = 'resultados.html';
-  }
+  alert("¡Gracias por participar! Tus datos fueron registrados correctamente.");
+  window.location.href = "index.html";
 }
+
 
 /* ========================================
    INVESTIGADOR: cargar participantes desde Google Sheets
@@ -893,11 +822,10 @@ function cargarResultadosPageIfAny() {
   if (!infoCont) return;
 
  // Solo redirigir si ESTAMOS en resultados.html
-if ((location.pathname.endsWith('resultados.html') || location.href.includes('resultados.html'))
-    && (!persona.nombre || !sd3.mach)) {
-    alert('No se encontraron resultados. Por favor completá el test primero.');
-    window.location.href = 'participante.html';
-    return;
+if (location.pathname.includes("resultados.html")) {
+  // ESTA PÁGINA YA NO ES PARA PARTICIPANTES
+  window.location.href = "index.html";
+  return;
 }
 
 
