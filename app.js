@@ -202,32 +202,27 @@ async function calcularSD3() {
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
-/* ---------- ENVIAR A GOOGLE SHEETS (POST) ---------- */
-async function enviarResultadosAGoogleSheets(payload) {
-  console.log('📤 Enviando a Google Sheets:', payload);
+async function enviarResultadosAGoogleSheets(datos) {
+  console.log("📤 Enviando datos a Google Sheets:", datos);
+
+  const payload = {
+    action: "guardar",
+    data: datos
+  };
+
   try {
     const res = await fetch(GOOGLE_SHEETS_WEBAPP_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
     });
-    // algunos webapps devuelven no-cors, algunos devuelven 200 con JSON; manejamos ambos
-    if (res.ok) {
-      try { return await res.json(); } catch { return { ok:true }; }
-    }
-    // si status no ok, devolvemos objeto para no romper flujo
-    return { ok: true, status: res.status };
+
+    const json = await res.json();
+    console.log("Respuesta Sheets:", json);
+    return json;
+
   } catch (err) {
-    console.warn('⚠️ Fetch falló, intentando no-cors fallback...', err);
-    // fallback no-cors (no garantiza respuesta legible)
-    try {
-      await fetch(GOOGLE_SHEETS_WEBAPP_URL, { method:'POST', mode:'no-cors', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
-      console.log('✅ Enviado con fallback no-cors');
-      return { ok:true, fallback:true };
-    } catch (err2) {
-      console.error('❌ Fallback también falló:', err2);
-      throw err2;
-    }
+    console.error("❌ Error enviando a Sheets:", err);
   }
 }
 
@@ -332,24 +327,53 @@ function configurarCamaraYSubida() {
   });
 
   // cuando el participante envía la imagen: guarda en Google Sheets y muestra agradecimiento
-  btnEnviarImagen?.addEventListener('click', async () => {
-    if (!imagenCapturada) { alert('No hay imagen para enviar'); return; }
-    btnEnviarImagen.disabled = true;
-    btnEnviarImagen.textContent = '⏳ Enviando...';
-    try {
-      const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
-      const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
-      const payload = { tipo:'imagen_participante', timestamp: new Date().toISOString(), persona, sd3, imagen: imagenCapturada };
-      await enviarResultadosAGoogleSheets(payload);
-      mostrarConfirmacionParticipante();
-    } catch (err) {
-      console.error('Error enviando imagen (participante):', err);
-      alert('Hubo un error al enviar la imagen. Por favor intentá nuevamente.');
-      btnEnviarImagen.disabled = false;
-      btnEnviarImagen.textContent = '📤 Enviar imagen (participante)';
-    }
-  });
-}
+btnEnviarImagen?.addEventListener('click', async () => {
+  if (!imagenCapturada) { 
+    alert('No hay imagen para enviar'); 
+    return; 
+  }
+
+  btnEnviarImagen.disabled = true;
+  btnEnviarImagen.textContent = '⏳ Enviando...';
+
+  try {
+    const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
+    const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
+
+    const datos = {
+      nombre: persona.nombre || "",
+      edad: persona.edad || "",
+      genero: persona.genero || "",
+      pais: persona.pais || "",
+      mach: sd3.mach || "",
+      narc: sd3.narc || "",
+      psych: sd3.psych || "",
+      tiempo_total_seg: sd3.tiempo_total_segundos || "",
+      emocion_princ: "", 
+      images: {
+        imagen_base64: imagenCapturada,
+        timestamp: new Date().toISOString()
+      }
+    };
+
+    const payload = {
+      action: "guardar",
+      data: datos
+    };
+
+  await enviarResultadosAGoogleSheets(datos);
+
+
+    mostrarConfirmacionParticipante();
+
+  } catch (err) {
+    console.error("Error enviando imagen participante:", err);
+    alert("Error al enviar la imagen. Intentá nuevamente.");
+    btnEnviarImagen.disabled = false;
+    btnEnviarImagen.textContent = "📤 Enviar imagen (participante)";
+  }
+});
+   
 
 /* ---------- ANALIZAR EN RENDER (INVESTIGADOR) ---------- */
 /*
