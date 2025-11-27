@@ -634,8 +634,9 @@ function mostrarConfirmacionParticipante() {
       <div style="margin:20px 0;">
         <img src="${imagenCapturada || ''}" alt="Imagen subida" style="max-width:300px; border-radius:10px; border:2px solid var(--border);">
       </div>
-      <div style="margin-top:20px;">
-        <button class="btn-primary" onclick="volverAlInicio()">Volver al inicio</button>
+     <div style="margin-top:20px; display:flex; gap:15px; justify-content:center; flex-wrap:wrap;">
+        <button class="btn-primary" onclick="volverAlInicio()">🏠 Volver al inicio</button>
+        <button class="btn-secondary" onclick="location.reload()">🔄 Nueva participación</button>
       </div>
     </div>
   `;
@@ -645,14 +646,60 @@ function mostrarConfirmacionParticipante() {
    Volver al inicio (limpia sessionStorage parcial)
    ======================================== */
 function volverAlInicio() {
-  sessionStorage.removeItem('datos_personales');
-  sessionStorage.removeItem('resultadosSD3');
-  sessionStorage.removeItem('resultadosMicro');
-  // reset UI -> mostrar pagina inicio
+  // Limpiar TODOS los datos
+  sessionStorage.clear();
+  
+  // Resetear variables globales
+  imagenCapturada = null;
+  tiemposRespuesta = {};
+  tiempoInicioItem = {};
+  testInicioTimestamp = null;
+  participanteSeleccionado = null;
+  
+  // Detener cámara si está activa
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
+  
+  // Limpiar formularios
+  const formDatos = document.getElementById('form-datos-basicos');
+  if (formDatos) formDatos.reset();
+  
+  const formSD3 = document.getElementById('form-sd3');
+  if (formSD3) formSD3.innerHTML = '';
+  
+  // Limpiar preview de imagen
+  const previewImg = document.getElementById('preview-img');
+  if (previewImg) previewImg.src = '';
+  
+  const previewContainer = document.getElementById('preview-container');
+  if (previewContainer) previewContainer.classList.add('hidden');
+  
+  const canvas = document.getElementById('canvas');
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.classList.add('hidden');
+  }
+  
+  const video = document.getElementById('video');
+  if (video) {
+    video.classList.add('hidden');
+    video.srcObject = null;
+  }
+  
+  // Resetear flag de inicialización
+  window._capturaInicializada = false;
+  
+  // Mostrar solo la página de inicio
   document.getElementById('seccion-micro')?.classList.add('hidden');
   document.getElementById('seccion-bienvenida')?.classList.add('hidden');
+  document.getElementById('seccion-test')?.classList.add('hidden');
   document.getElementById('pagina-inicio')?.classList.remove('hidden');
+  
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  console.log('✅ Aplicación reseteada');
 }
 
 /* ========================================
@@ -954,10 +1001,34 @@ function mostrarImagenInvestigador(p) {
    INICIALIZACIÓN GLOBAL: listeners principales
    ======================================== */
 document.addEventListener('DOMContentLoaded', () => {
+  // ✅ AGREGAR ESTO AQUÍ - Limpiar sesión al inicio
+  sessionStorage.clear();
+  imagenCapturada = null;
+  tiemposRespuesta = {};
+  tiempoInicioItem = {};
+  testInicioTimestamp = null;
+  console.log('✅ Sesión limpiada al cargar la página');
+  
   // botones inicio
   const btnParticipante = document.querySelector('#card-participante .btn-primary');
   const btnInvestigador = document.querySelector('#card-investigador .btn-primary');
-  btnParticipante?.addEventListener('click', () => {
+  // botones inicio
+  const btnParticipante = document.querySelector('#card-participante .btn-primary');
+  const btnInvestigador = document.querySelector('#card-investigador .btn-primary');
+ btnParticipante?.addEventListener('click', () => {
+    // Limpiar todo antes de empezar
+    sessionStorage.clear();
+    imagenCapturada = null;
+    tiemposRespuesta = {};
+    tiempoInicioItem = {};
+    testInicioTimestamp = null;
+    window._capturaInicializada = false;
+    
+    const formDatos = document.getElementById('form-datos-basicos');
+    if (formDatos) formDatos.reset();
+    
+    console.log('✅ Nueva participación iniciada');
+    
     document.getElementById('pagina-inicio')?.classList.add('hidden');
     document.getElementById('seccion-bienvenida')?.classList.remove('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
