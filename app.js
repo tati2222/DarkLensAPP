@@ -361,8 +361,7 @@ btnEnviarImagen?.addEventListener('click', async () => {
       data: datos
     };
 
-  await enviarResultadosAGoogleSheets(datos);
-
+  await enviarResultadosAGoogleSheets(payload);
 
     mostrarConfirmacionParticipante();
 
@@ -823,5 +822,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // preparar captura perezosa (se inicializa tras enviar SD3)
 });
+function mostrarConfirmacionParticipante() {
+    // Oculta la sección de microexpresiones
+    document.getElementById('seccion-micro')?.classList.add('hidden');
+
+    // Crea un mensaje simple de agradecimiento
+    const contenedor = document.createElement('div');
+    contenedor.className = "content-box";
+    contenedor.style.textAlign = "center";
+    contenedor.innerHTML = `
+        <h2>¡Gracias por participar!</h2>
+        <p style="margin-top:20px; color:var(--text-secondary); font-size:1.2em;">
+            Tus datos fueron enviados correctamente y serán utilizados solo con fines académicos.
+        </p>
+    `;
+
+    document.querySelector('.container').appendChild(contenedor);
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
 /* ---------- FIN ---------- */
