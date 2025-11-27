@@ -342,78 +342,133 @@ function configurarCamaraYSubida() {
     });
   }
 
-  // tomar foto
-  if (btnTomarFoto && video && canvas) {
-    btnTomarFoto.addEventListener('click', function() {
-      try {
+ // tomar foto
+if (btnTomarFoto && video && canvas) {
+  btnTomarFoto.addEventListener('click', function() {
+    try {
+      const ctx = canvas.getContext('2d');
+      
+      // LIMPIAR canvas anterior
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      imagenCapturada = canvas.toDataURL('image/jpeg', 0.9);
+
+      // mostrar preview
+      if (previewImg) { 
+        previewImg.src = imagenCapturada; 
+        previewImg.style.opacity = '1';
+      }
+      previewContainer?.classList.remove('hidden');
+
+      video.classList.add('hidden');
+      canvas.classList.remove('hidden');
+
+      // MOSTRAR botón "Enviar Imagen" y rehabilitarlo
+      if (btnEnviarImagen) {
+        btnEnviarImagen.style.display = 'block';
+        btnEnviarImagen.disabled = false;
+        btnEnviarImagen.textContent = '📤 Enviar Imagen';
+      }
+
+      // ocultar botón analizar del investigador
+      if (btnAnalizar) { btnAnalizar.classList.add('hidden'); }
+
+      // stop camera
+      if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+      
+      console.log('✅ Foto tomada correctamente');
+    } catch (err) {
+      console.error('Error al tomar foto:', err);
+      alert('No se pudo tomar la foto. Intentá subir una imagen.');
+    }
+  });
+}
+
+// subir imagen desde archivo
+if (btnSubirImagen && inputImagen) {
+  btnSubirImagen.addEventListener('click', () => {
+    // LIMPIAR el input file para permitir seleccionar la misma imagen dos veces
+    inputImagen.value = '';
+    inputImagen.click();
+  });
+  
+  inputImagen.addEventListener('change', function(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { 
+      alert('Por favor subí un archivo de imagen válido.'); 
+      return; 
+    }
+
+    // MOSTRAR INDICADOR DE CARGA
+    if (previewContainer) {
+      previewContainer.classList.remove('hidden');
+      if (previewImg) {
+        previewImg.src = '';
+        previewImg.alt = 'Cargando imagen...';
+        previewImg.style.opacity = '0.5';
+      }
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const img = new Image();
+      img.onload = function() {
+        if (!canvas) return;
+        
+        // LIMPIAR canvas anterior
         const ctx = canvas.getContext('2d');
-        canvas.width = video.videoWidth || 640;
-        canvas.height = video.videoHeight || 480;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // REDIMENSIONAR canvas y dibujar nueva imagen
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
         imagenCapturada = canvas.toDataURL('image/jpeg', 0.9);
 
-        // mostrar preview
-        if (previewImg) { previewImg.src = imagenCapturada; }
+        // MOSTRAR preview con la nueva imagen
+        if (previewImg) {
+          previewImg.src = imagenCapturada;
+          previewImg.alt = 'Imagen cargada';
+          previewImg.style.opacity = '1';
+        }
         previewContainer?.classList.remove('hidden');
 
-        video.classList.add('hidden');
+        if (video) video.classList.add('hidden');
         canvas.classList.remove('hidden');
 
-        // MOSTRAR botón "Enviar Imagen"
-        btnEnviarImagen.style.display = 'block';
+        // MOSTRAR botón "Enviar Imagen" y rehabilitarlo
+        if (btnEnviarImagen) {
+          btnEnviarImagen.style.display = 'block';
+          btnEnviarImagen.disabled = false;
+          btnEnviarImagen.textContent = '📤 Enviar Imagen';
+        }
 
         // ocultar botón analizar del investigador
         if (btnAnalizar) { btnAnalizar.classList.add('hidden'); }
-
-        // stop camera
-        if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-      } catch (err) {
-        console.error('Error al tomar foto:', err);
-        alert('No se pudo tomar la foto. Intentá subir una imagen.');
-      }
-    });
-  }
-
-  // subir imagen desde archivo
-  if (btnSubirImagen && inputImagen) {
-    btnSubirImagen.addEventListener('click', () => inputImagen.click());
-    inputImagen.addEventListener('change', function(e) {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      if (!file.type.startsWith('image/')) { alert('Por favor subí un archivo de imagen válido.'); return; }
-
-      const reader = new FileReader();
-      reader.onload = function(ev) {
-        const img = new Image();
-        img.onload = function() {
-          if (!canvas) return;
-          const ctx = canvas.getContext('2d');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          ctx.drawImage(img, 0, 0);
-          imagenCapturada = canvas.toDataURL('image/jpeg', 0.9);
-
-          // mostrar preview
-          if (previewImg) previewImg.src = imagenCapturada;
-          previewContainer?.classList.remove('hidden');
-
-          if (video) video.classList.add('hidden');
-          canvas.classList.remove('hidden');
-
-          // MOSTRAR botón "Enviar Imagen"
-          btnEnviarImagen.style.display = 'block';
-
-          // ocultar botón analizar del investigador
-          if (btnAnalizar) { btnAnalizar.classList.add('hidden'); }
-        };
-        img.onerror = function() {
-          alert('Error cargando la imagen. Probá con otra.');
-        };
-        img.src = ev.target.result;
+        
+        console.log('✅ Nueva imagen cargada correctamente');
       };
-      reader.readAsDataURL(file);
-    });
-  }
+      
+      img.onerror = function() {
+        alert('Error cargando la imagen. Probá con otra.');
+        if (previewImg) previewImg.style.opacity = '1';
+      };
+      
+      img.src = ev.target.result;
+    };
+    
+    reader.onerror = function() {
+      alert('Error leyendo el archivo. Intentá nuevamente.');
+      if (previewImg) previewImg.style.opacity = '1';
+    };
+    
+    reader.readAsDataURL(file);
+  });
+}
 
   // NUEVO: evento click "Enviar Imagen" (para participantes)
   btnEnviarImagen?.addEventListener('click', async () => {
