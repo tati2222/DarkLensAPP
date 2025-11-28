@@ -1,9 +1,10 @@
 /* ========================================
-   app.js - Versión C (corregido + optimizado + modular)
+   app.js - PARTE 1/2 - Versión CORREGIDA
+   Config, Utilidades, Test SD3, Captura de Imagen
    ======================================== */
 
 /* ---------- CONFIG ---------- */
-const RENDER_PREDICT_URL = "https://darklnesapp-api-1.onrender.com/run/predict"; // usado SOLO desde panel investigador
+const RENDER_PREDICT_URL = "https://darklnesapp-api-1.onrender.com/run/predict";
 const GOOGLE_SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwm8kIl1h0Avas55eNI0dbiKj-MPCbuXyQp7ndsQYiDdmcsmDGYgyirgt2sorvOFLEZgA/exec";
 const PASSWORD_INVESTIGADOR = "investigador2025";
 
@@ -16,7 +17,6 @@ let imagenCapturada = null;
 let stream = null;
 let participantesData = [];
 let participanteSeleccionado = null;
-let graficoSD3 = null;
 
 /* ---------- UTILIDADES ---------- */
 function dataURLtoBlob(dataurl) {
@@ -62,7 +62,7 @@ function calcularEstadisticasTiempo(tiemposArray) {
   };
 }
 
-/* ---------- SD3 ITEMS y UI ---------- */
+/* ---------- SD3 ITEMS ---------- */
 const itemsSD3 = [
   "No es prudente contar tus secretos.",
   "Me gusta usar manipulaciones ingeniosas para salirme con la mía.",
@@ -121,7 +121,7 @@ function generarItemsTest() {
   form.appendChild(btn);
 }
 
-/* ---------- TRACKING DE TIEMPOS ---------- */
+/* ---------- TRACKING TIEMPOS ---------- */
 function configurarTrackingTiempos() {
   tiemposRespuesta = {};
   tiempoInicioItem = {};
@@ -185,48 +185,51 @@ async function calcularSD3() {
   const tiemposArray = Object.values(tiemposRespuesta).map(t => t?.tiempo_ms || 0);
   const estadisticasTiempo = calcularEstadisticasTiempo(tiemposArray);
 
-  const resultadosSD3 = { mach, narc, psych, respuestas: respuestasObj, tiempos_respuesta: tiemposRespuesta, tiempo_total_ms: tiempoTotal, tiempo_total_segundos: (tiempoTotal/1000).toFixed(2), estadisticas_tiempo: estadisticasTiempo };
+  const resultadosSD3 = { 
+    mach, narc, psych, 
+    respuestas: respuestasObj, 
+    tiempos_respuesta: tiemposRespuesta, 
+    tiempo_total_ms: tiempoTotal, 
+    tiempo_total_segundos: (tiempoTotal/1000).toFixed(2), 
+    estadisticas_tiempo: estadisticasTiempo 
+  };
+  
   sessionStorage.setItem('resultadosSD3', JSON.stringify(resultadosSD3));
 
-  // Enviamos SD3 a Google Sheets (registro), no al Render
-  try {
-    await enviarResultadosAGoogleSheets({ tipo:'sd3', timestamp: new Date().toISOString(), persona: JSON.parse(sessionStorage.getItem('datos_personales')||'{}'), sd3: resultadosSD3 });
-  } catch (e) {
-    console.warn('No se pudo enviar SD3 a Google Sheets:', e);
-  }
-
-  // mostrar siguiente sección (captura) al participante
   document.getElementById('seccion-test')?.classList.add('hidden');
   document.getElementById('seccion-micro')?.classList.remove('hidden');
-  if (!window._capturaInicializada) { configurarCamaraYSubida(); window._capturaInicializada = true; }
+  if (!window._capturaInicializada) { 
+    configurarCamaraYSubida(); 
+    window._capturaInicializada = true; 
+  }
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
+/* ---------- ENVIAR A GOOGLE SHEETS ---------- */
 async function enviarResultadosAGoogleSheets(datos) {
   console.log("📤 Enviando datos a Google Sheets:", datos);
-
-  const payload = {
-    action: "guardar",
-    data: datos
-  };
 
   try {
     const res = await fetch(GOOGLE_SHEETS_WEBAPP_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(datos)
     });
 
-    const json = await res.json();
-    console.log("Respuesta Sheets:", json);
+    const text = await res.text();
+    console.log("📥 Respuesta raw de Sheets:", text);
+    
+    const json = safeJsonParse(text);
+    console.log("✅ Respuesta parseada:", json);
     return json;
 
   } catch (err) {
     console.error("❌ Error enviando a Sheets:", err);
+    throw err;
   }
 }
 
-/* ---------- CÁMARA / SUBIDA (PARTICIPANTE) ---------- */
+/* ---------- CÁMARA Y CAPTURA ---------- */
 function configurarCamaraYSubida() {
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
@@ -237,23 +240,25 @@ function configurarCamaraYSubida() {
   const previewContainer = document.getElementById('preview-container');
   const previewImg = document.getElementById('preview-img');
 
-  // botón de envío a Google Sheets (por participante)
   let btnEnviarImagen = document.getElementById('btn-enviar-imagen');
   if (!btnEnviarImagen) {
     btnEnviarImagen = document.createElement('button');
     btnEnviarImagen.id = 'btn-enviar-imagen';
     btnEnviarImagen.className = 'btn-primary';
-    btnEnviarImagen.textContent = '📤 Enviar imagen (participante)';
+    btnEnviarImagen.textContent = '📤 Enviar mi participación';
     btnEnviarImagen.style.display = 'none';
     btnEnviarImagen.style.marginTop = '12px';
     previewContainer?.appendChild(btnEnviarImagen);
   }
 
-  // activar cámara
   btnActivarCamara?.addEventListener('click', async function() {
     try {
       stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-      if (video) { video.srcObject = stream; video.classList.remove('hidden'); video.play(); }
+      if (video) { 
+        video.srcObject = stream; 
+        video.classList.remove('hidden'); 
+        video.play(); 
+      }
       btnActivarCamara.classList.add('hidden');
       btnTomarFoto?.classList.remove('hidden');
       document.getElementById('camera-placeholder')?.classList?.add('hidden');
@@ -263,7 +268,6 @@ function configurarCamaraYSubida() {
     }
   });
 
-  // tomar foto desde cámara
   btnTomarFoto?.addEventListener('click', function() {
     try {
       if (!canvas || !video) throw new Error('No hay canvas o video disponible');
@@ -273,33 +277,50 @@ function configurarCamaraYSubida() {
       canvas.height = video.videoHeight || 480;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       imagenCapturada = canvas.toDataURL('image/jpeg', 0.9);
-      if (previewImg) { previewImg.src = imagenCapturada; previewImg.style.opacity = '1'; }
+      if (previewImg) { 
+        previewImg.src = imagenCapturada; 
+        previewImg.style.opacity = '1'; 
+      }
       previewContainer?.classList.remove('hidden');
       video.classList.add('hidden');
       canvas.classList.remove('hidden');
 
-      if (btnEnviarImagen) { btnEnviarImagen.style.display = 'block'; btnEnviarImagen.disabled = false; }
-      // no mostramos resultado de Render al participante
-      if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-      console.log('✅ Foto tomada correctamente (participante)');
+      if (btnEnviarImagen) { 
+        btnEnviarImagen.style.display = 'block'; 
+        btnEnviarImagen.disabled = false; 
+      }
+      if (stream) { 
+        stream.getTracks().forEach(t => t.stop()); 
+        stream = null; 
+      }
+      console.log('✅ Foto tomada');
     } catch (err) {
       console.error('Error al tomar foto:', err);
       alert('No se pudo tomar la foto. Intentá subir una imagen.');
     }
   });
 
-  // subir imagen desde archivo
   btnSubirImagen?.addEventListener('click', () => {
-    if (inputImagen) { inputImagen.value = ''; inputImagen.click(); }
+    if (inputImagen) { 
+      inputImagen.value = ''; 
+      inputImagen.click(); 
+    }
   });
 
   inputImagen?.addEventListener('change', function(e) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) { alert('Por favor subí un archivo de imagen válido.'); return; }
+    if (!file.type.startsWith('image/')) { 
+      alert('Por favor subí un archivo de imagen válido.'); 
+      return; 
+    }
 
     if (previewContainer) previewContainer.classList.remove('hidden');
-    if (previewImg) { previewImg.src = ''; previewImg.alt = 'Cargando imagen...'; previewImg.style.opacity = '0.5'; }
+    if (previewImg) { 
+      previewImg.src = ''; 
+      previewImg.alt = 'Cargando imagen...'; 
+      previewImg.style.opacity = '0.5'; 
+    }
 
     const reader = new FileReader();
     reader.onload = function(ev) {
@@ -312,137 +333,73 @@ function configurarCamaraYSubida() {
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
         imagenCapturada = canvas.toDataURL('image/jpeg', 0.9);
-        if (previewImg) { previewImg.src = imagenCapturada; previewImg.alt = 'Imagen cargada'; previewImg.style.opacity = '1'; }
+        if (previewImg) { 
+          previewImg.src = imagenCapturada; 
+          previewImg.alt = 'Imagen cargada'; 
+          previewImg.style.opacity = '1'; 
+        }
         previewContainer?.classList.remove('hidden');
         if (video) video.classList.add('hidden');
         canvas.classList.remove('hidden');
 
-        if (btnEnviarImagen) { btnEnviarImagen.style.display = 'block'; btnEnviarImagen.disabled = false; }
+        if (btnEnviarImagen) { 
+          btnEnviarImagen.style.display = 'block'; 
+          btnEnviarImagen.disabled = false; 
+        }
       };
-      img.onerror = function() { alert('Error cargando la imagen. Probá con otra.'); if (previewImg) previewImg.style.opacity = '1'; };
+      img.onerror = function() { 
+        alert('Error cargando la imagen. Probá con otra.'); 
+        if (previewImg) previewImg.style.opacity = '1'; 
+      };
       img.src = ev.target.result;
     };
-    reader.onerror = function() { alert('Error leyendo el archivo. Intentá nuevamente.'); if (previewImg) previewImg.style.opacity = '1'; };
+    reader.onerror = function() { 
+      alert('Error leyendo el archivo. Intentá nuevamente.'); 
+      if (previewImg) previewImg.style.opacity = '1'; 
+    };
     reader.readAsDataURL(file);
   });
 
-  // cuando el participante envía la imagen: guarda en Google Sheets y muestra agradecimiento
-btnEnviarImagen?.addEventListener('click', async () => {
-  if (!imagenCapturada) { 
-    alert('No hay imagen para enviar'); 
-    return; 
-  }
+  btnEnviarImagen?.addEventListener('click', async () => {
+    if (!imagenCapturada) { 
+      alert('No hay imagen para enviar'); 
+      return; 
+    }
 
-  btnEnviarImagen.disabled = true;
-  btnEnviarImagen.textContent = '⏳ Enviando...';
+    btnEnviarImagen.disabled = true;
+    btnEnviarImagen.textContent = '⏳ Enviando...';
 
-  try {
-    const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
-    const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
+    try {
+      const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
+      const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
 
-    const datos = {
-      nombre: persona.nombre || "",
-      edad: persona.edad || "",
-      genero: persona.genero || "",
-      pais: persona.pais || "",
-      mach: sd3.mach || "",
-      narc: sd3.narc || "",
-      psych: sd3.psych || "",
-      tiempo_total_seg: sd3.tiempo_total_segundos || "",
-      emocion_princ: "", 
-      images: {
+      const payload = {
+        action: "guardar",
+        nombre: persona.nombre || "",
+        edad: persona.edad || "",
+        genero: persona.genero || "",
+        pais: persona.pais || "",
+        mach: sd3.mach || "",
+        narc: sd3.narc || "",
+        psych: sd3.psych || "",
+        tiempo_total_seg: sd3.tiempo_total_segundos || "",
         imagen_base64: imagenCapturada,
         timestamp: new Date().toISOString()
-      }
-    };
+      };
 
-    const payload = {
-      action: "guardar",
-      data: datos
-    };
+      await enviarResultadosAGoogleSheets(payload);
+      mostrarConfirmacionParticipante();
 
-  await enviarResultadosAGoogleSheets(payload);
-
-    mostrarConfirmacionParticipante();
-
-  } catch (err) {
-    console.error("Error enviando imagen participante:", err);
-    alert("Error al enviar la imagen. Intentá nuevamente.");
-    btnEnviarImagen.disabled = false;
-    btnEnviarImagen.textContent = "📤 Enviar imagen (participante)";
-  }
-});
-
-   } 
-
-   
-
-/* ---------- ANALIZAR EN RENDER (INVESTIGADOR) ---------- */
-/*
-  Esta función se llamará desde el panel del investigador, con la imagen del participante.
-  - Solo el investigador puede iniciar este análisis.
-  - Actualiza participantesData y guarda resultados en Google Sheets.
-*/
-async function analizarEnRenderParaInvestigador(participanteId) {
-  const participante = participantesData.find(p => p.id === participanteId);
-  const resultadoDiv = document.getElementById('resultado-micro');
-  if (!participante || !participante.imagen) {
-    alert('No hay imagen disponible para este participante.');
-    return;
-  }
-  if (!resultadoDiv) return;
-  resultadoDiv.innerHTML = `<div class="analisis-loading">🧠 Analizando en servidor (Render)...</div>`;
-  resultadoDiv.classList.remove('hidden');
-
-  try {
-    const blob = dataURLtoBlob(participante.imagen);
-    const formData = new FormData();
-    formData.append('img', blob, 'foto.jpg');
-
-    console.log('📤 Investigador -> Enviando a Render:', RENDER_PREDICT_URL);
-    const res = await fetch(RENDER_PREDICT_URL, { method:'POST', body: formData });
-    if (!res.ok) {
-      const texto = await res.text().catch(()=>'(sin texto)');
-      throw new Error(`Render error ${res.status}: ${texto}`);
+    } catch (err) {
+      console.error("❌ Error enviando:", err);
+      alert("Error al enviar. Intentá nuevamente.");
+      btnEnviarImagen.disabled = false;
+      btnEnviarImagen.textContent = "📤 Enviar mi participación";
     }
-    const json = await res.json();
-    console.log('✅ Respuesta Render (investigador):', json);
-
-    const resultadosMicro = {
-      emociones: json.emociones || {},
-      emocion_dominante: json.emocion_dominante || json.dominante || 'Desconocida',
-      confianza: json.confianza || json.confidence || 0,
-      facs: json.facs || [],
-      sd3_micro: json.sd3 || {}
-    };
-
-    // actualizar participante en memoria
-    participante.microexpresiones = resultadosMicro;
-    // enviar registro de análisis a Google Sheets
-    try {
-      await enviarResultadosAGoogleSheets({ tipo:'analisis_investigador', timestamp:new Date().toISOString(), participante_id: participanteId, microexpresiones: resultadosMicro });
-    } catch(e) { console.warn('No se pudo guardar análisis en Google Sheets:', e); }
-
-    // refrescar UI investigadora
-    mostrarMicroexpresionesInvestigador(resultadosMicro);
-    mostrarFACSInvestigador(resultadosMicro);
-    mostrarAnalisisIntegradoInvestigador(participante);
-    resultadoDiv.innerHTML = `<div class="resultado-box" style="text-align:center;"><h4>✅ Análisis completado</h4><p>Resultados guardados y mostrados arriba.</p></div>`;
-  } catch (err) {
-    console.error('❌ Error al analizar en Render (investigador):', err);
-    resultadoDiv.innerHTML = `
-      <div class="resultado-box" style="border-color: #ff6384;">
-        <h4>❌ Error en el análisis</h4>
-        <p>${err.message}</p>
-        <p style="font-size:0.9em; color:#ff6384;">
-          ${err.message.includes('Render') ? 'Verificá que el servicio de Render esté activo.' : 'Intentá nuevamente.'}
-        </p>
-      </div>
-    `;
-  }
+  });
 }
 
-/* ---------- Mostrar confirmación (participante) ---------- */
+/* ---------- CONFIRMACIÓN PARTICIPANTE ---------- */
 function mostrarConfirmacionParticipante() {
   const resultadoDiv = document.getElementById('resultado-micro');
   if (!resultadoDiv) return;
@@ -450,7 +407,7 @@ function mostrarConfirmacionParticipante() {
   resultadoDiv.innerHTML = `
     <div class="confirmacion-final" style="text-align:center; padding:30px;">
       <h3 style="color: var(--accent);">¡Gracias por participar!</h3>
-      <p style="margin:15px 0;">Tu imagen y tus respuestas han sido registradas correctamente para la investigación.</p>
+      <p style="margin:15px 0;">Tu imagen y tus respuestas han sido registradas correctamente.</p>
       <div style="margin:20px 0;">
         <img src="${imagenCapturada || ''}" alt="Imagen subida" style="max-width:300px; border-radius:10px; border:2px solid var(--border);">
       </div>
@@ -462,7 +419,7 @@ function mostrarConfirmacionParticipante() {
   `;
 }
 
-/* ---------- Volver / reset ---------- */
+/* ---------- VOLVER AL INICIO ---------- */
 function volverAlInicio() {
   sessionStorage.clear();
   imagenCapturada = null;
@@ -470,7 +427,10 @@ function volverAlInicio() {
   tiempoInicioItem = {};
   testInicioTimestamp = null;
   participanteSeleccionado = null;
-  if (stream) { stream.getTracks().forEach(t=>t.stop()); stream = null; }
+  if (stream) { 
+    stream.getTracks().forEach(t=>t.stop()); 
+    stream = null; 
+  }
   document.getElementById('seccion-micro')?.classList.add('hidden');
   document.getElementById('seccion-bienvenida')?.classList.add('hidden');
   document.getElementById('seccion-test')?.classList.add('hidden');
@@ -479,28 +439,41 @@ function volverAlInicio() {
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
-/* ---------- PANEL INVESTIGADOR: cargar participantes ---------- */
+/* ========================================
+   app.js - PARTE 2/2 - Versión CORREGIDA
+   Panel Investigador, Análisis Render, Inicialización
+   
+   PEGÁ ESTA PARTE DESPUÉS DE LA PARTE 1
+   ======================================== */
+
+/* ---------- CARGAR PARTICIPANTES (INVESTIGADOR) ---------- */
 async function cargarDatosParticipantes() {
   const listaDiv = document.getElementById('lista-participantes');
-  if (listaDiv) listaDiv.innerHTML = '<p style="text-align:center; color:var(--text-secondary);">📡 Cargando datos desde Google Sheets...</p>';
+  if (listaDiv) listaDiv.innerHTML = '<p style="text-align:center; color:var(--text-secondary);">📡 Cargando datos...</p>';
+  
   try {
     const resp = await fetch(GOOGLE_SHEETS_WEBAPP_URL + '?action=getAll');
     const text = await resp.text();
-    const data = safeJsonParse(text) || safeJsonParse(JSON.stringify(text)) || null;
-    // intentar con resp.json() si parece JSON válido
-    let parsed = null;
-    try { parsed = await resp.json(); } catch(e) { parsed = data; }
-    if (parsed && parsed.participantes && Array.isArray(parsed.participantes)) {
-      participantesData = parsed.participantes;
-    } else if (Array.isArray(parsed)) {
-      participantesData = parsed;
+    console.log("📥 Respuesta raw getAll:", text);
+    
+    const data = safeJsonParse(text);
+    console.log("📊 Data parseada:", data);
+    
+    if (data && Array.isArray(data.participantes)) {
+      participantesData = data.participantes;
+    } else if (Array.isArray(data)) {
+      participantesData = data;
     } else {
-      throw new Error('Formato de respuesta inesperado');
+      throw new Error('Formato inesperado');
     }
+    
+    console.log("✅ Participantes cargados:", participantesData.length);
+    
   } catch (err) {
-    console.warn('No se pudieron cargar participantes desde Google Sheets, usando demo:', err);
+    console.warn('⚠️ No se pudieron cargar participantes, usando demo:', err);
     participantesData = generarDatosEjemplo();
   }
+  
   poblarListaInvestigador();
 }
 
@@ -508,19 +481,28 @@ function generarDatosEjemplo() {
   return [{
     id: 1,
     timestamp: new Date().toISOString(),
-    persona: { nombre: 'Participante Demo 1', edad:28, genero:'masculino', pais:'Argentina' },
-    sd3: { mach:3.2, narc:2.8, psych:2.5, respuestas:{}, tiempos_respuesta:{}, tiempo_total_ms:420000, estadisticas_tiempo:{ promedio_segundos:'8.50', mediana_segundos:'7.20', minimo_segundos:'2.10', maximo_segundos:'18.50', desviacion_estandar_segundos:'3.40' } },
-    microexpresiones: { emociones:{ Felicidad:0.45, Neutral:0.30 }, emocion_dominante:'Felicidad', confianza:0.85, facs:[] },
-    imagen: null
+    nombre: 'Participante Demo',
+    edad: 28,
+    genero: 'masculino',
+    pais: 'Argentina',
+    mach: 3.2,
+    narc: 2.8,
+    psych: 2.5,
+    tiempo_total_seg: '7.50',
+    imagen_url: null,
+    emocion_principal: 'No analizada'
   }];
 }
 
 function poblarListaInvestigador() {
   const listaDiv = document.getElementById('lista-participantes');
   if (!listaDiv) return;
+  
   if (!participantesData || participantesData.length === 0) {
-    listaDiv.innerHTML = '<p style="text-align:center; color:var(--text-secondary);">No hay participantes registrados aún.</p>'; return;
+    listaDiv.innerHTML = '<p style="text-align:center; color:var(--text-secondary);">No hay participantes registrados.</p>';
+    return;
   }
+  
   listaDiv.innerHTML = '';
   participantesData.forEach((p, idx) => {
     const fecha = new Date(p.timestamp).toLocaleString('es-AR');
@@ -530,7 +512,7 @@ function poblarListaInvestigador() {
     item.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
         <div>
-          <strong>${p.persona?.nombre || 'Sin nombre'}</strong>
+          <strong>${p.nombre || 'Sin nombre'}</strong>
           <div style="color:var(--text-secondary); font-size:0.9em;">${fecha}</div>
         </div>
         <div style="display:flex; gap:10px;">
@@ -548,6 +530,7 @@ function poblarListaInvestigador() {
       mostrarParticipanteEnPanel(idx);
     });
   });
+  
   document.querySelectorAll('#lista-participantes .btn-export').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const idx = parseInt(e.currentTarget.getAttribute('data-index'));
@@ -572,182 +555,263 @@ function exportarParticipanteJson(idx) {
 function mostrarParticipanteEnPanel(idx) {
   participanteSeleccionado = participantesData[idx];
   if (!participanteSeleccionado) return;
+  
   document.getElementById('seccion-investigador')?.classList.add('hidden');
   document.getElementById('seccion-resultados')?.classList.remove('hidden');
+  
   mostrarInfoBasicaInvestigador(participanteSeleccionado);
-  mostrarResultadosSD3Investigador(participanteSeleccionado.sd3);
-  mostrarTiemposReaccionInvestigador(participanteSeleccionado.sd3);
-  mostrarMicroexpresionesInvestigador(participanteSeleccionado.microexpresiones);
-  mostrarFACSInvestigador(participanteSeleccionado.microexpresiones);
+  mostrarResultadosSD3Investigador(participanteSeleccionado);
+  mostrarTiemposReaccionInvestigador(participanteSeleccionado);
+  mostrarMicroexpresionesInvestigador(participanteSeleccionado);
+  mostrarFACSInvestigador(participanteSeleccionado);
   mostrarAnalisisIntegradoInvestigador(participanteSeleccionado);
   mostrarImagenInvestigador(participanteSeleccionado);
+  
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
-/* ---------- Funciones UI del panel investigador (mismos bloques que ya tenías) ---------- */
+/* ---------- UI INVESTIGADOR ---------- */
 function mostrarInfoBasicaInvestigador(p) {
-  const div = document.getElementById('info-participante'); if (!div) return;
-  const persona = p.persona || {};
+  const div = document.getElementById('info-participante');
+  if (!div) return;
   const fecha = new Date(p.timestamp).toLocaleString('es-AR');
   div.innerHTML = `
     <div class="info-grid">
-      <div class="info-item"><strong>Nombre:</strong><p>${persona.nombre || 'N/A'}</p></div>
-      <div class="info-item"><strong>Edad:</strong><p>${persona.edad || 'N/A'} años</p></div>
-      <div class="info-item"><strong>Género:</strong><p>${persona.genero || 'N/A'}</p></div>
-      <div class="info-item"><strong>País:</strong><p>${persona.pais || 'N/A'}</p></div>
-      <div class="info-item"><strong>Fecha y hora:</strong><p>${fecha}</p></div>
+      <div class="info-item"><strong>Nombre:</strong><p>${p.nombre || 'N/A'}</p></div>
+      <div class="info-item"><strong>Edad:</strong><p>${p.edad || 'N/A'} años</p></div>
+      <div class="info-item"><strong>Género:</strong><p>${p.genero || 'N/A'}</p></div>
+      <div class="info-item"><strong>País:</strong><p>${p.pais || 'N/A'}</p></div>
+      <div class="info-item"><strong>Fecha:</strong><p>${fecha}</p></div>
       <div class="info-item"><strong>ID:</strong><p>#${p.id || 'N/A'}</p></div>
     </div>
   `;
 }
 
-function mostrarResultadosSD3Investigador(sd3) {
-  const div = document.getElementById('resultados-sd3-detalle'); if (!div) return;
-  if (!sd3) { div.innerHTML = '<p>No hay datos SD3 disponibles.</p>'; return; }
-  const interpretarNivel = (valor) => { if (valor <= 2.4) return { nivel:'Bajo', color:'#4CAF50' }; if (valor <= 3.4) return { nivel:'Medio', color:'#ffce56' }; return { nivel:'Alto', color:'#ff6384' }; };
-  const mach = interpretarNivel(sd3.mach || 0), narc = interpretarNivel(sd3.narc || 0), psych = interpretarNivel(sd3.psych || 0);
+function mostrarResultadosSD3Investigador(p) {
+  const div = document.getElementById('resultados-sd3-detalle');
+  if (!div) return;
+  
+  const interpretarNivel = (valor) => {
+    if (valor <= 2.4) return { nivel:'Bajo', color:'#4CAF50' };
+    if (valor <= 3.4) return { nivel:'Medio', color:'#ffce56' };
+    return { nivel:'Alto', color:'#ff6384' };
+  };
+  
+  const mach = interpretarNivel(p.mach || 0);
+  const narc = interpretarNivel(p.narc || 0);
+  const psych = interpretarNivel(p.psych || 0);
+  
   div.innerHTML = `
     <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:20px;">
       <div style="padding:20px; background:rgba(255,99,132,0.1); border:2px solid #ff6384; border-radius:10px;">
         <h4 style="color:#ff6384;">🎭 Maquiavelismo</h4>
-        <p style="font-size:2.5em; font-weight:bold; color:${mach.color};">${sd3.mach ?? 'N/A'}</p>
+        <p style="font-size:2.5em; font-weight:bold; color:${mach.color};">${p.mach ?? 'N/A'}</p>
         <p style="color:var(--text-secondary);">Nivel: <strong style="color:${mach.color};">${mach.nivel}</strong></p>
       </div>
       <div style="padding:20px; background:rgba(54,162,235,0.1); border:2px solid #36a2eb; border-radius:10px;">
         <h4 style="color:#36a2eb;">👑 Narcisismo</h4>
-        <p style="font-size:2.5em; font-weight:bold; color:${narc.color};">${sd3.narc ?? 'N/A'}</p>
+        <p style="font-size:2.5em; font-weight:bold; color:${narc.color};">${p.narc ?? 'N/A'}</p>
         <p style="color:var(--text-secondary);">Nivel: <strong style="color:${narc.color};">${narc.nivel}</strong></p>
       </div>
       <div style="padding:20px; background:rgba(255,206,86,0.1); border:2px solid #ffce56; border-radius:10px;">
         <h4 style="color:#ffce56;">⚡ Psicopatía</h4>
-        <p style="font-size:2.5em; font-weight:bold; color:${psych.color};">${sd3.psych ?? 'N/A'}</p>
+        <p style="font-size:2.5em; font-weight:bold; color:${psych.color};">${p.psych ?? 'N/A'}</p>
         <p style="color:var(--text-secondary);">Nivel: <strong style="color:${psych.color};">${psych.nivel}</strong></p>
       </div>
     </div>
   `;
+  
   setTimeout(() => {
-    const canvas = document.getElementById('grafico-sd3-resultados'); if (!canvas) return;
+    const canvas = document.getElementById('grafico-sd3-resultados');
+    if (!canvas) return;
     try { const old = Chart.getChart(canvas); if (old) old.destroy(); } catch(e){}
     new Chart(canvas, {
       type:'radar',
-      data:{ labels:['Maquiavelismo','Narcisismo','Psicopatía'], datasets:[{ label:'Perfil', data:[sd3.mach||0, sd3.narc||0, sd3.psych||0], backgroundColor:'rgba(127,0,255,0.15)', borderColor:'#7f00ff', borderWidth:2, pointRadius:5 }] },
-      options:{ responsive:true, scales:{ r:{ min:1, max:5, ticks:{ stepSize:1 } } } }
+      data:{
+        labels:['Maquiavelismo','Narcisismo','Psicopatía'],
+        datasets:[{
+          label:'Perfil',
+          data:[p.mach||0, p.narc||0, p.psych||0],
+          backgroundColor:'rgba(127,0,255,0.15)',
+          borderColor:'#7f00ff',
+          borderWidth:2,
+          pointRadius:5
+        }]
+      },
+      options:{
+        responsive:true,
+        scales:{ r:{ min:1, max:5, ticks:{ stepSize:1 } } }
+      }
     });
   }, 100);
 }
 
-function mostrarTiemposReaccionInvestigador(sd3) {
-  const div = document.getElementById('tiempos-detalle'); if (!div) return;
-  if (!sd3 || !sd3.estadisticas_tiempo) { div.innerHTML = '<p>No hay datos de tiempos disponibles.</p>'; return; }
-  const stats = sd3.estadisticas_tiempo;
+function mostrarTiemposReaccionInvestigador(p) {
+  const div = document.getElementById('tiempos-detalle');
+  if (!div) return;
   div.innerHTML = `
     <div class="stats-mini">
-      <div class="stat-mini"><div class="stat-mini-label">Tiempo Total</div><div class="stat-mini-value">${((sd3.tiempo_total_ms||0)/1000/60).toFixed(1)} min</div></div>
-      <div class="stat-mini"><div class="stat-mini-label">Promedio</div><div class="stat-mini-value">${stats.promedio_segundos}s</div></div>
-      <div class="stat-mini"><div class="stat-mini-label">Mediana</div><div class="stat-mini-value">${stats.mediana_segundos}s</div></div>
-      <div class="stat-mini"><div class="stat-mini-label">Mínimo</div><div class="stat-mini-value">${stats.minimo_segundos}s</div></div>
-      <div class="stat-mini"><div class="stat-mini-label">Máximo</div><div class="stat-mini-value">${stats.maximo_segundos}s</div></div>
-      <div class="stat-mini"><div class="stat-mini-label">Desv. estándar</div><div class="stat-mini-value">${stats.desviacion_estandar_segundos}s</div></div>
+      <div class="stat-mini">
+        <div class="stat-mini-label">Tiempo Total</div>
+        <div class="stat-mini-value">${p.tiempo_total_seg || 'N/A'}s</div>
+      </div>
     </div>
   `;
-  if (sd3.tiempos_respuesta && Object.keys(sd3.tiempos_respuesta).length>0) {
-    setTimeout(()=> {
-      const tiempos = sd3.tiempos_respuesta;
-      const items = Object.keys(tiempos).map(k=>parseInt(k)).sort((a,b)=>a-b);
-      const valores = items.map(i => parseFloat(tiempos[i].tiempo_segundos));
-      const canvas = document.getElementById('grafico-tiempos'); if (!canvas) return;
-      try { const old = Chart.getChart(canvas); if (old) old.destroy(); } catch(e){}
-      new Chart(canvas, { type:'line', data:{ labels: items, datasets:[{ label:'Tiempo (segundos)', data: valores, borderColor:'#667eea', backgroundColor:'rgba(102,126,234,0.12)', fill:true }] }, options:{ responsive:true } });
-    }, 100);
-  }
 }
 
-function mostrarMicroexpresionesInvestigador(micro) {
-  const div = document.getElementById('microexpresiones-detalle'); if (!div) return;
-  if (!micro || !micro.emociones) { div.innerHTML = '<p>No hay datos de microexpresiones.</p>'; return; }
-  const dominante = micro.emocion_dominante || 'Desconocida';
-  const confianza = (micro.confianza || 0) * 100;
+function mostrarMicroexpresionesInvestigador(p) {
+  const div = document.getElementById('microexpresiones-detalle');
+  if (!div) return;
   div.innerHTML = `
-    <div style="text-align:center; margin-bottom:20px; padding:20px; border-radius:12px;">
-      <h4 style="color:#c080ff;">Emoción dominante</h4>
-      <p style="font-size:1.6em; color:#7f00ff; font-weight:700;">${dominante}</p>
-      <p style="color:var(--text-secondary);">Confianza: ${confianza.toFixed(1)}%</p>
+    <div style="text-align:center; padding:20px;">
+      <h4 style="color:#c080ff;">Emoción detectada</h4>
+      <p style="font-size:1.6em; color:#7f00ff; font-weight:700;">${p.emocion_principal || 'No analizada'}</p>
+      <p style="color:var(--text-secondary); margin-top:10px;">
+        ${p.imagen_url ? 'Imagen disponible para análisis' : 'Sin imagen disponible'}
+      </p>
     </div>
-    <h4 style="text-align:center; margin-bottom:12px;">Distribución de emociones</h4>
   `;
-  const emociones = Object.entries(micro.emociones).sort((a,b)=>b[1]-a[1]);
-  emociones.forEach(([emocion, valor]) => {
-    const percentage = (valor*100).toFixed(1);
-    div.innerHTML += `
-      <div class="emotion-bar"><div class="emotion-label"><strong>${emocion}</strong><span>${percentage}%</span></div>
-      <div class="bar-container"><div class="bar-fill" style="width:${percentage}%">${percentage}%</div></div></div>
-    `;
-  });
-  setTimeout(()=> {
-    const canvas = document.getElementById('grafico-emociones'); if (!canvas) return;
-    try { const old = Chart.getChart(canvas); if (old) old.destroy(); } catch(e){}
-    new Chart(canvas, { type:'doughnut', data:{ labels:Object.keys(micro.emociones), datasets:[{ data:Object.values(micro.emociones).map(v=> (v*100).toFixed(1)), backgroundColor:['#ff6384','#36a2eb','#ffce56','#4bc0c0','#9966ff','#ff9f40'] }] }, options:{ responsive:true } });
-  }, 120);
 }
 
-function mostrarFACSInvestigador(micro) {
-  const div = document.getElementById('facs-detalle'); if (!div) return;
-  if (!micro || !micro.facs || micro.facs.length===0) { div.innerHTML = '<p>No se detectaron unidades FACS.</p>'; return; }
-  div.innerHTML = '<div style="display:grid; gap:12px;">';
-  micro.facs.forEach(au => {
-    div.innerHTML += `<div class="info-item"><h4 style="margin:0 0 6px 0;">${au.nombre || au.codigo}</h4><p style="color:#888; margin:0 0 6px 0;"><strong>Código:</strong> ${au.codigo}</p><p style="margin:0;">${au.descripcion || ''}</p></div>`;
-  });
-  div.innerHTML += '</div>';
+function mostrarFACSInvestigador(p) {
+  const div = document.getElementById('facs-detalle');
+  if (!div) return;
+  div.innerHTML = '<p style="text-align:center;">Análisis FACS disponible después de procesar con Render.</p>';
 }
 
 function mostrarAnalisisIntegradoInvestigador(p) {
-  const div = document.getElementById('analisis-final'); if (!div) return;
-  const sd3 = p.sd3 || {}; const micro = p.microexpresiones || {};
+  const div = document.getElementById('analisis-final');
+  if (!div) return;
+  
   const nivel = v => v>3.4 ? 'alto' : v>2.4 ? 'medio' : 'bajo';
+  
   div.innerHTML = `
-    <p><strong>Perfil de Personalidad:</strong> Maquiavelismo <strong>${nivel(sd3.mach||0)}</strong>, Narcisismo <strong>${nivel(sd3.narc||0)}</strong>, Psicopatía <strong>${nivel(sd3.psych||0)}</strong>.</p>
-    <p><strong>Expresión Emocional:</strong> ${micro.emocion_dominante || 'no determinada'} (confianza ${(micro.confianza||0)*100}%).</p>
-    <p><strong>Tiempo de Respuesta:</strong> ${((sd3.tiempo_total_ms||0)/1000/60).toFixed(1)} min, promedio ${sd3.estadisticas_tiempo?.promedio_segundos || 'N/A'}s por ítem.</p>
+    <p><strong>Perfil de Personalidad:</strong> Maquiavelismo <strong>${nivel(p.mach||0)}</strong>, Narcisismo <strong>${nivel(p.narc||0)}</strong>, Psicopatía <strong>${nivel(p.psych||0)}</strong>.</p>
+    <p><strong>Expresión Emocional:</strong> ${p.emocion_principal || 'no determinada'}.</p>
+    <p><strong>Tiempo de Respuesta:</strong> ${p.tiempo_total_seg || 'N/A'} segundos total.</p>
   `;
 }
 
 function mostrarImagenInvestigador(p) {
-  const div = document.getElementById('imagen-participante'); if (!div) return;
-  if (p.imagen) {
-    // incluimos botón "Analizar en Render" visible solo para investigador
+  const div = document.getElementById('imagen-participante');
+  if (!div) return;
+  
+  if (p.imagen_url) {
     div.innerHTML = `
       <div style="text-align:center;">
-        <img id="imagen-investigador-display" src="${p.imagen}" alt="Foto participante" style="max-width:100%; max-height:500px; border-radius:10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+        <img id="imagen-investigador-display" src="${p.imagen_url}" alt="Foto participante" 
+             style="max-width:100%; max-height:500px; border-radius:10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
         <div style="margin-top:15px;">
-          <button id="btn-analizar-render" class="btn-primary">🔬 Analizar en Render (investigador)</button>
+          <button id="btn-analizar-render" class="btn-primary">🔬 Analizar con IA (Render)</button>
         </div>
       </div>
     `;
-    // bindear el click
-    setTimeout(()=> {
+    
+    setTimeout(() => {
       const btnAnalizar = document.getElementById('btn-analizar-render');
-      if (btnAnalizar) btnAnalizar.addEventListener('click', () => {
-        if (!p.id) { alert('Participante sin ID, no se puede analizar.'); return; }
-        analizarEnRenderParaInvestigador(p.id);
-      });
+      if (btnAnalizar) {
+        btnAnalizar.addEventListener('click', () => analizarEnRenderParaInvestigador(p));
+      }
     }, 50);
   } else {
-    div.innerHTML = '<p>No hay imagen disponible.</p>';
+    div.innerHTML = '<p style="text-align:center; color:var(--text-secondary);">No hay imagen disponible.</p>';
   }
 }
 
-/* ---------- INICIALIZACIÓN GLOBAL ---------- */
+/* ---------- ANALIZAR EN RENDER (INVESTIGADOR) ---------- */
+async function analizarEnRenderParaInvestigador(participante) {
+  const resultadoDiv = document.getElementById('resultado-micro');
+  if (!participante || !participante.imagen_url) {
+    alert('No hay imagen disponible para analizar.');
+    return;
+  }
+  
+  if (!resultadoDiv) return;
+  resultadoDiv.innerHTML = `<div class="analisis-loading">🧠 Analizando en servidor Render...</div>`;
+  resultadoDiv.classList.remove('hidden');
+
+  try {
+    // Descargar imagen desde URL
+    const imgRes = await fetch(participante.imagen_url);
+    const imgBlob = await imgRes.blob();
+    
+    const formData = new FormData();
+    formData.append('img', imgBlob, 'foto.jpg');
+
+    console.log('📤 Enviando a Render:', RENDER_PREDICT_URL);
+    const res = await fetch(RENDER_PREDICT_URL, { 
+      method:'POST', 
+      body: formData 
+    });
+    
+    if (!res.ok) {
+      const texto = await res.text().catch(()=>'sin texto');
+      throw new Error(`Render error ${res.status}: ${texto}`);
+    }
+    
+    const json = await res.json();
+    console.log('✅ Respuesta Render:', json);
+
+    const resultadosMicro = {
+      emociones: json.emociones || {},
+      emocion_dominante: json.emocion_dominante || json.dominante || 'Desconocida',
+      confianza: json.confianza || json.confidence || 0,
+      facs: json.facs || [],
+      sd3_micro: json.sd3 || {}
+    };
+
+    // Actualizar en memoria
+    participante.microexpresiones = resultadosMicro;
+    participante.emocion_principal = resultadosMicro.emocion_dominante;
+    
+    // Guardar análisis en Sheets
+    try {
+      await enviarResultadosAGoogleSheets({
+        action: "actualizarAnalisis",
+        id: participante.id,
+        emocion_principal: resultadosMicro.emocion_dominante,
+        microexpresiones: resultadosMicro
+      });
+    } catch(e) { 
+      console.warn('No se pudo guardar análisis:', e); 
+    }
+
+    mostrarMicroexpresionesInvestigador(participante);
+    mostrarFACSInvestigador(participante);
+    mostrarAnalisisIntegradoInvestigador(participante);
+    
+    resultadoDiv.innerHTML = `
+      <div class="resultado-box" style="text-align:center;">
+        <h4>✅ Análisis completado</h4>
+        <p>Emoción detectada: <strong style="color:var(--accent);">${resultadosMicro.emocion_dominante}</strong></p>
+        <p>Confianza: ${(resultadosMicro.confianza * 100).toFixed(1)}%</p>
+      </div>
+    `;
+    
+  } catch (err) {
+    console.error('❌ Error en Render:', err);
+    resultadoDiv.innerHTML = `
+      <div class="resultado-box" style="border-color: #ff6384;">
+        <h4>❌ Error en el análisis</h4>
+        <p>${err.message}</p>
+        <p style="font-size:0.9em; color:#ff6384;">
+          Verificá que el servicio de Render esté activo.
+        </p>
+      </div>
+    `;
+  }
+}
+
+/* ---------- INICIALIZACIÓN ---------- */
 document.addEventListener('DOMContentLoaded', () => {
-  // Limpiar sesión al inicio (seguridad/consistencia)
   sessionStorage.clear();
   imagenCapturada = null;
   tiemposRespuesta = {};
   tiempoInicioItem = {};
   testInicioTimestamp = null;
   window._capturaInicializada = false;
-  console.log('✅ Sesión limpiada al cargar la página');
+  console.log('✅ Sesión limpiada al cargar');
 
-  // botones inicio (evitar duplicados)
   const btnParticipante = document.querySelector('#card-participante .btn-primary');
   const btnInvestigador = document.querySelector('#card-investigador .btn-primary');
 
@@ -759,7 +823,8 @@ document.addEventListener('DOMContentLoaded', () => {
     testInicioTimestamp = null;
     document.getElementById('pagina-inicio')?.classList.add('hidden');
     document.getElementById('seccion-bienvenida')?.classList.remove('hidden');
-    const fd = document.getElementById('form-datos-basicos'); if (fd) fd.reset();
+    const fd = document.getElementById('form-datos-basicos');
+    if (fd) fd.reset();
     window.scrollTo({ top:0, behavior:'smooth' });
   });
 
@@ -769,17 +834,22 @@ document.addEventListener('DOMContentLoaded', () => {
     window.scrollTo({ top:0, behavior:'smooth' });
   });
 
-  // form datos -> iniciar test
   const formDatos = document.getElementById('form-datos-basicos');
   formDatos?.addEventListener('submit', (e) => {
     e.preventDefault();
     const consentimiento = formDatos.querySelector('input[name="consentimiento"]');
-    if (!consentimiento || !consentimiento.checked) { alert('Debés aceptar el consentimiento para continuar.'); return; }
+    if (!consentimiento || !consentimiento.checked) {
+      alert('Debés aceptar el consentimiento para continuar.');
+      return;
+    }
     const nombre = formDatos.querySelector('input[name="nombre"]').value.trim();
     const edad = formDatos.querySelector('input[name="edad"]').value;
     const genero = formDatos.querySelector('select[name="genero"]').value;
     const pais = formDatos.querySelector('input[name="pais"]').value.trim();
-    if (!nombre || !edad || !genero || !pais) { alert('Completá todos los datos personales requeridos.'); return; }
+    if (!nombre || !edad || !genero || !pais) {
+      alert('Completá todos los datos requeridos.');
+      return;
+    }
     sessionStorage.setItem('datos_personales', JSON.stringify({ nombre, edad, genero, pais }));
     testInicioTimestamp = Date.now();
     generarItemsTest();
@@ -789,11 +859,12 @@ document.addEventListener('DOMContentLoaded', () => {
     window.scrollTo({ top:0, behavior:'smooth' });
   });
 
-  // submit SD3
   const formSD3 = document.getElementById('form-sd3');
-  formSD3?.addEventListener('submit', (e) => { e.preventDefault(); calcularSD3(); });
+  formSD3?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    calcularSD3();
+  });
 
-  // login investigador
   const btnLoginInv = document.getElementById('btn-login-investigador');
   const inputPasswordInv = document.getElementById('password-investigador');
   btnLoginInv?.addEventListener('click', () => {
@@ -803,29 +874,29 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('seccion-investigador')?.classList.remove('hidden');
       cargarDatosParticipantes();
       window.scrollTo({ top:0, behavior:'smooth' });
-    } else { alert('❌ Contraseña incorrecta'); if (inputPasswordInv) inputPasswordInv.value = ''; }
+    } else {
+      alert('❌ Contraseña incorrecta');
+      if (inputPasswordInv) inputPasswordInv.value = '';
+    }
   });
 
-  // navegación botones volver
   document.getElementById('btn-volver-inicio-2')?.addEventListener('click', () => {
     document.getElementById('seccion-login')?.classList.add('hidden');
     document.getElementById('pagina-inicio')?.classList.remove('hidden');
     window.scrollTo({ top:0, behavior:'smooth' });
   });
+
   document.getElementById('btn-volver-login')?.addEventListener('click', () => {
     document.getElementById('seccion-investigador')?.classList.add('hidden');
     document.getElementById('seccion-login')?.classList.remove('hidden');
     window.scrollTo({ top:0, behavior:'smooth' });
   });
+
   document.getElementById('btn-volver-panel')?.addEventListener('click', () => {
     document.getElementById('seccion-resultados')?.classList.add('hidden');
     document.getElementById('seccion-investigador')?.classList.remove('hidden');
     window.scrollTo({ top:0, behavior:'smooth' });
-     
   });
-   
-}); // ← Cierra DOMContentLoaded
+});
 
 /* ---------- FIN ---------- */
-
-
