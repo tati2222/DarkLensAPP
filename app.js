@@ -1,11 +1,10 @@
 /* ========================================
-   app.js - PARTE 1/2 - Versión CORREGIDA
-   Config, Utilidades, Test SD3, Captura de Imagen
+   app.js - VERSIÓN COMPLETA CON ANÁLISIS AUTOMÁTICO
    ======================================== */
 
 /* ---------- CONFIG ---------- */
-const RENDER_PREDICT_URL = "https://darklnesapp-api-1.onrender.com/run/predict";
 const GOOGLE_SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwuW_DKiakk0um7AtUnMYaETUUqnJqdwAFa-8plROIVKWwdcTOEqDocDHxealU8sA1BFQ/exec";
+const FASTAPI_URL = "https://darklnesapp-api-1.onrender.com"; // URL de tu FastAPI
 const PASSWORD_INVESTIGADOR = "investigador2025";
 
 /* ---------- ESTADO GLOBAL ---------- */
@@ -19,17 +18,6 @@ let participantesData = [];
 let participanteSeleccionado = null;
 
 /* ---------- UTILIDADES ---------- */
-function dataURLtoBlob(dataurl) {
-  const arr = dataurl.split(',');
-  const mimeMatch = arr[0].match(/:(.*?);/);
-  const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) u8arr[n] = bstr.charCodeAt(n);
-  return new Blob([u8arr], { type: mime });
-}
-
 function safeJsonParse(respText) {
   try { return JSON.parse(respText); } catch { return null; }
 }
@@ -62,6 +50,51 @@ function calcularEstadisticasTiempo(tiemposArray) {
   };
 }
 
+/* ---------- ANALIZAR MICROEXPRESIONES CON FASTAPI ---------- */
+async function analizarMicroexpresiones(imagenBase64) {
+  if (!imagenBase64 || imagenBase64 === 'null') {
+    return { 
+      emociones: [], 
+      emocion_principal: 'Sin imagen',
+      confianza: 0,
+      error: 'No hay imagen para analizar' 
+    };
+  }
+
+  try {
+    console.log('🔬 Enviando imagen para análisis de microexpresiones...');
+    
+    const response = await fetch(FASTAPI_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        image: imagenBase64
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Error HTTP ${response.status}: ${errorText}`);
+    }
+
+    const resultado = await response.json();
+    console.log('✅ Análisis de microexpresiones completado:', resultado);
+    
+    return resultado;
+    
+  } catch (error) {
+    console.error('❌ Error analizando microexpresiones:', error);
+    return { 
+      emociones: [], 
+      emocion_principal: 'Error en análisis',
+      confianza: 0,
+      error: error.message 
+    };
+  }
+}
+
 /* ---------- SD3 ITEMS ---------- */
 const itemsSD3 = [
   "No es prudente contar tus secretos.",
@@ -71,7 +104,7 @@ const itemsSD3 = [
   "Es sabio guardar información que puedas usar en contra de otras personas más adelante.",
   "Debes esperar el momento oportuno para vengarme de las personas.",
   "Hay cosas que deberías ocultar a los demás porque no necesitan saberlas.",
-  "Asegúrate de que tus planes te beneficien a ti, no a los demás.",
+  "Asegúrate de que tus planes te beneficien a ti, not a los demás.",
   "La mayoría de las personas puede ser manipulada.",
   "La gente me ve como un líder nato.",
   "(R) Odio ser el centro de atención.",
@@ -207,29 +240,33 @@ async function calcularSD3() {
 
 /* ---------- ENVIAR A GOOGLE SHEETS ---------- */
 async function enviarResultadosAGoogleSheets(datos) {
-  console.log("📤 Enviando datos a Google Sheets:", datos);
+  console.log("📤 Enviando datos a Google Sheets:", {
+    ...datos,
+    imagen_base64: datos.imagen_base64 ? `[IMAGEN: ${datos.imagen_base64.length} caracteres]` : 'No image'
+  });
 
   try {
-    const res = await fetch(GOOGLE_SHEETS_WEBAPP_URL, {
+    const response = await fetch(GOOGLE_SHEETS_WEBAPP_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(datos)
     });
 
-    const text = await res.text();
-    console.log("📥 Respuesta raw de Sheets:", text);
-    
-    const json = safeJsonParse(text);
-    console.log("✅ Respuesta parseada:", json);
-    return json;
+    if (!response.ok) {
+      throw new Error(`Error HTTP: ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log("✅ Respuesta de Google Sheets:", result);
+    return result;
 
   } catch (err) {
     console.error("❌ Error enviando a Sheets:", err);
-    throw err;
+    throw new Error(`No se pudo conectar con Google Sheets: ${err.message}`);
   }
 }
 
-/* ---------- CÁMARA Y CAPTURA ---------- */
+/* ---------- CÁMARA Y CAPTURA CON ANÁLISIS AUTOMÁTICO ---------- */
 function configurarCamaraYSubida() {
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
@@ -240,20 +277,24 @@ function configurarCamaraYSubida() {
   const previewContainer = document.getElementById('preview-container');
   const previewImg = document.getElementById('preview-img');
 
+  // Crear botón de enviar si no existe
   let btnEnviarImagen = document.getElementById('btn-enviar-imagen');
   if (!btnEnviarImagen) {
     btnEnviarImagen = document.createElement('button');
     btnEnviarImagen.id = 'btn-enviar-imagen';
     btnEnviarImagen.className = 'btn-primary';
-    btnEnviarImagen.textContent = '📤 Enviar mi participación';
+    btnEnviarImagen.textContent = '📤 Analizar y Enviar';
     btnEnviarImagen.style.display = 'none';
     btnEnviarImagen.style.marginTop = '12px';
     previewContainer?.appendChild(btnEnviarImagen);
   }
 
+  // Activar cámara
   btnActivarCamara?.addEventListener('click', async function() {
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'user' } 
+      });
       if (video) { 
         video.srcObject = stream; 
         video.classList.remove('hidden'); 
@@ -264,102 +305,78 @@ function configurarCamaraYSubida() {
       document.getElementById('camera-placeholder')?.classList?.add('hidden');
     } catch (err) {
       alert('No se pudo acceder a la cámara. Podés subir una imagen desde tu dispositivo.');
-      console.error('Error getUserMedia:', err);
+      console.error('Error cámara:', err);
     }
   });
 
+  // Tomar foto
   btnTomarFoto?.addEventListener('click', function() {
     try {
-      if (!canvas || !video) throw new Error('No hay canvas o video disponible');
+      if (!canvas || !video) return;
       const ctx = canvas.getContext('2d');
-      ctx.clearRect(0,0,canvas.width,canvas.height);
       canvas.width = video.videoWidth || 640;
       canvas.height = video.videoHeight || 480;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      imagenCapturada = canvas.toDataURL('image/jpeg', 0.9);
+      
+      imagenCapturada = canvas.toDataURL('image/jpeg', 0.8);
+      
       if (previewImg) { 
         previewImg.src = imagenCapturada; 
         previewImg.style.opacity = '1'; 
       }
       previewContainer?.classList.remove('hidden');
-      video.classList.add('hidden');
+      
+      // Detener cámara
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+        video.classList.add('hidden');
+      }
       canvas.classList.remove('hidden');
 
+      // Mostrar botón enviar
       if (btnEnviarImagen) { 
         btnEnviarImagen.style.display = 'block'; 
         btnEnviarImagen.disabled = false; 
       }
-      if (stream) { 
-        stream.getTracks().forEach(t => t.stop()); 
-        stream = null; 
-      }
-      console.log('✅ Foto tomada');
+      
     } catch (err) {
       console.error('Error al tomar foto:', err);
-      alert('No se pudo tomar la foto. Intentá subir una imagen.');
+      alert('Error al tomar foto. Intentá subir una imagen.');
     }
   });
 
+  // Subir imagen
   btnSubirImagen?.addEventListener('click', () => {
-    if (inputImagen) { 
-      inputImagen.value = ''; 
-      inputImagen.click(); 
-    }
+    inputImagen?.click();
   });
 
   inputImagen?.addEventListener('change', function(e) {
     const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) { 
-      alert('Por favor subí un archivo de imagen válido.'); 
-      return; 
-    }
-
-    if (previewContainer) previewContainer.classList.remove('hidden');
-    if (previewImg) { 
-      previewImg.src = ''; 
-      previewImg.alt = 'Cargando imagen...'; 
-      previewImg.style.opacity = '0.5'; 
+    if (!file || !file.type.startsWith('image/')) {
+      alert('Por favor subí un archivo de imagen válido.');
+      return;
     }
 
     const reader = new FileReader();
     reader.onload = function(ev) {
-      const img = new Image();
-      img.onload = function() {
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
-        imagenCapturada = canvas.toDataURL('image/jpeg', 0.9);
-        if (previewImg) { 
-          previewImg.src = imagenCapturada; 
-          previewImg.alt = 'Imagen cargada'; 
-          previewImg.style.opacity = '1'; 
-        }
-        previewContainer?.classList.remove('hidden');
-        if (video) video.classList.add('hidden');
-        canvas.classList.remove('hidden');
-
-        if (btnEnviarImagen) { 
-          btnEnviarImagen.style.display = 'block'; 
-          btnEnviarImagen.disabled = false; 
-        }
-      };
-      img.onerror = function() { 
-        alert('Error cargando la imagen. Probá con otra.'); 
-        if (previewImg) previewImg.style.opacity = '1'; 
-      };
-      img.src = ev.target.result;
-    };
-    reader.onerror = function() { 
-      alert('Error leyendo el archivo. Intentá nuevamente.'); 
-      if (previewImg) previewImg.style.opacity = '1'; 
+      imagenCapturada = ev.target.result;
+      
+      if (previewImg) { 
+        previewImg.src = imagenCapturada; 
+        previewImg.style.opacity = '1'; 
+      }
+      previewContainer?.classList.remove('hidden');
+      
+      if (btnEnviarImagen) { 
+        btnEnviarImagen.style.display = 'block'; 
+        btnEnviarImagen.disabled = false; 
+      }
     };
     reader.readAsDataURL(file);
   });
 
+  // Enviar datos finales CON ANÁLISIS AUTOMÁTICO
   btnEnviarImagen?.addEventListener('click', async () => {
     if (!imagenCapturada) { 
       alert('No hay imagen para enviar'); 
@@ -367,12 +384,19 @@ function configurarCamaraYSubida() {
     }
 
     btnEnviarImagen.disabled = true;
-    btnEnviarImagen.textContent = '⏳ Enviando...';
+    btnEnviarImagen.textContent = '⏳ Analizando microexpresiones...';
 
     try {
       const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
       const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
 
+      // ✅ PASO 1: ANALIZAR MICROEXPRESIONES AUTOMÁTICAMENTE
+      console.log('🔬 Iniciando análisis automático de microexpresiones...');
+      const analisisMicro = await analizarMicroexpresiones(imagenCapturada);
+      
+      console.log('📊 Resultado del análisis:', analisisMicro);
+
+      // ✅ PASO 2: PREPARAR DATOS CON ANÁLISIS
       const payload = {
         action: "guardar",
         nombre: persona.nombre || "",
@@ -384,32 +408,76 @@ function configurarCamaraYSubida() {
         psych: sd3.psych || "",
         tiempo_total_seg: sd3.tiempo_total_segundos || "",
         imagen_base64: imagenCapturada,
+        emocion_principal: analisisMicro.emocion_principal || 'No detectada',
+        emociones_detectadas: JSON.stringify(analisisMicro.emociones || []),
+        confianza_analisis: analisisMicro.confianza || 0,
+        estado_analisis: analisisMicro.error ? 'Error' : 'Completado',
         timestamp: new Date().toISOString()
       };
 
-      await enviarResultadosAGoogleSheets(payload);
-      mostrarConfirmacionParticipante();
+      // ✅ PASO 3: ENVIAR A GOOGLE SHEETS
+      const resultado = await enviarResultadosAGoogleSheets(payload);
+      
+      if (resultado.success) {
+        console.log('✅ Análisis completado y guardado');
+        mostrarConfirmacionParticipante(analisisMicro);
+      } else {
+        throw new Error(resultado.error || 'Error desconocido');
+      }
 
     } catch (err) {
-      console.error("❌ Error enviando:", err);
-      alert("Error al enviar. Intentá nuevamente.");
+      console.error("❌ Error en el proceso:", err);
+      alert("Error: " + err.message);
       btnEnviarImagen.disabled = false;
-      btnEnviarImagen.textContent = "📤 Enviar mi participación";
+      btnEnviarImagen.textContent = "📤 Analizar y Enviar";
     }
   });
 }
 
 /* ---------- CONFIRMACIÓN PARTICIPANTE ---------- */
-function mostrarConfirmacionParticipante() {
+function mostrarConfirmacionParticipante(analisisMicro = null) {
   const resultadoDiv = document.getElementById('resultado-micro');
   if (!resultadoDiv) return;
+  
+  let analisisHTML = '';
+  if (analisisMicro && !analisisMicro.error) {
+    analisisHTML = `
+      <div style="background: rgba(127, 0, 255, 0.1); padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center;">
+        <h4 style="color: var(--accent);">🔍 Análisis de Microexpresiones Completado</h4>
+        <p style="font-size: 1.3em; font-weight: bold; color: #7f00ff;">
+          Emoción detectada: ${analisisMicro.emocion_principal}
+        </p>
+        ${analisisMicro.confianza ? `
+          <p style="color: var(--text-secondary);">
+            <strong>Confianza:</strong> ${(analisisMicro.confianza * 100).toFixed(1)}%
+          </p>
+        ` : ''}
+        <p style="color: var(--text-secondary); margin-top: 10px;">
+          Los resultados están disponibles en el panel del investigador
+        </p>
+      </div>
+    `;
+  } else if (analisisMicro?.error) {
+    analisisHTML = `
+      <div style="background: rgba(255, 99, 132, 0.1); padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center;">
+        <h4 style="color: #ff6384;">⚠️ Análisis No Disponible</h4>
+        <p style="color: var(--text-secondary);">
+          El análisis de microexpresiones no pudo completarse, pero tus datos fueron guardados.
+        </p>
+      </div>
+    `;
+  }
+  
   resultadoDiv.classList.remove('hidden');
   resultadoDiv.innerHTML = `
     <div class="confirmacion-final" style="text-align:center; padding:30px;">
       <h3 style="color: var(--accent);">¡Gracias por participar!</h3>
-      <p style="margin:15px 0;">Tu imagen y tus respuestas han sido registradas correctamente.</p>
+      <p style="margin:15px 0;">Tu imagen, respuestas y análisis han sido registrados correctamente.</p>
+      
+      ${analisisHTML}
+      
       <div style="margin:20px 0;">
-        <img src="${imagenCapturada || ''}" alt="Imagen subida" style="max-width:300px; border-radius:10px; border:2px solid var(--border);">
+        <img src="${imagenCapturada || ''}" alt="Imagen analizada" style="max-width:300px; border-radius:10px; border:2px solid var(--border);">
       </div>
       <div style="margin-top:20px; display:flex; gap:15px; justify-content:center; flex-wrap:wrap;">
         <button class="btn-primary" onclick="volverAlInicio()">🏠 Volver al inicio</button>
@@ -439,59 +507,49 @@ function volverAlInicio() {
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
-/* ========================================
-   app.js - PARTE 2/2 - Versión CORREGIDA
-   Panel Investigador, Análisis Render, Inicialización
-   
-   PEGÁ ESTA PARTE DESPUÉS DE LA PARTE 1
-   ======================================== */
-
-/* ---------- CARGAR PARTICIPANTES (INVESTIGADOR) ---------- */
+/* ---------- PANEL INVESTIGADOR ---------- */
 async function cargarDatosParticipantes() {
   const listaDiv = document.getElementById('lista-participantes');
   if (listaDiv) listaDiv.innerHTML = '<p style="text-align:center; color:var(--text-secondary);">📡 Cargando datos...</p>';
   
   try {
     const resp = await fetch(GOOGLE_SHEETS_WEBAPP_URL + '?action=getAll');
-    const text = await resp.text();
-    console.log("📥 Respuesta raw getAll:", text);
     
-    const data = safeJsonParse(text);
-    console.log("📊 Data parseada:", data);
-    
-    if (data && Array.isArray(data.participantes)) {
-      participantesData = data.participantes;
-    } else if (Array.isArray(data)) {
-      participantesData = data;
-    } else {
-      throw new Error('Formato inesperado');
+    if (!resp.ok) {
+      throw new Error(`Error HTTP: ${resp.status}`);
     }
     
-    console.log("✅ Participantes cargados:", participantesData.length);
+    const data = await resp.json();
+    console.log("📊 Datos cargados:", data);
+    
+    if (data.success && Array.isArray(data.participantes)) {
+      participantesData = data.participantes;
+    } else {
+      throw new Error('Formato de datos inesperado');
+    }
     
   } catch (err) {
-    console.warn('⚠️ No se pudieron cargar participantes, usando demo:', err);
-    participantesData = generarDatosEjemplo();
+    console.warn('⚠️ No se pudieron cargar participantes:', err);
+    // Datos de ejemplo para desarrollo
+    participantesData = [{
+      id: 'DEMO_001',
+      timestamp: new Date().toISOString(),
+      nombre: 'Participante Demo',
+      edad: '28',
+      genero: 'masculino',
+      pais: 'Argentina',
+      maquiavelismo: '3.2',
+      narcisismo: '2.8',
+      psicopatía: '2.5',
+      tiempo_total_seg: '7.50',
+      url_imagen: null,
+      emocion_principal: 'Felicidad',
+      confianza_analisis: '0.87',
+      estado_analisis: 'Completado'
+    }];
   }
   
   poblarListaInvestigador();
-}
-
-function generarDatosEjemplo() {
-  return [{
-    id: 1,
-    timestamp: new Date().toISOString(),
-    nombre: 'Participante Demo',
-    edad: 28,
-    genero: 'masculino',
-    pais: 'Argentina',
-    mach: 3.2,
-    narc: 2.8,
-    psych: 2.5,
-    tiempo_total_seg: '7.50',
-    imagen_url: null,
-    emocion_principal: 'No analizada'
-  }];
 }
 
 function poblarListaInvestigador() {
@@ -506,18 +564,26 @@ function poblarListaInvestigador() {
   listaDiv.innerHTML = '';
   participantesData.forEach((p, idx) => {
     const fecha = new Date(p.timestamp).toLocaleString('es-AR');
+    const emocion = p.emocion_principal || 'No analizado';
+    const confianza = p.confianza_analisis ? `${(p.confianza_analisis * 100).toFixed(1)}%` : 'N/A';
+    
     const item = document.createElement('div');
     item.className = 'content-box';
     item.style.margin = '10px';
     item.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-        <div>
+        <div style="flex: 1;">
           <strong>${p.nombre || 'Sin nombre'}</strong>
           <div style="color:var(--text-secondary); font-size:0.9em;">${fecha}</div>
+          <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 0.85em;">
+            <span style="color: #667eea;">🎭 ${p.maquiavelismo || 'N/A'}</span>
+            <span style="color: #764ba2;">👑 ${p.narcisismo || 'N/A'}</span>
+            <span style="color: #ffce56;">⚡ ${p.psicopatía || 'N/A'}</span>
+            <span style="color: #7f00ff;">😊 ${emocion}</span>
+          </div>
         </div>
         <div style="display:flex; gap:10px;">
-          <button class="btn-primary btn-ver" data-index="${idx}">Ver Resultados</button>
-          <button class="btn-secondary btn-export" data-index="${idx}">Exportar</button>
+          <button class="btn-primary btn-ver" data-index="${idx}">Ver Detalles</button>
         </div>
       </div>
     `;
@@ -530,26 +596,6 @@ function poblarListaInvestigador() {
       mostrarParticipanteEnPanel(idx);
     });
   });
-  
-  document.querySelectorAll('#lista-participantes .btn-export').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const idx = parseInt(e.currentTarget.getAttribute('data-index'));
-      exportarParticipanteJson(idx);
-    });
-  });
-}
-
-function exportarParticipanteJson(idx) {
-  const p = participantesData[idx];
-  if (!p) return;
-  const dataStr = JSON.stringify(p, null, 2);
-  const blob = new Blob([dataStr], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `participante_${p.id || idx}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 function mostrarParticipanteEnPanel(idx) {
@@ -597,25 +643,25 @@ function mostrarResultadosSD3Investigador(p) {
     return { nivel:'Alto', color:'#ff6384' };
   };
   
-  const mach = interpretarNivel(p.mach || 0);
-  const narc = interpretarNivel(p.narc || 0);
-  const psych = interpretarNivel(p.psych || 0);
+  const mach = interpretarNivel(p.maquiavelismo || 0);
+  const narc = interpretarNivel(p.narcisismo || 0);
+  const psych = interpretarNivel(p.psicopatía || 0);
   
   div.innerHTML = `
     <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:20px;">
       <div style="padding:20px; background:rgba(255,99,132,0.1); border:2px solid #ff6384; border-radius:10px;">
         <h4 style="color:#ff6384;">🎭 Maquiavelismo</h4>
-        <p style="font-size:2.5em; font-weight:bold; color:${mach.color};">${p.mach ?? 'N/A'}</p>
+        <p style="font-size:2.5em; font-weight:bold; color:${mach.color};">${p.maquiavelismo ?? 'N/A'}</p>
         <p style="color:var(--text-secondary);">Nivel: <strong style="color:${mach.color};">${mach.nivel}</strong></p>
       </div>
       <div style="padding:20px; background:rgba(54,162,235,0.1); border:2px solid #36a2eb; border-radius:10px;">
         <h4 style="color:#36a2eb;">👑 Narcisismo</h4>
-        <p style="font-size:2.5em; font-weight:bold; color:${narc.color};">${p.narc ?? 'N/A'}</p>
+        <p style="font-size:2.5em; font-weight:bold; color:${narc.color};">${p.narcisismo ?? 'N/A'}</p>
         <p style="color:var(--text-secondary);">Nivel: <strong style="color:${narc.color};">${narc.nivel}</strong></p>
       </div>
       <div style="padding:20px; background:rgba(255,206,86,0.1); border:2px solid #ffce56; border-radius:10px;">
         <h4 style="color:#ffce56;">⚡ Psicopatía</h4>
-        <p style="font-size:2.5em; font-weight:bold; color:${psych.color};">${p.psych ?? 'N/A'}</p>
+        <p style="font-size:2.5em; font-weight:bold; color:${psych.color};">${p.psicopatía ?? 'N/A'}</p>
         <p style="color:var(--text-secondary);">Nivel: <strong style="color:${psych.color};">${psych.nivel}</strong></p>
       </div>
     </div>
@@ -631,7 +677,7 @@ function mostrarResultadosSD3Investigador(p) {
         labels:['Maquiavelismo','Narcisismo','Psicopatía'],
         datasets:[{
           label:'Perfil',
-          data:[p.mach||0, p.narc||0, p.psych||0],
+          data:[p.maquiavelismo||0, p.narcisismo||0, p.psicopatía||0],
           backgroundColor:'rgba(127,0,255,0.15)',
           borderColor:'#7f00ff',
           borderWidth:2,
@@ -662,13 +708,32 @@ function mostrarTiemposReaccionInvestigador(p) {
 function mostrarMicroexpresionesInvestigador(p) {
   const div = document.getElementById('microexpresiones-detalle');
   if (!div) return;
+  
+  const emocion = p.emocion_principal || 'No analizado';
+  const confianza = p.confianza_analisis ? `${(p.confianza_analisis * 100).toFixed(1)}%` : 'N/A';
+  const estado = p.estado_analisis || 'Pendiente';
+  
+  let estadoColor = '#7f00ff';
+  if (estado === 'Error') estadoColor = '#ff6384';
+  if (estado === 'Pendiente') estadoColor = '#ffce56';
+  
   div.innerHTML = `
     <div style="text-align:center; padding:20px;">
-      <h4 style="color:#c080ff;">Emoción detectada</h4>
-      <p style="font-size:1.6em; color:#7f00ff; font-weight:700;">${p.emocion_principal || 'No analizada'}</p>
-      <p style="color:var(--text-secondary); margin-top:10px;">
-        ${p.imagen_url ? 'Imagen disponible para análisis' : 'Sin imagen disponible'}
-      </p>
+      <h4 style="color:#c080ff;">Análisis de Microexpresiones</h4>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:20px; margin-top:20px;">
+        <div style="padding:15px; background:rgba(127,0,255,0.1); border-radius:10px;">
+          <div style="font-size:0.9em; color:var(--text-secondary);">Emoción Principal</div>
+          <div style="font-size:1.8em; font-weight:bold; color:#7f00ff;">${emocion}</div>
+        </div>
+        <div style="padding:15px; background:rgba(54,162,235,0.1); border-radius:10px;">
+          <div style="font-size:0.9em; color:var(--text-secondary);">Confianza</div>
+          <div style="font-size:1.8em; font-weight:bold; color:#36a2eb;">${confianza}</div>
+        </div>
+        <div style="padding:15px; background:rgba(255,206,86,0.1); border-radius:10px;">
+          <div style="font-size:0.9em; color:var(--text-secondary);">Estado</div>
+          <div style="font-size:1.8em; font-weight:bold; color:${estadoColor};">${estado}</div>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -676,7 +741,22 @@ function mostrarMicroexpresionesInvestigador(p) {
 function mostrarFACSInvestigador(p) {
   const div = document.getElementById('facs-detalle');
   if (!div) return;
-  div.innerHTML = '<p style="text-align:center;">Análisis FACS disponible después de procesar con Render.</p>';
+  
+  // Aquí puedes mostrar las unidades FACS si tu modelo las devuelve
+  div.innerHTML = `
+    <div style="text-align:center; padding:20px;">
+      <h4 style="color:#c080ff;">Sistema FACS</h4>
+      <p style="color:var(--text-secondary);">
+        Análisis basado en el Facial Action Coding System
+      </p>
+      ${p.emociones_detectadas && p.emociones_detectadas !== '[]' ? `
+        <div style="margin-top:15px;">
+          <strong>Emociones detectadas:</strong>
+          <p style="color:var(--text-secondary);">${p.emociones_detectadas}</p>
+        </div>
+      ` : ''}
+    </div>
+  `;
 }
 
 function mostrarAnalisisIntegradoInvestigador(p) {
@@ -684,11 +764,18 @@ function mostrarAnalisisIntegradoInvestigador(p) {
   if (!div) return;
   
   const nivel = v => v>3.4 ? 'alto' : v>2.4 ? 'medio' : 'bajo';
+  const emocion = p.emocion_principal || 'no detectada';
+  const confianza = p.confianza_analisis ? `${(p.confianza_analisis * 100).toFixed(1)}%` : 'N/A';
   
   div.innerHTML = `
-    <p><strong>Perfil de Personalidad:</strong> Maquiavelismo <strong>${nivel(p.mach||0)}</strong>, Narcisismo <strong>${nivel(p.narc||0)}</strong>, Psicopatía <strong>${nivel(p.psych||0)}</strong>.</p>
-    <p><strong>Expresión Emocional:</strong> ${p.emocion_principal || 'no determinada'}.</p>
-    <p><strong>Tiempo de Respuesta:</strong> ${p.tiempo_total_seg || 'N/A'} segundos total.</p>
+    <div style="background: rgba(127, 0, 255, 0.05); padding: 20px; border-radius: 10px;">
+      <h4 style="color:#7f00ff;">🧠 Resumen Integrado</h4>
+      <p><strong>Perfil de Personalidad:</strong> Maquiavelismo <strong>${nivel(p.maquiavelismo||0)}</strong>, 
+      Narcisismo <strong>${nivel(p.narcisismo||0)}</strong>, Psicopatía <strong>${nivel(p.psicopatía||0)}</strong>.</p>
+      <p><strong>Expresión Emocional:</strong> ${emocion} (Confianza: ${confianza}).</p>
+      <p><strong>Tiempo de Respuesta:</strong> ${p.tiempo_total_seg || 'N/A'} segundos total.</p>
+      <p><strong>Estado del Análisis:</strong> ${p.estado_analisis || 'Completado'}.</p>
+    </div>
   `;
 }
 
@@ -696,107 +783,24 @@ function mostrarImagenInvestigador(p) {
   const div = document.getElementById('imagen-participante');
   if (!div) return;
   
-  if (p.imagen_url) {
+  if (p.url_imagen) {
     div.innerHTML = `
       <div style="text-align:center;">
-        <img id="imagen-investigador-display" src="${p.imagen_url}" alt="Foto participante" 
-             style="max-width:100%; max-height:500px; border-radius:10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+        <h4 style="color:#c080ff;">📷 Imagen del Participante</h4>
+        <img id="imagen-investigador-display" src="${p.url_imagen}" alt="Foto participante" 
+             style="max-width:100%; max-height:500px; border-radius:10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); margin:20px 0;">
         <div style="margin-top:15px;">
-          <button id="btn-analizar-render" class="btn-primary">🔬 Analizar con IA (Render)</button>
+          <p style="color:var(--text-secondary);">
+            Imagen analizada automáticamente con el modelo de microexpresiones
+          </p>
         </div>
       </div>
     `;
-    
-    setTimeout(() => {
-      const btnAnalizar = document.getElementById('btn-analizar-render');
-      if (btnAnalizar) {
-        btnAnalizar.addEventListener('click', () => analizarEnRenderParaInvestigador(p));
-      }
-    }, 50);
   } else {
-    div.innerHTML = '<p style="text-align:center; color:var(--text-secondary);">No hay imagen disponible.</p>';
-  }
-}
-
-/* ---------- ANALIZAR EN RENDER (INVESTIGADOR) ---------- */
-async function analizarEnRenderParaInvestigador(participante) {
-  const resultadoDiv = document.getElementById('resultado-micro');
-  if (!participante || !participante.imagen_url) {
-    alert('No hay imagen disponible para analizar.');
-    return;
-  }
-  
-  if (!resultadoDiv) return;
-  resultadoDiv.innerHTML = `<div class="analisis-loading">🧠 Analizando en servidor Render...</div>`;
-  resultadoDiv.classList.remove('hidden');
-
-  try {
-    // Descargar imagen desde URL
-    const imgRes = await fetch(participante.imagen_url);
-    const imgBlob = await imgRes.blob();
-    
-    const formData = new FormData();
-    formData.append('img', imgBlob, 'foto.jpg');
-
-    console.log('📤 Enviando a Render:', RENDER_PREDICT_URL);
-    const res = await fetch(RENDER_PREDICT_URL, { 
-      method:'POST', 
-      body: formData 
-    });
-    
-    if (!res.ok) {
-      const texto = await res.text().catch(()=>'sin texto');
-      throw new Error(`Render error ${res.status}: ${texto}`);
-    }
-    
-    const json = await res.json();
-    console.log('✅ Respuesta Render:', json);
-
-    const resultadosMicro = {
-      emociones: json.emociones || {},
-      emocion_dominante: json.emocion_dominante || json.dominante || 'Desconocida',
-      confianza: json.confianza || json.confidence || 0,
-      facs: json.facs || [],
-      sd3_micro: json.sd3 || {}
-    };
-
-    // Actualizar en memoria
-    participante.microexpresiones = resultadosMicro;
-    participante.emocion_principal = resultadosMicro.emocion_dominante;
-    
-    // Guardar análisis en Sheets
-    try {
-      await enviarResultadosAGoogleSheets({
-        action: "actualizarAnalisis",
-        id: participante.id,
-        emocion_principal: resultadosMicro.emocion_dominante,
-        microexpresiones: resultadosMicro
-      });
-    } catch(e) { 
-      console.warn('No se pudo guardar análisis:', e); 
-    }
-
-    mostrarMicroexpresionesInvestigador(participante);
-    mostrarFACSInvestigador(participante);
-    mostrarAnalisisIntegradoInvestigador(participante);
-    
-    resultadoDiv.innerHTML = `
-      <div class="resultado-box" style="text-align:center;">
-        <h4>✅ Análisis completado</h4>
-        <p>Emoción detectada: <strong style="color:var(--accent);">${resultadosMicro.emocion_dominante}</strong></p>
-        <p>Confianza: ${(resultadosMicro.confianza * 100).toFixed(1)}%</p>
-      </div>
-    `;
-    
-  } catch (err) {
-    console.error('❌ Error en Render:', err);
-    resultadoDiv.innerHTML = `
-      <div class="resultado-box" style="border-color: #ff6384;">
-        <h4>❌ Error en el análisis</h4>
-        <p>${err.message}</p>
-        <p style="font-size:0.9em; color:#ff6384;">
-          Verificá que el servicio de Render esté activo.
-        </p>
+    div.innerHTML = `
+      <div style="text-align:center;">
+        <h4 style="color:#c080ff;">📷 Imagen del Participante</h4>
+        <p style="color:var(--text-secondary);">No hay imagen disponible para este participante.</p>
       </div>
     `;
   }
