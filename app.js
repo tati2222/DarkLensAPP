@@ -424,7 +424,7 @@ btnEnviarImagen?.addEventListener('click', async () => {
     
     console.log('📊 Resultado del análisis:', analisisMicro);
 
-  // ✅ PASO 2: PREPARAR DATOS CON ANÁLISIS (VERSIÓN CORREGIDA)
+ // ✅ PASO 2: PREPARAR DATOS CON ANÁLISIS (VERSIÓN CORREGIDA)
 const payload = {
   action: "guardar",
   nombre: persona.nombre || "",
