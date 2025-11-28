@@ -1,5 +1,5 @@
 /* ========================================
-   app.js - VERSIÓN COMPLETA CON ANÁLISIS AUTOMÁTICO
+   app.js - VERSIÓN COMPLETA CORREGIDA
    ======================================== */
 
 /* ---------- CONFIG ---------- */
@@ -53,13 +53,13 @@ function calcularEstadisticasTiempo(tiemposArray) {
   };
 }
 
-/* ---------- ANALIZAR MICROEXPRESIONES - CON PRUEBA DE CONEXIÓN ---------- */
+/* ---------- ANALIZAR MICROEXPRESIONES - CORREGIDO ---------- */
 async function analizarMicroexpresiones(imagenBase64) {
-  console.log('🔬 Probando conexión con API...');
+  console.log('🔬 Iniciando análisis de microexpresiones...');
   
   try {
-    // PRIMERO: Verificar que la API esté viva
-    const healthResponse = await fetch("https://darklnesapp-api-1.onrender.com/health");
+    // Verificar que la API esté disponible
+    const healthResponse = await fetch(`${FASTAPI_URL}/health`);
     if (!healthResponse.ok) {
       throw new Error(`API no responde: ${healthResponse.status}`);
     }
@@ -71,16 +71,28 @@ async function analizarMicroexpresiones(imagenBase64) {
       throw new Error('Modelo no cargado en la API');
     }
     
-    // SEGUNDO: Enviar imagen para análisis
-    console.log('📤 Enviando imagen para análisis...');
+    // CORRECCIÓN: Convertir base64 a Blob correctamente
+    const base64Data = imagenBase64.split(',')[1];
+    const byteCharacters = atob(base64Data);
+    const byteArrays = [];
     
-    const base64Response = await fetch(imagenBase64);
-    const blob = await base64Response.blob();
+    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+      const slice = byteCharacters.slice(offset, offset + 512);
+      const byteNumbers = new Array(slice.length);
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      byteArrays.push(byteArray);
+    }
     
+    const blob = new Blob(byteArrays, { type: 'image/jpeg' });
+    
+    // Enviar para análisis
     const formData = new FormData();
     formData.append('file', blob, 'foto.jpg');
     
-    const predictResponse = await fetch("https://darklnesapp-api-1.onrender.com/run/predict", {
+    const predictResponse = await fetch(`${FASTAPI_URL}/run/predict`, {
       method: 'POST',
       body: formData
     });
@@ -93,30 +105,34 @@ async function analizarMicroexpresiones(imagenBase64) {
     const resultado = await predictResponse.json();
     console.log('✅ Análisis completado:', resultado);
     
-    // Adaptar respuesta
-    const emocionesArray = Object.entries(resultado.emociones || {}).map(([emocion, score]) => ({
-      emocion,
-      score: parseFloat(score)
-    }));
-    
-    const emocionPrincipal = emocionesArray.reduce((max, emocion) => 
-      emocion.score > max.score ? emocion : max, emocionesArray[0]
-    );
-    
-    return {
-      emociones: emocionesArray,
-      emocion_principal: emocionPrincipal.emocion,
-      confianza: emocionPrincipal.score,
-      sd3: resultado.sd3 || {},
-      status: resultado.status,
-      modelo: resultado.modelo_utilizado
-    };
+    // Procesar resultado
+    return procesarResultadoAnalisis(resultado);
     
   } catch (error) {
-    console.error('❌ Error:', error);
-    // Fallback con datos realistas
+    console.error('❌ Error en análisis:', error);
     return analisisDeReserva(imagenBase64, error.message);
   }
+}
+
+function procesarResultadoAnalisis(resultado) {
+  const emocionesArray = Object.entries(resultado.emociones || {}).map(([emocion, score]) => ({
+    emocion,
+    score: parseFloat(score)
+  }));
+  
+  const emocionPrincipal = emocionesArray.reduce((max, emocion) => 
+    emocion.score > max.score ? emocion : max, emocionesArray[0]
+  );
+  
+  return {
+    emociones: emocionesArray,
+    emocion_principal: emocionPrincipal.emocion,
+    confianza: emocionPrincipal.score,
+    sd3: resultado.sd3 || {},
+    status: resultado.status,
+    modelo: resultado.modelo_utilizado,
+    timestamp: new Date().toISOString()
+  };
 }
 
 // Función de reserva por si la API falla
@@ -158,6 +174,7 @@ function analisisDeReserva(imagenBase64, errorMsg) {
     mensaje: 'Usando análisis simulado - API temporalmente no disponible'
   };
 }
+
 /* ---------- SD3 ITEMS ---------- */
 const itemsSD3 = [
   "No es prudente contar tus secretos.",
@@ -221,18 +238,24 @@ function generarItemsTest() {
 function configurarTrackingTiempos() {
   tiemposRespuesta = {};
   tiempoInicioItem = {};
-  const items = document.querySelectorAll('.test-item');
-  if (!items || items.length === 0) return;
-
+  
+  // Inicializar tiempos para todos los items
+  for (let i = 1; i <= itemsSD3.length; i++) {
+    tiempoInicioItem[i] = testInicioTimestamp || Date.now();
+  }
+  
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         const itemNum = parseInt(entry.target.getAttribute('data-item'));
-        if (!tiempoInicioItem[itemNum]) tiempoInicioItem[itemNum] = Date.now();
+        if (!tiempoInicioItem[itemNum] || tiempoInicioItem[itemNum] === testInicioTimestamp) {
+          tiempoInicioItem[itemNum] = Date.now();
+        }
       }
     });
-  }, { threshold: 0.5 });
+  }, { threshold: 0.7 });
 
+  const items = document.querySelectorAll('.test-item');
   items.forEach(it => observer.observe(it));
 
   for (let i=1;i<=itemsSD3.length;i++) {
@@ -301,12 +324,12 @@ async function calcularSD3() {
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
-/* ---------- GUARDAR EN JSONBIN ---------- */
-async function enviarResultadosAGoogleSheets(datos) {
+/* ---------- GUARDAR EN JSONBIN - CORREGIDO ---------- */
+async function guardarEnJSONBin(datos) {
   console.log("📤 Guardando en JSONBin...");
 
   try {
-    // Preparar datos del participante
+    // Preparar datos del participante - CORREGIDO: nombres consistentes
     const participante = {
       id: 'participante_' + Date.now(),
       timestamp: new Date().toISOString(),
@@ -316,11 +339,15 @@ async function enviarResultadosAGoogleSheets(datos) {
       pais: datos.pais || '',
       maquiavelismo: parseFloat(datos.mach) || 0,
       narcisismo: parseFloat(datos.narc) || 0,
-      psicopatia: parseFloat(datos.psych) || 0,
+      psicopatia: parseFloat(datos.psych) || 0, // CORREGIDO: sin tilde
       emocion_principal: datos.emocion_principal || 'No analizada',
       confianza_analisis: parseFloat(datos.confianza_analisis) || 0,
       tiempo_total_seg: datos.tiempo_total_seg || '0',
-      estado_analisis: datos.estado_analisis || 'Completado'
+      estado_analisis: datos.estado_analisis || 'Completado',
+      // Datos SD3 del análisis facial si existen
+      sd3_maquiavelismo_facial: parseFloat(datos.sd3_maquiavelismo) || 0,
+      sd3_narcisismo_facial: parseFloat(datos.sd3_narcisismo) || 0,
+      sd3_psicopatia_facial: parseFloat(datos.sd3_psicopatia) || 0
     };
 
     console.log('💾 Participante a guardar:', participante);
@@ -373,7 +400,7 @@ async function enviarResultadosAGoogleSheets(datos) {
   }
 }
 
-/* ---------- CÁMARA Y CAPTURA CON ANÁLISIS AUTOMÁTICO ---------- */
+/* ---------- CÁMARA Y CAPTURA CON ANÁLISIS AUTOMÁTICO - CORREGIDO ---------- */
 function configurarCamaraYSubida() {
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
@@ -483,52 +510,47 @@ function configurarCamaraYSubida() {
     reader.readAsDataURL(file);
   });
 
-  // Enviar datos finales CON ANÁLISIS AUTOMÁTICO
-btnEnviarImagen?.addEventListener('click', async () => {
-  if (!imagenCapturada) { 
-    alert('No hay imagen para enviar'); 
-    return; 
-  }
+  // Enviar datos finales CON ANÁLISIS AUTOMÁTICO - CORREGIDO
+  btnEnviarImagen?.addEventListener('click', async () => {
+    if (!imagenCapturada) { 
+      alert('No hay imagen para enviar'); 
+      return; 
+    }
 
-  btnEnviarImagen.disabled = true;
-  btnEnviarImagen.textContent = '⏳ Analizando microexpresiones...';
+    btnEnviarImagen.disabled = true;
+    btnEnviarImagen.textContent = '⏳ Analizando microexpresiones...';
 
-  try {
-    const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
-    const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
+    try {
+      const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
+      const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
 
-    // ✅ PASO 1: ANALIZAR MICROEXPRESIONES AUTOMÁTICAMENTE
-    console.log('🔬 Iniciando análisis automático de microexpresiones...');
-    const analisisMicro = await analizarMicroexpresiones(imagenCapturada);
-    
-    console.log('📊 Resultado del análisis:', analisisMicro);
+      // ✅ PASO 1: ANALIZAR MICROEXPRESIONES AUTOMÁTICAMENTE
+      console.log('🔬 Iniciando análisis automático de microexpresiones...');
+      const analisisMicro = await analizarMicroexpresiones(imagenCapturada);
+      
+      console.log('📊 Resultado del análisis:', analisisMicro);
 
- // ✅ PASO 2: PREPARAR DATOS CON ANÁLISIS (VERSIÓN CORREGIDA)
-const payload = {
-  action: "guardar",
-  nombre: persona.nombre || "",
-  edad: persona.edad || "",
-  genero: persona.genero || "",
-  pais: persona.pais || "",
-  mach: sd3.mach || "",
-  narc: sd3.narc || "",
-  psych: sd3.psych || "",
-  tiempo_total_seg: sd3.tiempo_total_segundos || "",
-  imagen_base64: imagenCapturada,
-  emocion_principal: analisisMicro.emocion_principal || 'No detectada',
-  emociones_detectadas: JSON.stringify(analisisMicro.emociones || []),
-  confianza_analisis: analisisMicro.confianza || 0,
-  estado_analisis: analisisMicro.error ? 'Error' : 'Completado',
-  // ✅ AGREGAR DATOS SD3 DEL ANÁLISIS DE MICROEXPRESIONES
-  sd3_maquiavelismo: analisisMicro.sd3?.Maquiavelismo || 0,
-  sd3_narcisismo: analisisMicro.sd3?.Narcisismo || 0,
-  sd3_psicopatia: analisisMicro.sd3?.Psicopatía || 0,
-  sd3: JSON.stringify(analisisMicro.sd3 || {}), // Objeto completo SD3
-  timestamp: new Date().toISOString()
-};
+      // ✅ PASO 2: PREPARAR DATOS CON ANÁLISIS (VERSIÓN CORREGIDA)
+      const payload = {
+        nombre: persona.nombre || "",
+        edad: persona.edad || "",
+        genero: persona.genero || "",
+        pais: persona.pais || "",
+        mach: sd3.mach || "",
+        narc: sd3.narc || "",
+        psych: sd3.psych || "",
+        tiempo_total_seg: sd3.tiempo_total_segundos || "",
+        emocion_principal: analisisMicro.emocion_principal || 'No detectada',
+        confianza_analisis: analisisMicro.confianza || 0,
+        estado_analisis: analisisMicro.error ? 'Error' : 'Completado',
+        // ✅ DATOS SD3 DEL ANÁLISIS FACIAL
+        sd3_maquiavelismo: analisisMicro.sd3?.Maquiavelismo || 0,
+        sd3_narcisismo: analisisMicro.sd3?.Narcisismo || 0,
+        sd3_psicopatia: analisisMicro.sd3?.Psicopatía || 0
+      };
 
-      // ✅ PASO 3: ENVIAR A GOOGLE SHEETS
-      const resultado = await enviarResultadosAGoogleSheets(payload);
+      // ✅ PASO 3: GUARDAR EN JSONBIN
+      const resultado = await guardarEnJSONBin(payload);
       
       if (resultado.success) {
         console.log('✅ Análisis completado y guardado');
@@ -619,8 +641,7 @@ function volverAlInicio() {
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
-/* ---------- PANEL INVESTIGADOR ---------- */
-/* ---------- PANEL INVESTIGADOR ---------- */
+/* ---------- PANEL INVESTIGADOR - CORREGIDO ---------- */
 async function cargarDatosParticipantes() {
   const listaDiv = document.getElementById('lista-participantes');
   if (listaDiv) listaDiv.innerHTML = '<p style="text-align:center; color:var(--text-secondary);">📡 Cargando datos desde JSONBin...</p>';
@@ -653,7 +674,7 @@ async function cargarDatosParticipantes() {
       pais: 'Argentina',
       maquiavelismo: 3.2,
       narcisismo: 2.8,
-      psicopatia: 2.5,
+      psicopatia: 2.5, // CORREGIDO: sin tilde
       tiempo_total_seg: '7.50',
       emocion_principal: 'Alegría',
       confianza_analisis: 0.87,
@@ -690,7 +711,7 @@ function poblarListaInvestigador() {
           <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 0.85em;">
             <span style="color: #667eea;">🎭 ${p.maquiavelismo || 'N/A'}</span>
             <span style="color: #764ba2;">👑 ${p.narcisismo || 'N/A'}</span>
-            <span style="color: #ffce56;">⚡ ${p.psicopatía || 'N/A'}</span>
+            <span style="color: #ffce56;">⚡ ${p.psicopatia || 'N/A'}</span> <!-- CORREGIDO: sin tilde -->
             <span style="color: #7f00ff;">😊 ${emocion}</span>
           </div>
         </div>
@@ -728,7 +749,7 @@ function mostrarParticipanteEnPanel(idx) {
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
-/* ---------- UI INVESTIGADOR ---------- */
+/* ---------- UI INVESTIGADOR - CORREGIDO ---------- */
 function mostrarInfoBasicaInvestigador(p) {
   const div = document.getElementById('info-participante');
   if (!div) return;
@@ -755,25 +776,30 @@ function mostrarResultadosSD3Investigador(p) {
     return { nivel:'Alto', color:'#ff6384' };
   };
   
-  const mach = interpretarNivel(p.maquiavelismo || 0);
-  const narc = interpretarNivel(p.narcisismo || 0);
-  const psych = interpretarNivel(p.psicopatía || 0);
+  // CORREGIDO: Usar propiedades sin tildes consistentemente
+  const machValor = p.maquiavelismo || 0;
+  const narcValor = p.narcisismo || 0;
+  const psychValor = p.psicopatia || 0; // CORREGIDO: sin tilde
+  
+  const mach = interpretarNivel(machValor);
+  const narc = interpretarNivel(narcValor);
+  const psych = interpretarNivel(psychValor);
   
   div.innerHTML = `
     <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:20px;">
       <div style="padding:20px; background:rgba(255,99,132,0.1); border:2px solid #ff6384; border-radius:10px;">
         <h4 style="color:#ff6384;">🎭 Maquiavelismo</h4>
-        <p style="font-size:2.5em; font-weight:bold; color:${mach.color};">${p.maquiavelismo ?? 'N/A'}</p>
+        <p style="font-size:2.5em; font-weight:bold; color:${mach.color};">${machValor}</p>
         <p style="color:var(--text-secondary);">Nivel: <strong style="color:${mach.color};">${mach.nivel}</strong></p>
       </div>
       <div style="padding:20px; background:rgba(54,162,235,0.1); border:2px solid #36a2eb; border-radius:10px;">
         <h4 style="color:#36a2eb;">👑 Narcisismo</h4>
-        <p style="font-size:2.5em; font-weight:bold; color:${narc.color};">${p.narcisismo ?? 'N/A'}</p>
+        <p style="font-size:2.5em; font-weight:bold; color:${narc.color};">${narcValor}</p>
         <p style="color:var(--text-secondary);">Nivel: <strong style="color:${narc.color};">${narc.nivel}</strong></p>
       </div>
       <div style="padding:20px; background:rgba(255,206,86,0.1); border:2px solid #ffce56; border-radius:10px;">
         <h4 style="color:#ffce56;">⚡ Psicopatía</h4>
-        <p style="font-size:2.5em; font-weight:bold; color:${psych.color};">${p.psicopatía ?? 'N/A'}</p>
+        <p style="font-size:2.5em; font-weight:bold; color:${psych.color};">${psychValor}</p>
         <p style="color:var(--text-secondary);">Nivel: <strong style="color:${psych.color};">${psych.nivel}</strong></p>
       </div>
     </div>
@@ -789,7 +815,7 @@ function mostrarResultadosSD3Investigador(p) {
         labels:['Maquiavelismo','Narcisismo','Psicopatía'],
         datasets:[{
           label:'Perfil',
-          data:[p.maquiavelismo||0, p.narcisismo||0, p.psicopatía||0],
+          data:[machValor, narcValor, psychValor], // CORREGIDO: valores uniformes
           backgroundColor:'rgba(127,0,255,0.15)',
           borderColor:'#7f00ff',
           borderWidth:2,
@@ -854,7 +880,6 @@ function mostrarFACSInvestigador(p) {
   const div = document.getElementById('facs-detalle');
   if (!div) return;
   
-  // Aquí puedes mostrar las unidades FACS si tu modelo las devuelve
   div.innerHTML = `
     <div style="text-align:center; padding:20px;">
       <h4 style="color:#c080ff;">Sistema FACS</h4>
@@ -883,7 +908,7 @@ function mostrarAnalisisIntegradoInvestigador(p) {
     <div style="background: rgba(127, 0, 255, 0.05); padding: 20px; border-radius: 10px;">
       <h4 style="color:#7f00ff;">🧠 Resumen Integrado</h4>
       <p><strong>Perfil de Personalidad:</strong> Maquiavelismo <strong>${nivel(p.maquiavelismo||0)}</strong>, 
-      Narcisismo <strong>${nivel(p.narcisismo||0)}</strong>, Psicopatía <strong>${nivel(p.psicopatía||0)}</strong>.</p>
+      Narcisismo <strong>${nivel(p.narcisismo||0)}</strong>, Psicopatía <strong>${nivel(p.psicopatia||0)}</strong>.</p> <!-- CORREGIDO: sin tilde -->
       <p><strong>Expresión Emocional:</strong> ${emocion} (Confianza: ${confianza}).</p>
       <p><strong>Tiempo de Respuesta:</strong> ${p.tiempo_total_seg || 'N/A'} segundos total.</p>
       <p><strong>Estado del Análisis:</strong> ${p.estado_analisis || 'Completado'}.</p>
