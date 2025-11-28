@@ -68,12 +68,12 @@ async function analizarMicroexpresiones(imagenBase64) {
     const base64Response = await fetch(imagenBase64);
     const blob = await base64Response.blob();
     
-    // Crear FormData
+    // Crear FormData (como espera tu FastAPI)
     const formData = new FormData();
     formData.append('file', blob, 'foto.jpg');
     
-    // ✅ URL CORRECTA con endpoint /run/predict
-    const FASTAPI_PREDICT_URL = FASTAPI_URL + "/run/predict";
+    // URL correcta con endpoint
+    const FASTAPI_PREDICT_URL = "https://darklnesapp-api-1.onrender.com/run/predict";
     console.log('📤 Enviando a FastAPI:', FASTAPI_PREDICT_URL);
     
     const response = await fetch(FASTAPI_PREDICT_URL, {
@@ -90,23 +90,26 @@ async function analizarMicroexpresiones(imagenBase64) {
     const resultado = await response.json();
     console.log('✅ Análisis de microexpresiones completado:', resultado);
     
-    // Adaptar respuesta a tu formato esperado
+    // Adaptar respuesta de tu FastAPI al formato que espera tu frontend
     const emocionesArray = Object.entries(resultado.emociones || {}).map(([emocion, score]) => ({
       emocion,
-      score
+      score: parseFloat(score)
     }));
     
     // Encontrar emoción principal
-    const emocionPrincipal = emocionesArray.reduce((max, emocion) => 
-      emocion.score > max.score ? emocion : max, emocionesArray[0]
-    );
+    let emocionPrincipal = { emocion: 'Neutral', score: 0 };
+    if (emocionesArray.length > 0) {
+      emocionPrincipal = emocionesArray.reduce((max, emocion) => 
+        emocion.score > max.score ? emocion : max, emocionesArray[0]
+      );
+    }
     
     return {
       emociones: emocionesArray,
       emocion_principal: emocionPrincipal.emocion,
       confianza: emocionPrincipal.score,
-      sd3: resultado.sd3, // ✅ Esto viene de tu FastAPI
-      status: resultado.status
+      sd3: resultado.sd3 || {},
+      status: resultado.status || 'success'
     };
     
   } catch (error) {
@@ -115,11 +118,11 @@ async function analizarMicroexpresiones(imagenBase64) {
       emociones: [], 
       emocion_principal: 'Error en análisis',
       confianza: 0,
-      error: error.message 
+      error: error.message,
+      sd3: {}
     };
   }
-}
-
+}  
 /* ---------- SD3 ITEMS ---------- */
 const itemsSD3 = [
   "No es prudente contar tus secretos.",
@@ -421,29 +424,29 @@ btnEnviarImagen?.addEventListener('click', async () => {
     
     console.log('📊 Resultado del análisis:', analisisMicro);
 
-    // ✅ PASO 2: PREPARAR DATOS CON ANÁLISIS (VERSIÓN CORREGIDA)
-    const payload = {
-      action: "guardar",
-      nombre: persona.nombre || "",
-      edad: persona.edad || "",
-      genero: persona.genero || "",
-      pais: persona.pais || "",
-      mach: sd3.mach || "",
-      narc: sd3.narc || "",
-      psych: sd3.psych || "",
-      tiempo_total_seg: sd3.tiempo_total_segundos || "",
-      imagen_base64: imagenCapturada,
-      emocion_principal: analisisMicro.emocion_principal || 'No detectada',
-      emociones_detectadas: JSON.stringify(analisisMicro.emociones || []),
-      confianza_analisis: analisisMicro.confianza || 0,
-      estado_analisis: analisisMicro.error ? 'Error' : 'Completado',
-      // ✅ AGREGAR DATOS SD3 DEL ANÁLISIS DE MICROEXPRESIONES
-      sd3_maquiavelismo: analisisMicro.sd3?.Maquiavelismo || 0,
-      sd3_narcisismo: analisisMicro.sd3?.Narcisismo || 0,
-      sd3_psicopatia: analisisMicro.sd3?.Psicopatía || 0,
-      sd3: analisisMicro.sd3 || {}, // Objeto completo SD3
-      timestamp: new Date().toISOString()
-    };
+  // ✅ PASO 2: PREPARAR DATOS CON ANÁLISIS (VERSIÓN CORREGIDA)
+const payload = {
+  action: "guardar",
+  nombre: persona.nombre || "",
+  edad: persona.edad || "",
+  genero: persona.genero || "",
+  pais: persona.pais || "",
+  mach: sd3.mach || "",
+  narc: sd3.narc || "",
+  psych: sd3.psych || "",
+  tiempo_total_seg: sd3.tiempo_total_segundos || "",
+  imagen_base64: imagenCapturada,
+  emocion_principal: analisisMicro.emocion_principal || 'No detectada',
+  emociones_detectadas: JSON.stringify(analisisMicro.emociones || []),
+  confianza_analisis: analisisMicro.confianza || 0,
+  estado_analisis: analisisMicro.error ? 'Error' : 'Completado',
+  // ✅ AGREGAR DATOS SD3 DEL ANÁLISIS DE MICROEXPRESIONES
+  sd3_maquiavelismo: analisisMicro.sd3?.Maquiavelismo || 0,
+  sd3_narcisismo: analisisMicro.sd3?.Narcisismo || 0,
+  sd3_psicopatia: analisisMicro.sd3?.Psicopatía || 0,
+  sd3: JSON.stringify(analisisMicro.sd3 || {}), // Objeto completo SD3
+  timestamp: new Date().toISOString()
+};
 
       // ✅ PASO 3: ENVIAR A GOOGLE SHEETS
       const resultado = await enviarResultadosAGoogleSheets(payload);
