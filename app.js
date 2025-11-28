@@ -818,9 +818,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('seccion-resultados')?.classList.add('hidden');
     document.getElementById('seccion-investigador')?.classList.remove('hidden');
     window.scrollTo({ top:0, behavior:'smooth' });
+     
   });
-
-  // preparar captura perezosa (se inicializa tras enviar SD3)
-
+   
+}); // ← Cierra DOMContentLoaded
 
 /* ---------- FIN ---------- */
+
+
