@@ -3,8 +3,11 @@
    ======================================== */
 
 /* ---------- CONFIG ---------- */
-const GOOGLE_SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwuW_DKiakk0um7AtUnMYaETUUqnJqdwAFa-8plROIVKWwdcTOEqDocDHxealU8sA1BFQ/exec";
-const FASTAPI_URL = "https://darklnesapp-api-1.onrender.com"; // URL de tu FastAPI
+const JSONBIN_CONFIG = {
+  BIN_ID: '69292e5143b1c97be9ca0068',
+  API_KEY: '$2a$10$nhGQM3B9bEKw7ULh3YMKP.zeuBZKDH9RqGG7v.h1OLWgDDHp9vB2m'
+};
+const FASTAPI_URL = "https://darklnesapp-api-1.onrender.com";
 const PASSWORD_INVESTIGADOR = "investigador2025";
 
 /* ---------- ESTADO GLOBAL ---------- */
@@ -298,31 +301,75 @@ async function calcularSD3() {
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
-/* ---------- ENVIAR A GOOGLE SHEETS ---------- */
+/* ---------- GUARDAR EN JSONBIN ---------- */
 async function enviarResultadosAGoogleSheets(datos) {
-  console.log("📤 Enviando datos a Google Sheets:", {
-    ...datos,
-    imagen_base64: datos.imagen_base64 ? `[IMAGEN: ${datos.imagen_base64.length} caracteres]` : 'No image'
-  });
+  console.log("📤 Guardando en JSONBin...");
 
   try {
-    const response = await fetch(GOOGLE_SHEETS_WEBAPP_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(datos)
+    // Preparar datos del participante
+    const participante = {
+      id: 'participante_' + Date.now(),
+      timestamp: new Date().toISOString(),
+      nombre: datos.nombre || 'Anónimo',
+      edad: datos.edad || '',
+      genero: datos.genero || '',
+      pais: datos.pais || '',
+      maquiavelismo: parseFloat(datos.mach) || 0,
+      narcisismo: parseFloat(datos.narc) || 0,
+      psicopatia: parseFloat(datos.psych) || 0,
+      emocion_principal: datos.emocion_principal || 'No analizada',
+      confianza_analisis: parseFloat(datos.confianza_analisis) || 0,
+      tiempo_total_seg: datos.tiempo_total_seg || '0',
+      estado_analisis: datos.estado_analisis || 'Completado'
+    };
+
+    console.log('💾 Participante a guardar:', participante);
+
+    // 1. Obtener datos existentes
+    const responseGet = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CONFIG.BIN_ID}/latest`, {
+      headers: { 'X-Master-Key': JSONBIN_CONFIG.API_KEY }
     });
 
-    if (!response.ok) {
-      throw new Error(`Error HTTP: ${response.status}`);
+    if (!responseGet.ok) {
+      throw new Error(`Error obteniendo datos: ${responseGet.status}`);
     }
 
-    const result = await response.json();
-    console.log("✅ Respuesta de Google Sheets:", result);
-    return result;
+    const dataExistente = await responseGet.json();
+    const participantes = dataExistente.record?.participantes || [];
+    console.log(`📊 Participantes existentes: ${participantes.length}`);
 
-  } catch (err) {
-    console.error("❌ Error enviando a Sheets:", err);
-    throw new Error(`No se pudo conectar con Google Sheets: ${err.message}`);
+    // 2. Agregar nuevo participante
+    participantes.push(participante);
+
+    // 3. Guardar datos actualizados
+    const responsePut = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CONFIG.BIN_ID}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': JSONBIN_CONFIG.API_KEY
+      },
+      body: JSON.stringify({ participantes: participantes })
+    });
+
+    if (!responsePut.ok) {
+      throw new Error(`Error guardando: ${responsePut.status}`);
+    }
+
+    console.log('✅ Guardado exitoso en JSONBin!');
+    
+    return {
+      success: true,
+      id: participante.id,
+      message: `Datos guardados correctamente. Total: ${participantes.length}`,
+      total_participantes: participantes.length
+    };
+
+  } catch (error) {
+    console.error('❌ Error guardando en JSONBin:', error);
+    return {
+      success: false,
+      error: 'Error: ' + error.message
+    };
   }
 }
 
@@ -573,29 +620,30 @@ function volverAlInicio() {
 }
 
 /* ---------- PANEL INVESTIGADOR ---------- */
+/* ---------- PANEL INVESTIGADOR ---------- */
 async function cargarDatosParticipantes() {
   const listaDiv = document.getElementById('lista-participantes');
-  if (listaDiv) listaDiv.innerHTML = '<p style="text-align:center; color:var(--text-secondary);">📡 Cargando datos...</p>';
+  if (listaDiv) listaDiv.innerHTML = '<p style="text-align:center; color:var(--text-secondary);">📡 Cargando datos desde JSONBin...</p>';
   
   try {
-    const resp = await fetch(GOOGLE_SHEETS_WEBAPP_URL + '?action=getAll');
+    console.log('🔍 Cargando datos desde JSONBin...');
     
-    if (!resp.ok) {
-      throw new Error(`Error HTTP: ${resp.status}`);
+    const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CONFIG.BIN_ID}/latest`, {
+      headers: { 'X-Master-Key': JSONBIN_CONFIG.API_KEY }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}: No se pudo cargar datos`);
     }
+
+    const data = await response.json();
+    participantesData = data.record?.participantes || [];
     
-    const data = await resp.json();
-    console.log("📊 Datos cargados:", data);
-    
-    if (data.success && Array.isArray(data.participantes)) {
-      participantesData = data.participantes;
-    } else {
-      throw new Error('Formato de datos inesperado');
-    }
+    console.log(`✅ ${participantesData.length} participantes cargados desde JSONBin`);
     
   } catch (err) {
-    console.warn('⚠️ No se pudieron cargar participantes:', err);
-    // Datos de ejemplo para desarrollo
+    console.warn('⚠️ Error cargando desde JSONBin:', err);
+    // Datos de ejemplo
     participantesData = [{
       id: 'DEMO_001',
       timestamp: new Date().toISOString(),
@@ -603,13 +651,12 @@ async function cargarDatosParticipantes() {
       edad: '28',
       genero: 'masculino',
       pais: 'Argentina',
-      maquiavelismo: '3.2',
-      narcisismo: '2.8',
-      psicopatía: '2.5',
+      maquiavelismo: 3.2,
+      narcisismo: 2.8,
+      psicopatia: 2.5,
       tiempo_total_seg: '7.50',
-      url_imagen: null,
-      emocion_principal: 'Felicidad',
-      confianza_analisis: '0.87',
+      emocion_principal: 'Alegría',
+      confianza_analisis: 0.87,
       estado_analisis: 'Completado'
     }];
   }
