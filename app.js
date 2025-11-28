@@ -372,6 +372,9 @@ btnEnviarImagen?.addEventListener('click', async () => {
     btnEnviarImagen.textContent = "📤 Enviar imagen (participante)";
   }
 });
+
+   } 
+
    
 
 /* ---------- ANALIZAR EN RENDER (INVESTIGADOR) ---------- */
