@@ -318,7 +318,7 @@
     }
 
     #video,
-    #canvas {
+    #preview-video {
       max-width: 100%;
       border-radius: 15px;
       border: 2px solid var(--border);
@@ -745,6 +745,55 @@
       text-align: center;
       padding: 20px;
     }
+
+    /* ===========================
+       NUEVOS ESTILOS PARA VIDEO
+       =========================== */
+    #progress-container {
+      margin-top: 20px;
+    }
+
+    #progress-bar {
+      background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+      height: 100%;
+      width: 0%;
+      transition: width 0.1s;
+      border-radius: 4px;
+    }
+
+    #audio-container {
+      margin-top: 20px;
+      text-align: left;
+    }
+
+    #texto-historia {
+      background: rgba(127, 0, 255, 0.1);
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 15px;
+      text-align: left;
+      max-height: 300px;
+      overflow-y: auto;
+      font-size: 1.1em;
+      line-height: 1.6;
+    }
+
+    #texto-historia strong {
+      color: var(--accent);
+      display: block;
+      margin-bottom: 10px;
+      font-size: 1.2em;
+    }
+
+    #texto-historia p {
+      margin: 15px 0;
+      text-align: justify;
+    }
+
+    #info-video {
+      margin-top: 15px;
+      color: var(--text-secondary);
+    }
   </style>
 </head>
 <body>
@@ -807,7 +856,7 @@
             </svg>
             Participar
           </h3>
-          <p>Respondé el test SD3 y subí tu foto para contribuír a la investigación académica.</p>
+          <p>Respondé el test SD3 y grabá tu video para contribuír a la investigación académica.</p>
           <button class="btn-primary">Ir a la Aplicación</button>
         </div>
 
@@ -841,9 +890,10 @@
       <section>
         <h3>🔬 Metodología</h3>
         <ol>
-          <li><strong>Captura de Imagen:</strong> El participante proporciona una imagen facial en condiciones controladas de iluminación.</li>
-          <li><strong>Análisis Automático:</strong> Un modelo de deep learning (EfficientNet-B0) entrenado para detectar microexpresiones.</li>
-          <li><strong>Interpretación:</strong> Los resultados se mapean a dimensiones de personalidad según el sistema FACS.</li>
+          <li><strong>Test SD3:</strong> El participante responde el cuestionario de personalidad oscura.</li>
+          <li><strong>Grabación de Video:</strong> Se graba un video de 15 segundos mientras el participante procesa una historia.</li>
+          <li><strong>Análisis Automático:</strong> Un modelo de deep learning analiza las microexpresiones en cada frame del video.</li>
+          <li><strong>Correlaciones:</strong> Los resultados se correlacionan con los rasgos de personalidad SD3.</li>
         </ol>
       </section>
 
@@ -933,120 +983,148 @@
       <form id="form-sd3" class="form-box"></form>
     </section>
 
-    <!-- SECCIÓN 3: CAPTURA FACIAL (VIDEO) -->
-<section id="seccion-micro" class="content-box hidden">
-    <h2>Grabación de Video</h2>
-    <p class="subtitle" style="text-align:center; margin-bottom:20px;">
-        Se grabará un video de 10-15 segundos mientras escuchas una historia.
-    </p>
+    <!-- ===============================
+         SECCIÓN 3: GRABACIÓN DE VIDEO
+         =============================== -->
+    <section id="seccion-micro" class="content-box hidden">
+      <h2>Grabación de Video</h2>
+      <p class="subtitle" style="text-align:center; margin-bottom:20px;">
+        Grabarás un video de 15 segundos mientras procesás una historia
+      </p>
 
-    <div class="instrucciones">
-        <h3>📌 Instrucciones</h3>
+      <div class="instrucciones">
+        <h3>📌 Instrucciones IMPORTANTES</h3>
         <ul>
-            <li>Mirar de frente a la cámara.</li>
-            <li>Permitir el acceso a la cámara y micrófono.</li>
-            <li>Escuchar atentamente la historia.</li>
-            <li>Mantener una expresión neutral al inicio.</li>
+          <li><strong>Mira de frente a la cámara</strong> durante toda la grabación</li>
+          <li><strong>Lee atentamente</strong> la historia que aparecerá en pantalla</li>
+          <li><strong style="color: #ff6384;">PERMANECE EN SILENCIO - NO HABLES</strong> durante la grabación</li>
+          <li><strong>Piensa en la historia</strong> y cómo te haría sentir</li>
+          <li><strong>Mantén expresiones naturales</strong> - queremos captar tus reacciones faciales espontáneas</li>
+          <li>El video durará 15 segundos automáticamente</li>
         </ul>
-    </div>
+      </div>
 
-    <div class="camera-container">
+      <div class="camera-container">
         <video id="video" autoplay playsinline muted class="hidden"></video>
-        <canvas id="canvas" class="hidden"></canvas>
         <div id="camera-placeholder">
-            <p style="color:var(--text-secondary);">La cámara está desactivada.</p>
+          <p style="color:var(--text-secondary);">La cámara está desactivada.</p>
         </div>
 
+        <!-- Controles de video -->
         <div class="button-group">
-            <button id="btn-activar-camara" class="btn-primary">Activar cámara</button>
-            <button id="btn-iniciar-grabacion" class="btn-primary hidden">Iniciar Grabación</button>
-            <button id="btn-detener-grabacion" class="btn-secondary hidden">Detener Grabación</button>
+          <button id="btn-activar-camara" class="btn-primary">Activar cámara</button>
+          <button id="btn-iniciar-grabacion" class="btn-primary hidden">Iniciar Grabación</button>
+          <button id="btn-detener-grabacion" class="btn-secondary hidden">Detener Grabación</button>
         </div>
-    </div>
 
-    <div id="preview-container" class="content-box hidden" style="text-align:center;">
+        <!-- Historia para leer -->
+        <div id="audio-container" class="hidden" style="margin-top: 20px;">
+          <h4 style="text-align: center; color: var(--accent);">📖 Historia para Leer</h4>
+          <div id="texto-historia" style="background: rgba(127, 0, 255, 0.1); padding: 20px; border-radius: 10px; margin-top: 15px; text-align: left; max-height: 300px; overflow-y: auto;">
+            <p style="text-align: center; color: var(--text-secondary); font-style: italic;">
+              La historia se cargará según tus respuestas al test SD3...
+            </p>
+          </div>
+        </div>
+
+        <!-- Progress bar para la grabación -->
+        <div id="progress-container" class="hidden" style="margin-top: 20px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+            <span>Tiempo de grabación:</span>
+            <span id="tiempo-grabacion">0s</span>
+          </div>
+          <div style="background: var(--bg-primary); height: 8px; border-radius: 4px; overflow: hidden;">
+            <div id="progress-bar"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vista previa del video grabado -->
+      <div id="preview-container" class="content-box hidden" style="text-align:center;">
         <h3>🎥 Video grabado</h3>
         <video id="preview-video" controls style="max-width:100%; border-radius:15px; border:2px solid var(--border); margin-top:20px;"></video>
-    </div>
+        <div id="info-video" style="margin-top: 15px; color: var(--text-secondary);"></div>
+      </div>
 
-    <div id="resultado-micro" class="hidden"></div>
+      <div id="resultado-micro" class="hidden"></div>
 
-    <div style="text-align:center; margin-top:20px;">
-        <button id="btn-subir-video" class="btn-primary hidden">Subir Video y Analizar</button>
-    </div>
-</section>
+      <div style="text-align:center; margin-top:20px;">
+        <button id="btn-subir-video" class="btn-primary hidden">📤 Subir Video y Analizar</button>
+      </div>
+    </section>
+
     <!-- ===============================
          SECCIÓN 4: LOGIN INVESTIGADOR
          =============================== -->
     <section id="seccion-login" class="content-box hidden">
-        <h2>Panel del Investigador</h2>
-        <p class="subtitle" style="text-align:center;">
-            Acceso restringido solo al equipo de investigación
-        </p>
-        <div class="form-group">
-            <label for="password-investigador">Contraseña</label>
-            <input type="password" id="password-investigador" placeholder="Ingresá la contraseña">
-        </div>
-        <div style="text-align:center;">
-            <button id="btn-login-investigador" class="btn-primary">Acceder</button>
-            <button id="btn-volver-inicio-2" class="btn-secondary" style="margin-top:20px;">
-                Volver al inicio
-            </button>
-        </div>
+      <h2>Panel del Investigador</h2>
+      <p class="subtitle" style="text-align:center;">
+        Acceso restringido solo al equipo de investigación
+      </p>
+      <div class="form-group">
+        <label for="password-investigador">Contraseña</label>
+        <input type="password" id="password-investigador" placeholder="Ingresá la contraseña">
+      </div>
+      <div style="text-align:center;">
+        <button id="btn-login-investigador" class="btn-primary">Acceder</button>
+        <button id="btn-volver-inicio-2" class="btn-secondary" style="margin-top:20px;">
+          Volver al inicio
+        </button>
+      </div>
     </section>
 
     <!-- ===============================
          SECCIÓN 5: PANEL INVESTIGADOR
          =============================== -->
     <section id="seccion-investigador" class="content-box hidden">
-        <h2>Listado de Participantes</h2>
-        <p class="subtitle" style="text-align:center; margin-bottom:25px;">
-            Seleccioná un participante para ver los resultados completos
+      <h2>Listado de Participantes</h2>
+      <p class="subtitle" style="text-align:center; margin-bottom:25px;">
+        Seleccioná un participante para ver los resultados completos
+      </p>
+      <div id="lista-participantes" class="content-box" 
+           style="background:rgba(0,0,0,0.25); max-height:500px; overflow-y:auto;">
+        <p style="text-align:center; color:var(--text-secondary);">
+          Cargando datos...
         </p>
-        <div id="lista-participantes" class="content-box" 
-             style="background:rgba(0,0,0,0.25); max-height:500px; overflow-y:auto;">
-            <p style="text-align:center; color:var(--text-secondary);">
-                Cargando datos...
-            </p>
-        </div>
-        <div style="text-align:center; margin-top:30px;">
-            <button id="btn-volver-login" class="btn-secondary">Salir del panel</button>
-        </div>
+      </div>
+      <div style="text-align:center; margin-top:30px;">
+        <button id="btn-volver-login" class="btn-secondary">Salir del panel</button>
+      </div>
     </section>
 
     <!-- ===============================
          SECCIÓN 6: RESULTADOS DETALLADOS (SOLO INVESTIGADOR)
          =============================== -->
     <section id="seccion-resultados" class="content-box hidden">
-        <h2>Resultados del Participante</h2>
-        
-        <h3>🧍‍♂️ Información del Participante</h3>
-        <div id="info-participante" class="resultado-box"></div>
+      <h2>Resultados del Participante</h2>
+      
+      <h3>🧍‍♂️ Información del Participante</h3>
+      <div id="info-participante" class="resultado-box"></div>
 
-        <h3>📊 Resultados del Test SD3</h3>
-        <div id="resultados-sd3-detalle" class="resultado-box"></div>
-        <canvas id="grafico-sd3-resultados" style="margin:40px auto; max-width:600px;"></canvas>
+      <h3>📊 Resultados del Test SD3</h3>
+      <div id="resultados-sd3-detalle" class="resultado-box"></div>
+      <canvas id="grafico-sd3-resultados" style="margin:40px auto; max-width:600px;"></canvas>
 
-        <h3>⏱ Tiempos de Respuesta</h3>
-        <div id="tiempos-detalle" class="resultado-box"></div>
-        <canvas id="grafico-tiempos" style="margin:40px auto; max-width:600px;"></canvas>
+      <h3>⏱ Tiempos de Respuesta</h3>
+      <div id="tiempos-detalle" class="resultado-box"></div>
+      <canvas id="grafico-tiempos" style="margin:40px auto; max-width:600px;"></canvas>
 
-        <h3>😶‍🌫️ Microexpresiones Detectadas</h3>
-        <div id="microexpresiones-detalle" class="resultado-box"></div>
-        <canvas id="grafico-emociones" style="margin:40px auto; max-width:600px;"></canvas>
+      <h3>😶‍🌫️ Microexpresiones Detectadas</h3>
+      <div id="microexpresiones-detalle" class="resultado-box"></div>
+      <canvas id="grafico-emociones" style="margin:40px auto; max-width:600px;"></canvas>
 
-        <h3>🔍 Unidades FACS</h3>
-        <div id="facs-detalle" class="resultado-box"></div>
+      <h3>🔍 Unidades FACS</h3>
+      <div id="facs-detalle" class="resultado-box"></div>
 
-        <h3>🧠 Integración de Resultados</h3>
-        <div id="analisis-final" class="resultado-box"></div>
+      <h3>🧠 Integración de Resultados</h3>
+      <div id="analisis-final" class="resultado-box"></div>
 
-        <h3>📷 Imagen del Participante</h3>
-        <div id="imagen-participante" style="text-align:center; margin-top:30px;"></div>
+      <h3>📷 Video del Participante</h3>
+      <div id="imagen-participante" style="text-align:center; margin-top:30px;"></div>
 
-        <div style="text-align:center; margin-top:30px;">
-            <button id="btn-volver-panel" class="btn-secondary">Volver al panel</button>
-        </div>
+      <div style="text-align:center; margin-top:30px;">
+        <button id="btn-volver-panel" class="btn-secondary">Volver al panel</button>
+      </div>
     </section>
 
   </div>
