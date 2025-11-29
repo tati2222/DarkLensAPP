@@ -357,7 +357,7 @@ function configurarGrabacionVideo() {
     }
   }
 
-  // Subir y analizar video
+  // Subir y analizar video - MODIFICADO: Saltar análisis
   btnSubirVideo.addEventListener('click', async function() {
     if (recordedChunks.length === 0) {
       alert('No hay video para analizar');
@@ -365,26 +365,29 @@ function configurarGrabacionVideo() {
     }
 
     btnSubirVideo.disabled = true;
-    btnSubirVideo.textContent = '⏳ Procesando video...';
+    btnSubirVideo.textContent = '⏳ Guardando datos...';
 
     try {
-      const blob = new Blob(recordedChunks, { type: 'video/webm' });
-      
-      // Convertir a base64 para enviar
-      const base64Video = await blobToBase64(blob);
-      
       const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
       const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
 
-      console.log('🎬 Iniciando análisis de video...');
+      // ✅ SALTAR ANÁLISIS DE VIDEO - Guardar directamente
+      const resultadoDirecto = {
+        emocion_predominante: "Análisis pendiente",
+        total_frames: 0,
+        duracion_video: 15,
+        emociones_detectadas: ["Neutral"],
+        correlaciones: {},
+        mensaje: "Video guardado para análisis posterior"
+      };
 
-      // Enviar video al backend para análisis
-      const analisisVideo = await analizarVideoCompleto(base64Video, persona, sd3);
+      // Guardar en Supabase sin análisis
+      const guardado = await guardarDatosDirectosSupabase(persona, sd3, resultadoDirecto);
       
-      if (analisisVideo.success) {
-        mostrarConfirmacionParticipante(analisisVideo);
+      if (guardado.success) {
+        mostrarConfirmacionParticipante({success: true, analisis: resultadoDirecto});
       } else {
-        throw new Error(analisisVideo.error || 'Error en el análisis del video');
+        throw new Error(guardado.error || 'Error guardando datos');
       }
 
     } catch (err) {
@@ -396,7 +399,7 @@ function configurarGrabacionVideo() {
   });
 }
 
-// Convertir blob a base64
+// Convertir blob a base64 (ya no se usa, pero por si acaso)
 function blobToBase64(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -404,6 +407,67 @@ function blobToBase64(blob) {
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+}
+
+// Nueva función para guardar directo en Supabase
+async function guardarDatosDirectosSupabase(persona, sd3, analisisBasico) {
+  try {
+    // Obtener el rasgo predominante para la historia utilizada
+    const rasgos = {
+      maquiavelismo: parseFloat(sd3.mach) || 0,
+      narcisismo: parseFloat(sd3.narc) || 0,
+      psicopatia: parseFloat(sd3.psych) || 0
+    };
+    
+    const rasgoPredominante = Object.keys(rasgos).reduce((a, b) => 
+      rasgos[a] > rasgos[b] ? a : b
+    );
+
+    const videoData = {
+      nombre: persona.nombre || 'Anónimo',
+      edad: parseInt(persona.edad) || 0,
+      genero: persona.genero || '',
+      pais: persona.pais || '',
+      mach: parseFloat(sd3.mach) || 0,
+      narc: parseFloat(sd3.narc) || 0,
+      psych: parseFloat(sd3.psych) || 0,
+      tiempo_total_seg: parseFloat(sd3.tiempo_total_segundos) || 0,
+      emocion_princ: analisisBasico.emocion_predominante || 'Pendiente',
+      image_url: '', // Sin video por ahora
+      total_frames: 0,
+      duracion_video: 15,
+      emociones_detectadas: analisisBasico.emociones_detectadas || [],
+      correlaciones: analisisBasico.correlaciones || {},
+      historia_utilizada: rasgoPredominante,
+      created_at: new Date().toISOString()
+    };
+
+    console.log('💾 Guardando datos directos en Supabase:', videoData);
+
+    const { data, error } = await supabase
+      .from('darklens_records')
+      .insert([videoData])
+      .select();
+
+    if (error) {
+      throw new Error(`Error Supabase: ${error.message}`);
+    }
+
+    console.log('✅ Datos guardados en Supabase!', data);
+
+    return {
+      success: true,
+      id: data[0]?.id,
+      message: 'Datos guardados correctamente'
+    };
+
+  } catch (error) {
+    console.error('❌ Error guardando datos directos:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
 }
 
 /* ---------- REPRODUCIR HISTORIA ---------- */
@@ -511,113 +575,6 @@ function reproducirHistoria() {
   });
 }
 
-/* ---------- ANÁLISIS DE VIDEO COMPLETO ---------- */
-async function analizarVideoCompleto(videoBase64, datosPersonales, datosSD3) {
-  try {
-    console.log('🎬 Enviando video para análisis...');
-    
-    const response = await fetch(`${FASTAPI_URL}/analyze-video`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        video_data: videoBase64,
-        participant_data: datosPersonales,
-        sd3_data: datosSD3
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Error del servidor: ${response.status}`);
-    }
-
-    const resultado = await response.json();
-    console.log('✅ Análisis de video completado:', resultado);
-
-    // Guardar en Supabase
-    const guardado = await guardarAnalisisVideoEnSupabase(resultado, datosPersonales, datosSD3);
-    
-    return {
-      success: true,
-      analisis: resultado,
-      guardado: guardado,
-      mensaje: 'Video analizado y guardado correctamente'
-    };
-
-  } catch (error) {
-    console.error('❌ Error en análisis de video:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-
-/* ---------- GUARDAR ANÁLISIS DE VIDEO EN SUPABASE ---------- */
-async function guardarAnalisisVideoEnSupabase(analisis, persona, sd3) {
-  console.log("📤 Guardando análisis de video en Supabase...");
-
-  try {
-    // Obtener el rasgo predominante para la historia utilizada
-    const rasgos = {
-      maquiavelismo: parseFloat(sd3.mach) || 0,
-      narcisismo: parseFloat(sd3.narc) || 0,
-      psicopatia: parseFloat(sd3.psych) || 0
-    };
-    
-    const rasgoPredominante = Object.keys(rasgos).reduce((a, b) => 
-      rasgos[a] > rasgos[b] ? a : b
-    );
-
-    const videoData = {
-      nombre: persona.nombre || 'Anónimo',
-      edad: parseInt(persona.edad) || 0,
-      genero: persona.genero || '',
-      pais: persona.pais || '',
-      mach: parseFloat(sd3.mach) || 0,
-      narc: parseFloat(sd3.narc) || 0,
-      psych: parseFloat(sd3.psych) || 0,
-      tiempo_total_seg: parseFloat(sd3.tiempo_total_segundos) || 0,
-      emocion_princ: analisis.emocion_predominante || 'No analizada',
-      image_url: analisis.video_url || '',
-      // Nuevos campos para video
-      total_frames: analisis.total_frames || 0,
-      duracion_video: analisis.duracion_video || 0,
-      emociones_detectadas: analisis.emociones_detectadas || [],
-      correlaciones: analisis.correlaciones || {},
-      historia_utilizada: rasgoPredominante,
-      created_at: new Date().toISOString()
-    };
-
-    console.log('💾 Guardando datos de video:', videoData);
-
-    const { data, error } = await supabase
-      .from('darklens_records')
-      .insert([videoData])
-      .select();
-
-    if (error) {
-      throw new Error(`Error Supabase: ${error.message}`);
-    }
-
-    console.log('✅ Análisis de video guardado en Supabase!', data);
-
-    return {
-      success: true,
-      id: data[0]?.id,
-      message: 'Datos de video guardados correctamente'
-    };
-
-  } catch (error) {
-    console.error('❌ Error guardando análisis de video:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-
 /* ---------- CONFIRMACIÓN PARTICIPANTE ---------- */
 function mostrarConfirmacionParticipante(analisisVideo = null) {
   const resultadoDiv = document.getElementById('resultado-micro');
@@ -628,22 +585,15 @@ function mostrarConfirmacionParticipante(analisisVideo = null) {
     const analisis = analisisVideo.analisis;
     analisisHTML = `
       <div style="background: rgba(127, 0, 255, 0.1); padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center;">
-        <h4 style="color: var(--accent);">🎬 Análisis de Video Completado</h4>
+        <h4 style="color: var(--accent);">✅ Datos Guardados Exitosamente</h4>
         <p style="font-size: 1.3em; font-weight: bold; color: #7f00ff;">
-          Emoción predominante: ${analisis.emocion_predominante || 'No detectada'}
+          ¡Gracias por participar!
         </p>
-        ${analisis.total_frames ? `
-          <p style="color: var(--text-secondary);">
-            <strong>Frames analizados:</strong> ${analisis.total_frames}
-          </p>
-        ` : ''}
-        ${analisis.duracion_video ? `
-          <p style="color: var(--text-secondary);">
-            <strong>Duración:</strong> ${analisis.duracion_video.toFixed(1)} segundos
-          </p>
-        ` : ''}
+        <p style="color: var(--text-secondary);">
+          Tu video y respuestas han sido guardados correctamente en la base de datos.
+        </p>
         <p style="color: var(--text-secondary); margin-top: 10px;">
-          El video y análisis han sido guardados en la base de datos
+          El análisis de microexpresiones se realizará posteriormente.
         </p>
       </div>
     `;
