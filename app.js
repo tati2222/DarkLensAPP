@@ -1,5 +1,5 @@
 /* ========================================
-   app.js - VERSIÓN COMPLETA MEJORADA
+   app.js - VERSIÓN COMPLETA MEJORADA CON GRABACIÓN DE VIDEO
    ======================================== */
 
 /* ---------- CONFIG SUPABASE ---------- */
@@ -181,109 +181,6 @@ function procesarResultadoCompleto(resultado, pyfeatDisponible) {
     interpretacion: generarInterpretacionEkman(emocionPrincipal.emocion, emocionPrincipal.score),
     pyfeat_utilizado: pyfeatDisponible
   };
-}
-
-// ✅ GENERAR VISUALIZACIÓN FACS CON COLORES
-function generarVisualizacionFACS(landmarks, ausDetectadas, imagenOriginal) {
-  if (!landmarks || landmarks.length === 0) {
-    return imagenOriginal; // Devolver imagen original si no hay landmarks
-  }
-
-  // Crear canvas para dibujar
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  const img = new Image();
-  
-  return new Promise((resolve) => {
-    img.onload = function() {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      
-      // Dibujar imagen original
-      ctx.drawImage(img, 0, 0);
-      
-      // ✅ DIBUJAR LANDMARKS CON COLORES
-      ctx.strokeStyle = '#00ff00';
-      ctx.fillStyle = '#ff0000';
-      ctx.lineWidth = 2;
-
-      landmarks.forEach((point, index) => {
-        ctx.beginPath();
-        ctx.arc(point[0], point[1], 3, 0, 2 * Math.PI);
-        ctx.fill();
-      });
-
-      // ✅ DIBUJAR ZONAS FACS SEGÚN AUs DETECTADAS
-      if (ausDetectadas && ausDetectadas.length > 0) {
-        ausDetectadas.forEach(au => {
-          const color = obtenerColorAU(au.unidad);
-          dibujarZonaAU(ctx, landmarks, au.unidad, color, au.intensidad);
-        });
-      }
-
-      // Convertir a base64
-      const imagenAnotada = canvas.toDataURL('image/jpeg', 0.9);
-      resolve(imagenAnotada);
-    };
-    img.src = imagenOriginal;
-  });
-}
-
-// ✅ COLORES PARA DIFERENTES ACTION UNITS
-function obtenerColorAU(au) {
-  const colores = {
-    'AU1': '#ff4444',  // Ceja interna - Rojo
-    'AU2': '#ff8844',  // Ceja externa - Naranja
-    'AU4': '#ff44ff',  // Ceja fruncida - Magenta
-    'AU5': '#44ff44',  // Párpado superior - Verde
-    'AU6': '#8844ff',  // Mejilla elevada - Violeta
-    'AU7': '#44ffff',  // Párpado inferior - Cian
-    'AU9': '#ffff44',  // Nariz arrugada - Amarillo
-    'AU10': '#ff8844', // Elevador labio - Naranja
-    'AU12': '#44ff88', // Sonrisa - Verde claro
-    'AU15': '#4488ff', // Comisura abajo - Azul
-    'AU17': '#ff4488', // Mentón elevado - Rosa
-    'AU20': '#88ff44', // Estiramiento labial - Verde lima
-    'AU23': '#ff44aa', // Labios tensionados - Rosa oscuro
-    'AU25': '#aa44ff', // Labios separados - Púrpura
-    'AU26': '#44aaff'  // Mandíbula caída - Azul claro
-  };
-  return colores[au] || '#ffffff';
-}
-
-// ✅ DIBUJAR ZONAS ESPECÍFICAS DE AUs
-function dibujarZonaAU(ctx, landmarks, au, color, intensidad) {
-  ctx.strokeStyle = color;
-  ctx.fillStyle = color + '40'; // Color con transparencia
-  ctx.lineWidth = 2;
-
-  const zonas = {
-    'AU1': [17, 18, 19, 20, 21], // Ceja izquierda
-    'AU2': [22, 23, 24, 25, 26], // Ceja derecha
-    'AU4': [21, 22, 27], // Entrecejo
-    'AU5': [36, 37, 38, 39, 40, 41], // Ojo izquierdo
-    'AU6': [42, 43, 44, 45, 46, 47], // Ojo derecho
-    'AU12': [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59] // Boca
-  };
-
-  const puntos = zonas[au];
-  if (puntos && landmarks.length > 0) {
-    ctx.beginPath();
-    puntos.forEach((puntoIdx, index) => {
-      if (landmarks[puntoIdx]) {
-        const x = landmarks[puntoIdx][0];
-        const y = landmarks[puntoIdx][1];
-        if (index === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-      }
-    });
-    ctx.closePath();
-    ctx.stroke();
-    ctx.fill();
-  }
 }
 
 // Generar datos FACS mejorados
@@ -562,420 +459,461 @@ async function calcularSD3() {
   document.getElementById('seccion-test')?.classList.add('hidden');
   document.getElementById('seccion-micro')?.classList.remove('hidden');
   if (!window._capturaInicializada) { 
-    configurarCamaraYSubida(); 
+    configurarGrabacionVideo(); 
     window._capturaInicializada = true; 
   }
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
-/* ---------- GUARDAR EN SUPABASE ---------- */
-async function guardarEnSupabase(datos) {
-  console.log("📤 Guardando en Supabase...");
+/* ---------- GRABACIÓN DE VIDEO ---------- */
+function configurarGrabacionVideo() {
+  const video = document.getElementById('video');
+  const btnActivarCamara = document.getElementById('btn-activar-camara');
+  const btnIniciarGrabacion = document.getElementById('btn-iniciar-grabacion');
+  const btnDetenerGrabacion = document.getElementById('btn-detener-grabacion');
+  const btnSubirVideo = document.getElementById('btn-subir-video');
+  const previewContainer = document.getElementById('preview-container');
+  const previewVideo = document.getElementById('preview-video');
+  const audioContainer = document.getElementById('audio-container');
+  const progressContainer = document.getElementById('progress-container');
+  const progressBar = document.getElementById('progress-bar');
+  const tiempoGrabacion = document.getElementById('tiempo-grabacion');
+  const infoVideo = document.getElementById('info-video');
 
+  let stream = null;
+  let mediaRecorder = null;
+  let recordedChunks = [];
+  let grabacionEnCurso = false;
+  let tiempoInicioGrabacion = null;
+  let intervaloProgress = null;
+  let duracionGrabacion = 15000; // 15 segundos
+
+  // Activar cámara
+  btnActivarCamara.addEventListener('click', async function() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'user',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: true
+      });
+      
+      if (video) { 
+        video.srcObject = stream; 
+        video.classList.remove('hidden'); 
+        video.play(); 
+      }
+      
+      btnActivarCamara.classList.add('hidden');
+      btnIniciarGrabacion.classList.remove('hidden');
+      audioContainer.classList.remove('hidden');
+      document.getElementById('camera-placeholder')?.classList?.add('hidden');
+      
+    } catch (err) {
+      console.error('Error accediendo a la cámara:', err);
+      alert('No se pudo acceder a la cámara. Podés intentar con otro navegador o verificar los permisos.');
+    }
+  });
+
+  // Iniciar grabación
+  btnIniciarGrabacion.addEventListener('click', function() {
+    if (!stream) {
+      alert('Primero activá la cámara');
+      return;
+    }
+
+    recordedChunks = [];
+    
+    try {
+      const options = { mimeType: 'video/webm; codecs=vp9,opus' };
+      mediaRecorder = new MediaRecorder(stream, options);
+      
+      mediaRecorder.ondataavailable = function(event) {
+        if (event.data.size > 0) {
+          recordedChunks.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = function() {
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        const videoURL = URL.createObjectURL(blob);
+        previewVideo.src = videoURL;
+        previewContainer.classList.remove('hidden');
+        btnSubirVideo.classList.remove('hidden');
+        
+        // Mostrar información del video
+        const duracion = (Date.now() - tiempoInicioGrabacion) / 1000;
+        infoVideo.innerHTML = `
+          <p>Duración: ${duracion.toFixed(1)} segundos</p>
+          <p>Tamaño: ${(blob.size / 1024 / 1024).toFixed(2)} MB</p>
+          <p>Se analizarán ${Math.floor(duracion)} frames (1 por segundo)</p>
+        `;
+      };
+      
+      mediaRecorder.start(1000);
+      grabacionEnCurso = true;
+      tiempoInicioGrabacion = Date.now();
+      
+      btnIniciarGrabacion.classList.add('hidden');
+      btnDetenerGrabacion.classList.remove('hidden');
+      progressContainer.classList.remove('hidden');
+      
+      // Iniciar progress bar
+      iniciarProgressBar();
+      
+    } catch (err) {
+      console.error('Error iniciando grabación:', err);
+      alert('Error al iniciar la grabación: ' + err.message);
+    }
+  });
+
+  function iniciarProgressBar() {
+    let tiempoTranscurrido = 0;
+    progressBar.style.width = '0%';
+    
+    // Esperar a que la historia se muestre (3 segundos)
+    reproducirHistoria().then(() => {
+      console.log('🎬 Iniciando grabación...');
+      
+      intervaloProgress = setInterval(() => {
+        tiempoTranscurrido += 100;
+        const porcentaje = (tiempoTranscurrido / duracionGrabacion) * 100;
+        
+        progressBar.style.width = `${Math.min(porcentaje, 100)}%`;
+        tiempoGrabacion.textContent = `${(tiempoTranscurrido / 1000).toFixed(1)}s`;
+        
+        // Detener automáticamente después de 15 segundos
+        if (tiempoTranscurrido >= duracionGrabacion) {
+          detenerGrabacion();
+        }
+      }, 100);
+    });
+  }
+
+  // Detener grabación manualmente
+  btnDetenerGrabacion.addEventListener('click', function() {
+    detenerGrabacion();
+  });
+
+  function detenerGrabacion() {
+    if (mediaRecorder && grabacionEnCurso) {
+      mediaRecorder.stop();
+      grabacionEnCurso = false;
+      
+      if (intervaloProgress) {
+        clearInterval(intervaloProgress);
+        intervaloProgress = null;
+      }
+      
+      btnDetenerGrabacion.classList.add('hidden');
+      progressContainer.classList.add('hidden');
+      
+      // Detener stream
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+        video.classList.add('hidden');
+      }
+    }
+  }
+
+  // Subir y analizar video
+  btnSubirVideo.addEventListener('click', async function() {
+    if (recordedChunks.length === 0) {
+      alert('No hay video para analizar');
+      return;
+    }
+
+    btnSubirVideo.disabled = true;
+    btnSubirVideo.textContent = '⏳ Procesando video...';
+
+    try {
+      const blob = new Blob(recordedChunks, { type: 'video/webm' });
+      
+      // Convertir a base64 para enviar
+      const base64Video = await blobToBase64(blob);
+      
+      const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
+      const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
+
+      console.log('🎬 Iniciando análisis de video...');
+
+      // Enviar video al backend para análisis
+      const analisisVideo = await analizarVideoCompleto(base64Video, persona, sd3);
+      
+      if (analisisVideo.success) {
+        mostrarConfirmacionParticipante(analisisVideo);
+      } else {
+        throw new Error(analisisVideo.error || 'Error en el análisis del video');
+      }
+
+    } catch (err) {
+      console.error("❌ Error procesando video:", err);
+      alert("Error: " + err.message);
+      btnSubirVideo.disabled = false;
+      btnSubirVideo.textContent = "📤 Subir Video y Analizar";
+    }
+  });
+}
+
+// Convertir blob a base64
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+/* ---------- ANÁLISIS DE VIDEO COMPLETO ---------- */
+async function analizarVideoCompleto(videoBase64, datosPersonales, datosSD3) {
   try {
-    // ✅ PREPARAR DATOS COMPLETOS
-    const participanteData = {
-      id: 'participante_' + Date.now(),
-      created_at: new Date().toISOString(),
-      nombre: datos.nombre || 'Anónimo',
-      edad: datos.edad || '',
-      genero: datos.genero || '',
-      pais: datos.pais || '',
-      
-      // Datos SD3 del test
-      maquiavelismo: parseFloat(datos.mach) || 0,
-      narcisismo: parseFloat(datos.narc) || 0,
-      psicopatia: parseFloat(datos.psych) || 0,
-      
-      // Datos de microexpresiones
-      emocion_principal: datos.emocion_principal || 'No analizada',
-      confianza_analisis: parseFloat(datos.confianza_analisis) || 0,
-      tiempo_total_seg: datos.tiempo_total_seg || '0',
-      estado_analisis: datos.estado_analisis || 'Completado',
-      
-      // Datos FACS y Py-Feat
-      sd3_maquiavelismo_facial: parseFloat(datos.sd3_maquiavelismo) || 0,
-      sd3_narcisismo_facial: parseFloat(datos.sd3_narcisismo) || 0,
-      sd3_psicopatia_facial: parseFloat(datos.sd3_psicopatia) || 0,
-      facs_data: datos.facs || [],
-      aus_detectadas: datos.aus_detectadas || [],
-      interpretacion_ekman: datos.interpretacion || {},
-      pyfeat_utilizado: datos.pyfeat_utilizado || false,
-      modelo_utilizado: datos.modelo_utilizado || 'standard'
+    console.log('🎬 Enviando video para análisis...');
+    
+    const response = await fetch(`${FASTAPI_URL}/analyze-video`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        video_data: videoBase64,
+        participant_data: datosPersonales,
+        sd3_data: datosSD3
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error del servidor: ${response.status}`);
+    }
+
+    const resultado = await response.json();
+    console.log('✅ Análisis de video completado:', resultado);
+
+    // Guardar en Supabase
+    const guardado = await guardarAnalisisVideoEnSupabase(resultado, datosPersonales, datosSD3);
+    
+    return {
+      success: true,
+      analisis: resultado,
+      guardado: guardado,
+      mensaje: 'Video analizado y guardado correctamente'
     };
 
-    console.log('💾 Datos a guardar:', participanteData);
+  } catch (error) {
+    console.error('❌ Error en análisis de video:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
 
-    // ✅ GUARDAR EN SUPABASE
+/* ---------- GUARDAR ANÁLISIS DE VIDEO EN SUPABASE ---------- */
+async function guardarAnalisisVideoEnSupabase(analisis, persona, sd3) {
+  console.log("📤 Guardando análisis de video en Supabase...");
+
+  try {
+    // Obtener el rasgo predominante para la historia utilizada
+    const rasgos = {
+      maquiavelismo: parseFloat(sd3.mach) || 0,
+      narcisismo: parseFloat(sd3.narc) || 0,
+      psicopatia: parseFloat(sd3.psych) || 0
+    };
+    
+    const rasgoPredominante = Object.keys(rasgos).reduce((a, b) => 
+      rasgos[a] > rasgos[b] ? a : b
+    );
+
+    const videoData = {
+      nombre: persona.nombre || 'Anónimo',
+      edad: parseInt(persona.edad) || 0,
+      genero: persona.genero || '',
+      pais: persona.pais || '',
+      mach: parseFloat(sd3.mach) || 0,
+      narc: parseFloat(sd3.narc) || 0,
+      psych: parseFloat(sd3.psych) || 0,
+      tiempo_total_seg: parseFloat(sd3.tiempo_total_segundos) || 0,
+      emocion_princ: analisis.emocion_predominante || 'No analizada',
+      image_url: analisis.video_url || '',
+      // Nuevos campos para video
+      total_frames: analisis.total_frames || 0,
+      duracion_video: analisis.duracion_video || 0,
+      emociones_detectadas: analisis.emociones_detectadas || [],
+      correlaciones: analisis.correlaciones || {},
+      historia_utilizada: rasgoPredominante,
+      created_at: new Date().toISOString()
+    };
+
+    console.log('💾 Guardando datos de video:', videoData);
+
     const { data, error } = await supabase
-      .from('participantes')
-      .insert([participanteData])
+      .from('darklens_records')
+      .insert([videoData])
       .select();
 
     if (error) {
       throw new Error(`Error Supabase: ${error.message}`);
     }
 
-    console.log('✅ Guardado exitoso en Supabase!', data);
-
-    // ✅ GUARDAR IMAGEN ANOTADA SI EXISTE
-    if (datos.imagen_anotada) {
-      try {
-        const imagenData = {
-          participante_id: participanteData.id,
-          imagen_anotada: datos.imagen_anotada,
-          created_at: new Date().toISOString()
-        };
-
-        const { error: imgError } = await supabase
-          .from('imagenes_analisis')
-          .insert([imagenData]);
-
-        if (imgError) {
-          console.warn('⚠️ No se pudo guardar imagen anotada:', imgError);
-        } else {
-          console.log('✅ Imagen anotada guardada');
-        }
-      } catch (imgErr) {
-        console.warn('⚠️ Error guardando imagen:', imgErr);
-      }
-    }
+    console.log('✅ Análisis de video guardado en Supabase!', data);
 
     return {
       success: true,
-      id: participanteData.id,
-      message: `Datos guardados correctamente en Supabase`,
-      data: data
+      id: data[0]?.id,
+      message: 'Datos de video guardados correctamente'
     };
 
   } catch (error) {
-    console.error('❌ Error guardando en Supabase:', error);
+    console.error('❌ Error guardando análisis de video:', error);
     return {
       success: false,
-      error: 'Error: ' + error.message
+      error: error.message
     };
   }
 }
 
-/* ---------- GENERAR CSV ---------- */
-async function generarYDescargarCSV() {
-  try {
-    console.log('📊 Generando CSV...');
-    
-    // Obtener datos actualizados de Supabase
-    const { data: participantes, error } = await supabase
-      .from('participantes')
-      .select('*')
-      .order('created_at', { ascending: false });
+function reproducirHistoria() {
+  // Obtener resultados SD3 para elegir la historia apropiada
+  const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
+  
+  // Determinar el rasgo predominante
+  const rasgos = {
+    maquiavelismo: parseFloat(sd3.mach) || 0,
+    narcisismo: parseFloat(sd3.narc) || 0,
+    psicopatia: parseFloat(sd3.psych) || 0
+  };
+  
+  const rasgoPredominante = Object.keys(rasgos).reduce((a, b) => 
+    rasgos[a] > rasgos[b] ? a : b
+  );
 
-    if (error) {
-      throw new Error(`Error obteniendo datos: ${error.message}`);
+  console.log('🎭 Rasgo predominante:', rasgoPredominante, rasgos);
+
+  // Historias específicas para cada rasgo
+  const historias = {
+    maquiavelismo: {
+      titulo: "El Dilema del Compañero",
+      texto: `"Imagina que estás trabajando en un proyecto muy importante con un compañero. 
+      Has descubierto que tu compañero cometió un error que podría hacer fracasar todo el proyecto. 
+      Tienes la oportunidad de señalar su error públicamente ante el jefe, lo que te haría quedar bien 
+      y probablemente te daría una ventaja para el próximo ascenso. Sin embargo, si lo haces, 
+      tu compañero podría ser despedido. Por otro lado, si no dices nada y el proyecto fracasa, 
+      ambos podrían ser afectados. ¿Qué harías en esta situación?"`
+    },
+    
+    narcisismo: {
+      titulo: "El Reconocimiento Perdido",
+      texto: `"Estás en una reunión importante donde se presentan los resultados de un proyecto 
+      en el que trabajaste intensamente. Tu jefe está dando crédito a otra persona por tu trabajo 
+      y todos están aplaudiendo los logros de tu colega. Nadie parece recordar tu contribución 
+      fundamental. Te sientes invisible y no reconocido, a pesar de que sin tu esfuerzo 
+      el proyecto no habría sido posible. ¿Cómo te sientes al ver que otro recibe el mérito 
+      por tu trabajo excepcional?"`
+    },
+    
+    psicopatia: {
+      titulo: "El Encuentro Inesperado",
+      texto: `"Caminas solo por un callejón oscuro tarde en la noche. De repente, escuchas 
+      ruidos de una pelea cercana. Al acercarte, ves a dos personas discutiendo intensamente. 
+      Una de ellas saca un arma y la situación se vuelve peligrosa. Tienes la oportunidad 
+      de intervenir o llamar a la policía, pero también podrías simplemente alejarte 
+      y evitar cualquier problema. No hay testigos alrededor. ¿Cuál sería tu reacción 
+      inmediata en esta situación de alto riesgo?"`
     }
+  };
 
-    if (!participantes || participantes.length === 0) {
-      alert('No hay datos para exportar');
-      return;
-    }
-
-    // Encabezados del CSV
-    const headers = [
-      'ID', 'Fecha', 'Nombre', 'Edad', 'Género', 'País',
-      'Maquiavelismo', 'Narcisismo', 'Psicopatia',
-      'Emoción_Principal', 'Confianza_Análisis', 'Tiempo_Total_Seg',
-      'SD3_Maquiavelismo_Facial', 'SD3_Narcisismo_Facial', 'SD3_Psicopatia_Facial',
-      'Unidades_FACS_Detectadas', 'AUs_Específicas', 'Modelo_Utilizado',
-      'Autor_Teoría', 'Estado_Analisis'
-    ];
-    
-    const csvRows = [headers.join(',')];
-    
-    participantes.forEach(p => {
-      const facsCount = p.facs_data ? p.facs_data.length : 0;
-      const ausEspecificas = p.aus_detectadas ? p.aus_detectadas.map(au => au.unidad).join(';') : '';
-      const autor = p.interpretacion_ekman ? p.interpretacion_ekman.autor : 'No disponible';
-      
-      const row = [
-        p.id || '',
-        p.created_at || '',
-        `"${(p.nombre || '').replace(/"/g, '""')}"`,
-        p.edad || '',
-        p.genero || '',
-        p.pais || '',
-        p.maquiavelismo || 0,
-        p.narcisismo || 0,
-        p.psicopatia || 0,
-        p.emocion_principal || '',
-        p.confianza_analisis || 0,
-        p.tiempo_total_seg || '',
-        p.sd3_maquiavelismo_facial || 0,
-        p.sd3_narcisismo_facial || 0,
-        p.sd3_psicopatia_facial || 0,
-        facsCount,
-        `"${ausEspecificas}"`,
-        p.modelo_utilizado || '',
-        `"${autor}"`,
-        p.estado_analisis || ''
-      ];
-      
-      csvRows.push(row.join(','));
-    });
-    
-    const csvContent = csvRows.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    
-    // Crear enlace de descarga
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `datos_participantes_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    console.log('📊 CSV generado y descargado exitosamente');
-    return { success: true, count: participantes.length };
-    
-  } catch (error) {
-    console.error('❌ Error generando CSV:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-/* ---------- CÁMARA Y CAPTURA MEJORADA ---------- */
-function configurarCamaraYSubida() {
-  const video = document.getElementById('video');
-  const canvas = document.getElementById('canvas');
-  const btnActivarCamara = document.getElementById('btn-activar-camara');
-  const btnTomarFoto = document.getElementById('btn-tomar-foto');
-  const btnSubirImagen = document.getElementById('btn-subir-imagen');
-  const inputImagen = document.getElementById('input-imagen');
-  const previewContainer = document.getElementById('preview-container');
-  const previewImg = document.getElementById('preview-img');
-
-  // Crear botón de enviar si no existe
-  let btnEnviarImagen = document.getElementById('btn-enviar-imagen');
-  if (!btnEnviarImagen) {
-    btnEnviarImagen = document.createElement('button');
-    btnEnviarImagen.id = 'btn-enviar-imagen';
-    btnEnviarImagen.className = 'btn-primary';
-    btnEnviarImagen.textContent = '📤 Analizar y Enviar';
-    btnEnviarImagen.style.display = 'none';
-    btnEnviarImagen.style.marginTop = '12px';
-    previewContainer?.appendChild(btnEnviarImagen);
+  // Seleccionar historia basada en el rasgo predominante
+  const historiaSeleccionada = historias[rasgoPredominante] || historias.maquiavelismo;
+  
+  // Actualizar el texto en la interfaz
+  const textoHistoriaDiv = document.getElementById('texto-historia');
+  if (textoHistoriaDiv) {
+    textoHistoriaDiv.innerHTML = `
+      <strong>Historia: ${historiaSeleccionada.titulo}</strong>
+      <p style="margin: 10px 0; font-style: italic; color: var(--text-secondary); line-height: 1.6;">
+        ${historiaSeleccionada.texto}
+      </p>
+      <small style="color: var(--accent);">Rasgo analizado: ${rasgoPredominante}</small>
+    `;
   }
 
-  // Activar cámara
-  btnActivarCamara?.addEventListener('click', async function() {
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'user' } 
-      });
-      if (video) { 
-        video.srcObject = stream; 
-        video.classList.remove('hidden'); 
-        video.play(); 
+  // Mostrar instrucciones para leer la historia
+  const instruccionesDiv = document.createElement('div');
+  instruccionesDiv.style.background = 'rgba(127, 0, 255, 0.1)';
+  instruccionesDiv.style.padding = '15px';
+  instruccionesDiv.style.borderRadius = '10px';
+  instruccionesDiv.style.marginTop = '15px';
+  instruccionesDiv.style.textAlign = 'center';
+  instruccionesDiv.innerHTML = `
+    <strong>📝 Instrucciones IMPORTANTES:</strong>
+    <div style="margin: 10px 0; padding: 10px; background: rgba(127, 0, 255, 0.2); border-radius: 8px;">
+      <p style="margin: 5px 0; color: var(--text-secondary);">
+        <strong>1.</strong> Lee esta historia detenidamente<br>
+        <strong>2.</strong> <span style="color: #ff6384; font-weight: bold;">PERMANECE EN SILENCIO - NO HABLES</span><br>
+        <strong>3.</strong> Piensa en cómo te haría sentir esta situación<br>
+        <strong>4.</strong> Mantén una expresión facial natural mientras procesas la historia<br>
+        <strong>5.</strong> La cámara grabará tus reacciones faciales automáticamente
+      </p>
+    </div>
+    <p style="margin: 0; color: var(--accent); font-weight: bold;">
+      La grabación comenzará en 3 segundos...
+    </p>
+  `;
+  
+  if (textoHistoriaDiv) {
+    textoHistoriaDiv.appendChild(instruccionesDiv);
+  }
+
+  // Devolver una promesa que se resuelve después de 3 segundos (para dar tiempo a leer)
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      // Remover las instrucciones después del tiempo
+      if (instruccionesDiv.parentNode) {
+        instruccionesDiv.parentNode.removeChild(instruccionesDiv);
       }
-      btnActivarCamara.classList.add('hidden');
-      btnTomarFoto?.classList.remove('hidden');
-      document.getElementById('camera-placeholder')?.classList?.add('hidden');
-    } catch (err) {
-      alert('No se pudo acceder a la cámara. Podés subir una imagen desde tu dispositivo.');
-      console.error('Error cámara:', err);
-    }
-  });
-
-  // Tomar foto
-  btnTomarFoto?.addEventListener('click', function() {
-    try {
-      if (!canvas || !video) return;
-      const ctx = canvas.getContext('2d');
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      imagenCapturada = canvas.toDataURL('image/jpeg', 0.8);
-      
-      if (previewImg) { 
-        previewImg.src = imagenCapturada; 
-        previewImg.style.opacity = '1'; 
-      }
-      previewContainer?.classList.remove('hidden');
-      
-      // Detener cámara
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
-        video.classList.add('hidden');
-      }
-      canvas.classList.remove('hidden');
-
-      // Mostrar botón enviar
-      if (btnEnviarImagen) { 
-        btnEnviarImagen.style.display = 'block'; 
-        btnEnviarImagen.disabled = false; 
-      }
-      
-    } catch (err) {
-      console.error('Error al tomar foto:', err);
-      alert('Error al tomar foto. Intentá subir una imagen.');
-    }
-  });
-
-  // Subir imagen
-  btnSubirImagen?.addEventListener('click', () => {
-    inputImagen?.click();
-  });
-
-  inputImagen?.addEventListener('change', function(e) {
-    const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith('image/')) {
-      alert('Por favor subí un archivo de imagen válido.');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = function(ev) {
-      imagenCapturada = ev.target.result;
-      
-      if (previewImg) { 
-        previewImg.src = imagenCapturada; 
-        previewImg.style.opacity = '1'; 
-      }
-      previewContainer?.classList.remove('hidden');
-      
-      if (btnEnviarImagen) { 
-        btnEnviarImagen.style.display = 'block'; 
-        btnEnviarImagen.disabled = false; 
-      }
-    };
-    reader.readAsDataURL(file);
-  });
-
-  // Enviar datos finales - MEJORADO CON VISUALIZACIÓN
-  btnEnviarImagen?.addEventListener('click', async () => {
-    if (!imagenCapturada) { 
-      alert('No hay imagen para enviar'); 
-      return; 
-    }
-
-    btnEnviarImagen.disabled = true;
-    btnEnviarImagen.textContent = '⏳ Analizando con Py-Feat...';
-
-    try {
-      const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
-      const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
-
-      // ✅ ANÁLISIS COMPLETO CON PY-FEAT
-      console.log('🔬 Iniciando análisis completo...');
-      const analisisMicro = await analizarMicroexpresiones(imagenCapturada);
-      
-      console.log('📊 Resultado del análisis:', analisisMicro);
-
-      // ✅ GENERAR VISUALIZACIÓN FACS SI HAY DATOS
-      let imagenVisualizada = imagenCapturada;
-      if (analisisMicro.landmarks && analisisMicro.landmarks.length > 0) {
-        console.log('🎨 Generando visualización FACS...');
-        imagenVisualizada = await generarVisualizacionFACS(
-          analisisMicro.landmarks,
-          analisisMicro.aus_detectadas,
-          imagenCapturada
-        );
-      }
-
-      // ✅ PREPARAR DATOS COMPLETOS
-      const payload = {
-        nombre: persona.nombre || "",
-        edad: persona.edad || "",
-        genero: persona.genero || "",
-        pais: persona.pais || "",
-        mach: sd3.mach || "",
-        narc: sd3.narc || "",
-        psych: sd3.psych || "",
-        tiempo_total_seg: sd3.tiempo_total_segundos || "",
-        emocion_principal: analisisMicro.emocion_principal || 'No detectada',
-        confianza_analisis: analisisMicro.confianza || 0,
-        estado_analisis: analisisMicro.error ? 'Error' : 'Completado',
-        // Datos FACS y Py-Feat
-        sd3_maquiavelismo: analisisMicro.sd3?.Maquiavelismo || 0,
-        sd3_narcisismo: analisisMicro.sd3?.Narcisismo || 0,
-        sd3_psicopatia: analisisMicro.sd3?.Psicopatía || 0,
-        facs: analisisMicro.facs || [],
-        aus_detectadas: analisisMicro.aus_detectadas || [],
-        interpretacion: analisisMicro.interpretacion || {},
-        pyfeat_utilizado: analisisMicro.pyfeat_utilizado || false,
-        modelo_utilizado: analisisMicro.modelo || 'standard',
-        imagen_anotada: imagenVisualizada
-      };
-
-      // ✅ GUARDAR EN SUPABASE
-      const resultado = await guardarEnSupabase(payload);
-      
-      if (resultado.success) {
-        console.log('✅ Análisis completado y guardado');
-        // Actualizar imagen con visualización
-        imagenCapturada = imagenVisualizada;
-        mostrarConfirmacionParticipante(analisisMicro, imagenVisualizada);
-      } else {
-        throw new Error(resultado.error || 'Error desconocido');
-      }
-
-    } catch (err) {
-      console.error("❌ Error en el proceso:", err);
-      alert("Error: " + err.message);
-      btnEnviarImagen.disabled = false;
-      btnEnviarImagen.textContent = "📤 Analizar y Enviar";
-    }
+      resolve();
+    }, 3000); // 3 segundos para leer antes de empezar a grabar
   });
 }
 
 /* ---------- CONFIRMACIÓN PARTICIPANTE ---------- */
-function mostrarConfirmacionParticipante(analisisMicro = null, imagenVisualizada = null) {
+function mostrarConfirmacionParticipante(analisisVideo = null) {
   const resultadoDiv = document.getElementById('resultado-micro');
   if (!resultadoDiv) return;
   
-  const imagenMostrar = imagenVisualizada || imagenCapturada;
-  
   let analisisHTML = '';
-  if (analisisMicro && !analisisMicro.error) {
+  if (analisisVideo && analisisVideo.success) {
+    const analisis = analisisVideo.analisis;
     analisisHTML = `
       <div style="background: rgba(127, 0, 255, 0.1); padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center;">
-        <h4 style="color: var(--accent);">🔍 Análisis de Microexpresiones Completado</h4>
+        <h4 style="color: var(--accent);">🎬 Análisis de Video Completado</h4>
         <p style="font-size: 1.3em; font-weight: bold; color: #7f00ff;">
-          Emoción detectada: ${analisisMicro.emocion_principal}
+          Emoción predominante: ${analisis.emocion_predominante || 'No detectada'}
         </p>
-        ${analisisMicro.confianza ? `
+        ${analisis.total_frames ? `
           <p style="color: var(--text-secondary);">
-            <strong>Confianza:</strong> ${(analisisMicro.confianza * 100).toFixed(1)}%
+            <strong>Frames analizados:</strong> ${analisis.total_frames}
           </p>
         ` : ''}
-        ${analisisMicro.pyfeat_utilizado ? `
+        ${analisis.duracion_video ? `
           <p style="color: var(--text-secondary);">
-            <strong>Tecnología:</strong> Py-Feat FACS Detection
+            <strong>Duración:</strong> ${analisis.duracion_video.toFixed(1)} segundos
           </p>
-        ` : ''}
-        ${analisisMicro.interpretacion ? `
-          <div style="text-align: left; margin-top: 15px; padding: 15px; background: rgba(127, 0, 255, 0.05); border-radius: 8px;">
-            <p style="color: var(--text-secondary); margin: 5px 0;">
-              <strong>Base teórica:</strong> ${analisisMicro.interpretacion.autor}
-            </p>
-            <p style="color: var(--text-secondary); margin: 5px 0;">
-              <strong>Interpretación:</strong> ${analisisMicro.interpretacion.significado}
-            </p>
-          </div>
         ` : ''}
         <p style="color: var(--text-secondary); margin-top: 10px;">
-          Los resultados están disponibles en el panel del investigador
+          El video y análisis han sido guardados en la base de datos
         </p>
       </div>
     `;
-  } else if (analisisMicro?.error) {
+  } else {
     analisisHTML = `
       <div style="background: rgba(255, 99, 132, 0.1); padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center;">
         <h4 style="color: #ff6384;">⚠️ Análisis No Disponible</h4>
         <p style="color: var(--text-secondary);">
-          El análisis de microexpresiones no pudo completarse, pero tus datos fueron guardados.
+          El análisis de video no pudo completarse, pero tus datos fueron guardados.
         </p>
       </div>
     `;
@@ -985,18 +923,10 @@ function mostrarConfirmacionParticipante(analisisMicro = null, imagenVisualizada
   resultadoDiv.innerHTML = `
     <div class="confirmacion-final" style="text-align:center; padding:30px;">
       <h3 style="color: var(--accent);">¡Gracias por participar!</h3>
-      <p style="margin:15px 0;">Tu imagen, respuestas y análisis han sido registrados correctamente.</p>
+      <p style="margin:15px 0;">Tu video, respuestas y análisis han sido registrados correctamente.</p>
       
       ${analisisHTML}
       
-      <div style="margin:20px 0;">
-        <img src="${imagenMostrar}" alt="Imagen analizada" style="max-width:300px; border-radius:10px; border:2px solid var(--border);">
-        ${analisisMicro?.aus_detectadas?.length > 0 ? `
-          <p style="color: var(--text-secondary); margin-top: 10px; font-size: 0.9em;">
-            <strong>Zonas faciales analizadas:</strong> Colores indican Action Units detectadas
-          </p>
-        ` : ''}
-      </div>
       <div style="margin-top:20px; display:flex; gap:15px; justify-content:center; flex-wrap:wrap;">
         <button class="btn-primary" onclick="volverAlInicio()">🏠 Volver al inicio</button>
         <button class="btn-secondary" onclick="location.reload()">🔄 Nueva participación</button>
@@ -1014,7 +944,7 @@ async function cargarDatosParticipantes() {
     console.log('🔍 Cargando datos desde Supabase...');
     
     const { data: participantes, error } = await supabase
-      .from('participantes')
+      .from('darklens_records')
       .select('*')
       .order('created_at', { ascending: false });
 
@@ -1032,28 +962,20 @@ async function cargarDatosParticipantes() {
       id: 'DEMO_001',
       created_at: new Date().toISOString(),
       nombre: 'Participante Demo',
-      edad: '28',
+      edad: 28,
       genero: 'masculino',
       pais: 'Argentina',
       maquiavelismo: 3.2,
       narcisismo: 2.8,
       psicopatia: 2.5,
-      tiempo_total_seg: '7.50',
-      emocion_principal: 'Alegría',
-      confianza_analisis: 0.87,
-      estado_analisis: 'Completado',
-      facs_data: [
-        { unidad: "AU6", nombre: "Mejilla elevada", intensidad: 0.8, descripcion: "Contracción del músculo orbicular del ojo" },
-        { unidad: "AU12", nombre: "Estiramiento de labios", intensidad: 0.9, descripcion: "Sonrisa genuina (Duchenne)" }
-      ],
-      aus_detectadas: ['AU6', 'AU12'],
-      interpretacion_ekman: {
-        autor: "Paul Ekman",
-        teoria: "La alegría genuina se caracteriza por la activación simultánea del músculo cigomático mayor (sonrisa) y el músculo orbicular del ojo (patas de gallo).",
-        significado: "Indica bienestar emocional, satisfacción o experiencias positivas."
-      },
-      pyfeat_utilizado: true,
-      modelo_utilizado: 'pyfeat'
+      tiempo_total_seg: 7.50,
+      emocion_princ: 'Alegría',
+      image_url: '',
+      total_frames: 15,
+      duracion_video: 15.0,
+      emociones_detectadas: ['Alegría', 'Neutral'],
+      correlaciones: { maquiavelismo: 0.3, narcisismo: 0.5, psicopatia: 0.2 },
+      historia_utilizada: 'narcisismo'
     }];
   }
   
@@ -1091,8 +1013,7 @@ function poblarListaInvestigador() {
   // Lista de participantes
   participantesData.forEach((p, idx) => {
     const fecha = new Date(p.created_at).toLocaleString('es-AR');
-    const emocion = p.emocion_principal || 'No analizado';
-    const confianza = p.confianza_analisis ? `${(p.confianza_analisis * 100).toFixed(1)}%` : 'N/A';
+    const emocion = p.emocion_princ || 'No analizado';
     
     const item = document.createElement('div');
     item.className = 'content-box';
@@ -1103,11 +1024,11 @@ function poblarListaInvestigador() {
           <strong>${p.nombre || 'Sin nombre'}</strong>
           <div style="color:var(--text-secondary); font-size:0.9em;">${fecha}</div>
           <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 0.85em;">
-            <span style="color: #667eea;">🎭 ${p.maquiavelismo || 'N/A'}</span>
-            <span style="color: #764ba2;">👑 ${p.narcisismo || 'N/A'}</span>
-            <span style="color: #ffce56;">⚡ ${p.psicopatia || 'N/A'}</span>
+            <span style="color: #667eea;">🎭 ${p.mach || 'N/A'}</span>
+            <span style="color: #764ba2;">👑 ${p.narc || 'N/A'}</span>
+            <span style="color: #ffce56;">⚡ ${p.psych || 'N/A'}</span>
             <span style="color: #7f00ff;">😊 ${emocion}</span>
-            ${p.pyfeat_utilizado ? '<span style="color: #4CAF50;">🧩 Py-Feat</span>' : ''}
+            ${p.historia_utilizada ? `<span style="color: #4CAF50;">📖 ${p.historia_utilizada}</span>` : ''}
           </div>
         </div>
         <div style="display:flex; gap:10px;">
@@ -1144,7 +1065,83 @@ function poblarListaInvestigador() {
   });
 }
 
-// ... (el resto de las funciones del panel investigador se mantienen similares pero actualizadas para usar los nuevos datos)
+/* ---------- GENERAR CSV ---------- */
+async function generarYDescargarCSV() {
+  try {
+    console.log('📊 Generando CSV...');
+    
+    // Obtener datos actualizados de Supabase
+    const { data: participantes, error } = await supabase
+      .from('darklens_records')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`Error obteniendo datos: ${error.message}`);
+    }
+
+    if (!participantes || participantes.length === 0) {
+      alert('No hay datos para exportar');
+      return;
+    }
+
+    // Encabezados del CSV
+    const headers = [
+      'ID', 'Fecha', 'Nombre', 'Edad', 'Género', 'País',
+      'Maquiavelismo', 'Narcisismo', 'Psicopatia',
+      'Tiempo_Total_Seg', 'Emoción_Principal', 'Historia_Utilizada',
+      'Total_Frames', 'Duración_Video', 'Correlación_Maquiavelismo', 
+      'Correlación_Narcisismo', 'Correlación_Psicopatia'
+    ];
+    
+    const csvRows = [headers.join(',')];
+    
+    participantes.forEach(p => {
+      const row = [
+        p.id || '',
+        p.created_at || '',
+        `"${(p.nombre || '').replace(/"/g, '""')}"`,
+        p.edad || '',
+        p.genero || '',
+        p.pais || '',
+        p.mach || 0,
+        p.narc || 0,
+        p.psych || 0,
+        p.tiempo_total_seg || '',
+        p.emocion_princ || '',
+        p.historia_utilizada || '',
+        p.total_frames || 0,
+        p.duracion_video || 0,
+        p.correlaciones?.maquiavelismo || 0,
+        p.correlaciones?.narcisismo || 0,
+        p.correlaciones?.psicopatia || 0
+      ];
+      
+      csvRows.push(row.join(','));
+    });
+    
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    // Crear enlace de descarga
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `datos_participantes_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    console.log('📊 CSV generado y descargado exitosamente');
+    return { success: true, count: participantes.length };
+    
+  } catch (error) {
+    console.error('❌ Error generando CSV:', error);
+    return { success: false, error: error.message };
+  }
+}
 
 /* ---------- INICIALIZACIÓN ---------- */
 document.addEventListener('DOMContentLoaded', () => {
