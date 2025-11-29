@@ -933,52 +933,48 @@
       <form id="form-sd3" class="form-box"></form>
     </section>
 
-    <!-- ===============================
-         SECCIÓN 3: CAPTURA FACIAL
-         =============================== -->
-    <section id="seccion-micro" class="content-box hidden">
-        <h2>Captura Facial</h2>
-        <p class="subtitle" style="text-align:center; margin-bottom:20px;">
-            Activá la cámara o subí una imagen para continuar con el análisis.
-        </p>
+    <!-- SECCIÓN 3: CAPTURA FACIAL (VIDEO) -->
+<section id="seccion-micro" class="content-box hidden">
+    <h2>Grabación de Video</h2>
+    <p class="subtitle" style="text-align:center; margin-bottom:20px;">
+        Se grabará un video de 10-15 segundos mientras escuchas una historia.
+    </p>
 
-        <div class="instrucciones">
-            <h3>📌 Instrucciones</h3>
-            <ul>
-                <li>Mirar de frente a la cámara.</li>
-                <li>Evitar movimientos bruscos.</li>
-                <li>Buena iluminación.</li>
-                <li>Solo se utiliza una imagen para el análisis.</li>
-            </ul>
+    <div class="instrucciones">
+        <h3>📌 Instrucciones</h3>
+        <ul>
+            <li>Mirar de frente a la cámara.</li>
+            <li>Permitir el acceso a la cámara y micrófono.</li>
+            <li>Escuchar atentamente la historia.</li>
+            <li>Mantener una expresión neutral al inicio.</li>
+        </ul>
+    </div>
+
+    <div class="camera-container">
+        <video id="video" autoplay playsinline muted class="hidden"></video>
+        <canvas id="canvas" class="hidden"></canvas>
+        <div id="camera-placeholder">
+            <p style="color:var(--text-secondary);">La cámara está desactivada.</p>
         </div>
 
-        <div class="camera-container">
-            <video id="video" autoplay playsinline muted class="hidden"></video>
-            <canvas id="canvas" class="hidden"></canvas>
-            <div id="camera-placeholder">
-                <p style="color:var(--text-secondary);">La cámara está desactivada.</p>
-            </div>
-
-            <div class="button-group">
-                <button id="btn-activar-camara" class="btn-primary">Activar cámara</button>
-                <button id="btn-tomar-foto" class="btn-secondary hidden">Tomar foto</button>
-                <button id="btn-subir-imagen" class="btn-secondary">Subir imagen</button>
-                <input type="file" id="input-imagen" accept="image/*" style="display:none;">
-            </div>
+        <div class="button-group">
+            <button id="btn-activar-camara" class="btn-primary">Activar cámara</button>
+            <button id="btn-iniciar-grabacion" class="btn-primary hidden">Iniciar Grabación</button>
+            <button id="btn-detener-grabacion" class="btn-secondary hidden">Detener Grabación</button>
         </div>
+    </div>
 
-        <div id="preview-container" class="content-box hidden" style="text-align:center;">
-            <h3>📷 Imagen capturada</h3>
-            <img id="preview-img" style="max-width:100%; border-radius:15px; border:2px solid var(--border); margin-top:20px;">
-        </div>
+    <div id="preview-container" class="content-box hidden" style="text-align:center;">
+        <h3>🎥 Video grabado</h3>
+        <video id="preview-video" controls style="max-width:100%; border-radius:15px; border:2px solid var(--border); margin-top:20px;"></video>
+    </div>
 
-        <div id="resultado-micro" class="hidden"></div>
+    <div id="resultado-micro" class="hidden"></div>
 
-        <div style="text-align:center; margin-top:20px;">
-            <button id="btn-analizar" class="btn-primary hidden">Analizar microexpresiones</button>
-        </div>
-    </section>
-
+    <div style="text-align:center; margin-top:20px;">
+        <button id="btn-subir-video" class="btn-primary hidden">Subir Video y Analizar</button>
+    </div>
+</section>
     <!-- ===============================
          SECCIÓN 4: LOGIN INVESTIGADOR
          =============================== -->
