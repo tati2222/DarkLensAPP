@@ -1,5 +1,5 @@
 /* ========================================
-   app.js - VERSIÓN COMPLETA MEJORADA CON GRABACIÓN DE VIDEO
+   app.js - VERSIÓN COMPLETA CON GRABACIÓN DE VIDEO
    ======================================== */
 
 /* ---------- CONFIG SUPABASE ---------- */
@@ -18,7 +18,6 @@ const invertidos = [11, 15, 17, 20, 25];
 let tiemposRespuesta = {};
 let tiempoInicioItem = {};
 let testInicioTimestamp = null;
-let imagenCapturada = null;
 let stream = null;
 let participantesData = [];
 let participanteSeleccionado = null;
@@ -53,266 +52,6 @@ function calcularEstadisticasTiempo(tiemposArray) {
     desviacion_estandar_ms: Math.round(desviacionEstandar),
     desviacion_estandar_segundos: (desviacionEstandar/1000).toFixed(2),
     total_items: tiemposArray.length
-  };
-}
-
-/* ---------- ANÁLISIS CON PY-FEAT PARA FACS ---------- */
-async function analizarMicroexpresiones(imagenBase64) {
-  console.log('🔬 Iniciando análisis con Py-Feat...');
-  
-  try {
-    // Verificar que la API esté disponible
-    const healthResponse = await fetch(`${FASTAPI_URL}/health`);
-    if (!healthResponse.ok) {
-      throw new Error(`API no responde: ${healthResponse.status}`);
-    }
-    
-    // ✅ NUEVO: Verificar si Py-Feat está disponible
-    let pyfeatDisponible = false;
-    try {
-      const pyfeatStatus = await fetch(`${FASTAPI_URL}/pyfeat-status`);
-      if (pyfeatStatus.ok) {
-        const pyfeatData = await pyfeatStatus.json();
-        pyfeatDisponible = pyfeatData.available || false;
-        console.log('🔧 Py-Feat disponible:', pyfeatDisponible);
-      }
-    } catch (e) {
-      console.log('⚠️ Py-Feat no disponible, usando análisis estándar');
-    }
-    
-    // Convertir base64 a Blob
-    const base64Data = imagenBase64.split(',')[1];
-    const byteCharacters = atob(base64Data);
-    const byteArrays = [];
-    
-    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-      const slice = byteCharacters.slice(offset, offset + 512);
-      const byteNumbers = new Array(slice.length);
-      for (let i = 0; i < slice.length; i++) {
-        byteNumbers[i] = slice.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      byteArrays.push(byteArray);
-    }
-    
-    const blob = new Blob(byteArrays, { type: 'image/jpeg' });
-    const formData = new FormData();
-    formData.append('file', blob, 'foto.jpg');
-
-    let resultadoCompleto = {};
-
-    // ✅ ANÁLISIS CON PY-FEAT SI ESTÁ DISPONIBLE
-    if (pyfeatDisponible) {
-      console.log('🧩 Ejecutando análisis FACS con Py-Feat...');
-      const facsResponse = await fetch(`${FASTAPI_URL}/analyze-facs`, {
-        method: 'POST',
-        body: formData
-      });
-
-      if (facsResponse.ok) {
-        const facsResult = await facsResponse.json();
-        console.log('✅ Análisis FACS completado:', facsResult);
-        resultadoCompleto = {
-          ...resultadoCompleto,
-          facs: facsResult.facs || [],
-          aus_detectadas: facsResult.aus_detectadas || [],
-          imagen_anotada: facsResult.imagen_anotada || null,
-          landmarks: facsResult.landmarks || [],
-          modelo: 'pyfeat'
-        };
-      }
-    }
-
-    // ✅ ANÁLISIS DE EMOCIONES (siempre)
-    console.log('😊 Ejecutando análisis de emociones...');
-    const emotionResponse = await fetch(`${FASTAPI_URL}/analyze-emotions`, {
-      method: 'POST',
-      body: formData
-    });
-
-    if (emotionResponse.ok) {
-      const emotionResult = await emotionResponse.json();
-      console.log('✅ Análisis emociones completado:', emotionResult);
-      resultadoCompleto = {
-        ...resultadoCompleto,
-        emociones: emotionResult.emociones || {},
-        emocion_principal: emotionResult.emocion_principal || 'Neutral',
-        confianza: emotionResult.confianza || 0,
-        sd3_facial: emotionResult.sd3 || {}
-      };
-    }
-
-    // ✅ PROCESAR RESULTADO COMBINADO
-    return procesarResultadoCompleto(resultadoCompleto, pyfeatDisponible);
-    
-  } catch (error) {
-    console.error('❌ Error en análisis:', error);
-    return analisisDeReserva(imagenBase64, error.message);
-  }
-}
-
-function procesarResultadoCompleto(resultado, pyfeatDisponible) {
-  const emocionesArray = Object.entries(resultado.emociones || {}).map(([emocion, score]) => ({
-    emocion,
-    score: parseFloat(score)
-  }));
-  
-  const emocionPrincipal = emocionesArray.reduce((max, emocion) => 
-    emocion.score > max.score ? emocion : max, {emocion: 'Neutral', score: 0}
-  );
-
-  // ✅ GENERAR DATOS FACS MEJORADOS
-  const facsData = pyfeatDisponible && resultado.facs ? 
-    resultado.facs : 
-    generarDatosFACS(emocionPrincipal.emocion, emocionPrincipal.score);
-
-  return {
-    emociones: emocionesArray,
-    emocion_principal: emocionPrincipal.emocion,
-    confianza: emocionPrincipal.score,
-    sd3: resultado.sd3_facial || {},
-    status: 'completado',
-    modelo: resultado.modelo || 'standard',
-    timestamp: new Date().toISOString(),
-    facs: facsData,
-    aus_detectadas: resultado.aus_detectadas || [],
-    imagen_anotada: resultado.imagen_anotada || null,
-    landmarks: resultado.landmarks || [],
-    interpretacion: generarInterpretacionEkman(emocionPrincipal.emocion, emocionPrincipal.score),
-    pyfeat_utilizado: pyfeatDisponible
-  };
-}
-
-// Generar datos FACS mejorados
-function generarDatosFACS(emocionPrincipal, confianza) {
-  const unidadesFACS = {
-    "Alegría": [
-      { unidad: "AU6", nombre: "Mejilla elevada", intensidad: 0.8, descripcion: "Contracción del músculo orbicular del ojo" },
-      { unidad: "AU12", nombre: "Estiramiento de labios", intensidad: 0.9, descripcion: "Sonrisa genuina (Duchenne)" }
-    ],
-    "Tristeza": [
-      { unidad: "AU1", nombre: "Ceja interna elevada", intensidad: 0.7, descripcion: "Expresión de preocupación" },
-      { unidad: "AU4", nombre: "Ceja fruncida", intensidad: 0.6, descripcion: "Tensión en zona glabelar" },
-      { unidad: "AU15", nombre: "Comisura labial hacia abajo", intensidad: 0.8, descripcion: "Expresión de desánimo" }
-    ],
-    "Enojo": [
-      { unidad: "AU4", nombre: "Ceja fruncida", intensidad: 0.9, descripcion: "Tensión en entrecejo" },
-      { unidad: "AU5", nombre: "Párpado superior elevado", intensidad: 0.7, descripcion: "Mirada intensa" },
-      { unidad: "AU7", nombre: "Párpado inferior tensionado", intensidad: 0.6, descripcion: "Ojos entrecerrados" },
-      { unidad: "AU23", nombre: "Labios tensionados", intensidad: 0.8, descripcion: "Boca apretada" }
-    ],
-    "Miedo": [
-      { unidad: "AU1", nombre: "Ceja interna elevada", intensidad: 0.8, descripcion: "Expresión de alarma" },
-      { unidad: "AU2", nombre: "Ceja externa elevada", intensidad: 0.7, descripcion: "Cejas arqueadas" },
-      { unidad: "AU4", nombre: "Ceja fruncida", intensidad: 0.6, descripcion: "Preocupación" },
-      { unidad: "AU5", nombre: "Párpado superior elevado", intensidad: 0.9, descripcion: "Ojos muy abiertos" },
-      { unidad: "AU20", nombre: "Estiramiento horizontal de labios", intensidad: 0.5, descripcion: "Boca tensionada" }
-    ],
-    "Sorpresa": [
-      { unidad: "AU1", nombre: "Ceja interna elevada", intensidad: 0.8, descripcion: "Elevación de cejas" },
-      { unidad: "AU2", nombre: "Ceja externa elevada", intensidad: 0.7, descripcion: "Arqueo de cejas" },
-      { unidad: "AU5", nombre: "Párpado superior elevado", intensidad: 0.9, descripcion: "Ojos abiertos" },
-      { unidad: "AU26", nombre: "Mandíbula caída", intensidad: 0.6, descripcion: "Boca abierta" }
-    ],
-    "Disgusto": [
-      { unidad: "AU9", nombre: "Nariz arrugada", intensidad: 0.8, descripcion: "Expresión de rechazo" },
-      { unidad: "AU10", nombre: "Elevador del labio superior", intensidad: 0.7, descripcion: "Asco facial" },
-      { unidad: "AU15", nombre: "Comisura labial hacia abajo", intensidad: 0.6, descripcion: "Desaprobación" }
-    ],
-    "Neutral": [
-      { unidad: "AU0", nombre: "Expresión neutra", intensidad: 0.9, descripcion: "Sin actividad muscular significativa" }
-    ]
-  };
-
-  return unidadesFACS[emocionPrincipal] || unidadesFACS["Neutral"];
-}
-
-// Generar interpretación Ekman
-function generarInterpretacionEkman(emocion, confianza) {
-  const interpretaciones = {
-    "Alegría": {
-      autor: "Paul Ekman",
-      teoria: "La alegría genuina se caracteriza por la activación simultánea del músculo cigomático mayor (sonrisa) y el músculo orbicular del ojo (patas de gallo).",
-      significado: "Indica bienestar emocional, satisfacción o experiencias positivas."
-    },
-    "Tristeza": {
-      autor: "Paul Ekman & Wallace Friesen",
-      teoria: "La tristeza se manifiesta mediante la elevación de la ceja interna (AU1) y el descenso de las comisuras labiales (AU15).",
-      significado: "Sugiere desánimo, melancolía o descontento."
-    },
-    "Enojo": {
-      autor: "Paul Ekman",
-      teoria: "El enojo activa el fruncimiento de cejas (AU4) y tensión en párpados (AU5, AU7).",
-      significado: "Indica frustración, irritación o desacuerdo."
-    },
-    "Miedo": {
-      autor: "Paul Ekman",
-      teoria: "El miedo combina elevación de cejas (AU1, AU2) y tensión ocular (AU5).",
-      significado: "Refleja ansiedad, preocupación o inseguridad."
-    },
-    "Sorpresa": {
-      autor: "Carroll Izard",
-      teoria: "La sorpresa se caracteriza por apertura ocular (AU5) y elevación de cejas.",
-      significado: "Indica desconcierto, curiosidad o novedad."
-    },
-    "Disgusto": {
-      autor: "Paul Ekman",
-      teoria: "El disgusto activa la nariz arrugada (AU9) y elevación del labio superior (AU10).",
-      significado: "Sugiere desaprobación, rechazo o incomodidad moral."
-    },
-    "Neutral": {
-      autor: "Paul Ekman",
-      teoria: "La expresión neutral indica ausencia de activación emocional detectable.",
-      significado: "Puede indicar control emocional, indiferencia o procesamiento cognitivo."
-    }
-  };
-
-  return interpretaciones[emocion] || {
-    autor: "Teoría de las Emociones Básicas",
-    teoria: "Las emociones básicas son universales y biológicamente determinadas según la investigación transcultural de Ekman.",
-    significado: "Emoción no especificada en el modelo básico."
-  };
-}
-
-// Función de reserva
-function analisisDeReserva(imagenBase64, errorMsg) {
-  console.log('🔄 Usando análisis de reserva...');
-  
-  const emocionesBase = {
-    "Alegría": 0.3 + Math.random() * 0.4,
-    "Neutral": 0.1 + Math.random() * 0.3,
-    "Enojo": Math.random() * 0.2,
-    "Miedo": Math.random() * 0.15,
-    "Sorpresa": Math.random() * 0.1,
-    "Tristeza": Math.random() * 0.1,
-    "Disgusto": Math.random() * 0.05
-  };
-  
-  const total = Object.values(emocionesBase).reduce((a, b) => a + b, 0);
-  Object.keys(emocionesBase).forEach(key => {
-    emocionesBase[key] = emocionesBase[key] / total;
-  });
-  
-  const emocionPrincipal = Object.entries(emocionesBase).reduce((a, b) => 
-    a[1] > b[1] ? a : b
-  );
-  
-  const sd3 = {
-    "Maquiavelismo": Math.round((emocionesBase.Enojo * 0.6 + emocionesBase.Disgusto * 0.4) * 10000) / 100,
-    "Narcisismo": Math.round((emocionesBase.Alegría * 0.5 + emocionesBase.Neutral * 0.5) * 10000) / 100,
-    "Psicopatía": Math.round((emocionesBase.Miedo * 0.7 + emocionesBase.Sorpresa * 0.3) * 10000) / 100
-  };
-  
-  return {
-    emociones: Object.entries(emocionesBase).map(([k, v]) => ({ emocion: k, score: v })),
-    emocion_principal: emocionPrincipal[0],
-    confianza: emocionPrincipal[1],
-    sd3: sd3,
-    facs: generarDatosFACS(emocionPrincipal[0], emocionPrincipal[1]),
-    interpretacion: generarInterpretacionEkman(emocionPrincipal[0], emocionPrincipal[1]),
-    status: 'fallback',
-    error: errorMsg,
-    mensaje: 'Usando análisis simulado - API temporalmente no disponible'
   };
 }
 
@@ -380,7 +119,6 @@ function configurarTrackingTiempos() {
   tiemposRespuesta = {};
   tiempoInicioItem = {};
   
-  // Inicializar tiempos para todos los items
   for (let i = 1; i <= itemsSD3.length; i++) {
     tiempoInicioItem[i] = testInicioTimestamp || Date.now();
   }
@@ -668,6 +406,111 @@ function blobToBase64(blob) {
   });
 }
 
+/* ---------- REPRODUCIR HISTORIA ---------- */
+function reproducirHistoria() {
+  // Obtener resultados SD3 para elegir la historia apropiada
+  const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
+  
+  // Determinar el rasgo predominante
+  const rasgos = {
+    maquiavelismo: parseFloat(sd3.mach) || 0,
+    narcisismo: parseFloat(sd3.narc) || 0,
+    psicopatia: parseFloat(sd3.psych) || 0
+  };
+  
+  const rasgoPredominante = Object.keys(rasgos).reduce((a, b) => 
+    rasgos[a] > rasgos[b] ? a : b
+  );
+
+  console.log('🎭 Rasgo predominante:', rasgoPredominante, rasgos);
+
+  // Historias específicas para cada rasgo
+  const historias = {
+    maquiavelismo: {
+      titulo: "El Dilema del Compañero",
+      texto: `"Imagina que estás trabajando en un proyecto muy importante con un compañero. 
+      Has descubierto que tu compañero cometió un error que podría hacer fracasar todo el proyecto. 
+      Tienes la oportunidad de señalar su error públicamente ante el jefe, lo que te haría quedar bien 
+      y probablemente te daría una ventaja para el próximo ascenso. Sin embargo, si lo haces, 
+      tu compañero podría ser despedido. Por otro lado, si no dices nada y el proyecto fracasa, 
+      ambos podrían ser afectados. ¿Qué harías en esta situación?"`
+    },
+    
+    narcisismo: {
+      titulo: "El Reconocimiento Perdido",
+      texto: `"Estás en una reunión importante donde se presentan los resultados de un proyecto 
+      en el que trabajaste intensamente. Tu jefe está dando crédito a otra persona por tu trabajo 
+      y todos están aplaudiendo los logros de tu colega. Nadie parece recordar tu contribución 
+      fundamental. Te sientes invisible y no reconocido, a pesar de que sin tu esfuerzo 
+      el proyecto no habría sido posible. ¿Cómo te sientes al ver que otro recibe el mérito 
+      por tu trabajo excepcional?"`
+    },
+    
+    psicopatia: {
+      titulo: "El Encuentro Inesperado",
+      texto: `"Caminas solo por un callejón oscuro tarde en la noche. De repente, escuchas 
+      ruidos de una pelea cercana. Al acercarte, ves a dos personas discutiendo intensamente. 
+      Una de ellas saca un arma y la situación se vuelve peligrosa. Tienes la oportunidad 
+      de intervenir o llamar a la policía, pero también podrías simplemente alejarte 
+      y evitar cualquier problema. No hay testigos alrededor. ¿Cuál sería tu reacción 
+      inmediata en esta situación de alto riesgo?"`
+    }
+  };
+
+  // Seleccionar historia basada en el rasgo predominante
+  const historiaSeleccionada = historias[rasgoPredominante] || historias.maquiavelismo;
+  
+  // Actualizar el texto en la interfaz
+  const textoHistoriaDiv = document.getElementById('texto-historia');
+  if (textoHistoriaDiv) {
+    textoHistoriaDiv.innerHTML = `
+      <strong>Historia: ${historiaSeleccionada.titulo}</strong>
+      <p style="margin: 10px 0; font-style: italic; color: var(--text-secondary); line-height: 1.6;">
+        ${historiaSeleccionada.texto}
+      </p>
+      <small style="color: var(--accent);">Rasgo analizado: ${rasgoPredominante}</small>
+    `;
+  }
+
+  // Mostrar instrucciones para leer la historia
+  const instruccionesDiv = document.createElement('div');
+  instruccionesDiv.style.background = 'rgba(127, 0, 255, 0.1)';
+  instruccionesDiv.style.padding = '15px';
+  instruccionesDiv.style.borderRadius = '10px';
+  instruccionesDiv.style.marginTop = '15px';
+  instruccionesDiv.style.textAlign = 'center';
+  instruccionesDiv.innerHTML = `
+    <strong>📝 Instrucciones IMPORTANTES:</strong>
+    <div style="margin: 10px 0; padding: 10px; background: rgba(127, 0, 255, 0.2); border-radius: 8px;">
+      <p style="margin: 5px 0; color: var(--text-secondary);">
+        <strong>1.</strong> Lee esta historia detenidamente<br>
+        <strong>2.</strong> <span style="color: #ff6384; font-weight: bold;">PERMANECE EN SILENCIO - NO HABLES</span><br>
+        <strong>3.</strong> Piensa en cómo te haría sentir esta situación<br>
+        <strong>4.</strong> Mantén una expresión facial natural mientras procesas la historia<br>
+        <strong>5.</strong> La cámara grabará tus reacciones faciales automáticamente
+      </p>
+    </div>
+    <p style="margin: 0; color: var(--accent); font-weight: bold;">
+      La grabación comenzará en 3 segundos...
+    </p>
+  `;
+  
+  if (textoHistoriaDiv) {
+    textoHistoriaDiv.appendChild(instruccionesDiv);
+  }
+
+  // Devolver una promesa que se resuelve después de 3 segundos (para dar tiempo a leer)
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      // Remover las instrucciones después del tiempo
+      if (instruccionesDiv.parentNode) {
+        instruccionesDiv.parentNode.removeChild(instruccionesDiv);
+      }
+      resolve();
+    }, 3000);
+  });
+}
+
 /* ---------- ANÁLISIS DE VIDEO COMPLETO ---------- */
 async function analizarVideoCompleto(videoBase64, datosPersonales, datosSD3) {
   try {
@@ -775,110 +618,6 @@ async function guardarAnalisisVideoEnSupabase(analisis, persona, sd3) {
   }
 }
 
-function reproducirHistoria() {
-  // Obtener resultados SD3 para elegir la historia apropiada
-  const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
-  
-  // Determinar el rasgo predominante
-  const rasgos = {
-    maquiavelismo: parseFloat(sd3.mach) || 0,
-    narcisismo: parseFloat(sd3.narc) || 0,
-    psicopatia: parseFloat(sd3.psych) || 0
-  };
-  
-  const rasgoPredominante = Object.keys(rasgos).reduce((a, b) => 
-    rasgos[a] > rasgos[b] ? a : b
-  );
-
-  console.log('🎭 Rasgo predominante:', rasgoPredominante, rasgos);
-
-  // Historias específicas para cada rasgo
-  const historias = {
-    maquiavelismo: {
-      titulo: "El Dilema del Compañero",
-      texto: `"Imagina que estás trabajando en un proyecto muy importante con un compañero. 
-      Has descubierto que tu compañero cometió un error que podría hacer fracasar todo el proyecto. 
-      Tienes la oportunidad de señalar su error públicamente ante el jefe, lo que te haría quedar bien 
-      y probablemente te daría una ventaja para el próximo ascenso. Sin embargo, si lo haces, 
-      tu compañero podría ser despedido. Por otro lado, si no dices nada y el proyecto fracasa, 
-      ambos podrían ser afectados. ¿Qué harías en esta situación?"`
-    },
-    
-    narcisismo: {
-      titulo: "El Reconocimiento Perdido",
-      texto: `"Estás en una reunión importante donde se presentan los resultados de un proyecto 
-      en el que trabajaste intensamente. Tu jefe está dando crédito a otra persona por tu trabajo 
-      y todos están aplaudiendo los logros de tu colega. Nadie parece recordar tu contribución 
-      fundamental. Te sientes invisible y no reconocido, a pesar de que sin tu esfuerzo 
-      el proyecto no habría sido posible. ¿Cómo te sientes al ver que otro recibe el mérito 
-      por tu trabajo excepcional?"`
-    },
-    
-    psicopatia: {
-      titulo: "El Encuentro Inesperado",
-      texto: `"Caminas solo por un callejón oscuro tarde en la noche. De repente, escuchas 
-      ruidos de una pelea cercana. Al acercarte, ves a dos personas discutiendo intensamente. 
-      Una de ellas saca un arma y la situación se vuelve peligrosa. Tienes la oportunidad 
-      de intervenir o llamar a la policía, pero también podrías simplemente alejarte 
-      y evitar cualquier problema. No hay testigos alrededor. ¿Cuál sería tu reacción 
-      inmediata en esta situación de alto riesgo?"`
-    }
-  };
-
-  // Seleccionar historia basada en el rasgo predominante
-  const historiaSeleccionada = historias[rasgoPredominante] || historias.maquiavelismo;
-  
-  // Actualizar el texto en la interfaz
-  const textoHistoriaDiv = document.getElementById('texto-historia');
-  if (textoHistoriaDiv) {
-    textoHistoriaDiv.innerHTML = `
-      <strong>Historia: ${historiaSeleccionada.titulo}</strong>
-      <p style="margin: 10px 0; font-style: italic; color: var(--text-secondary); line-height: 1.6;">
-        ${historiaSeleccionada.texto}
-      </p>
-      <small style="color: var(--accent);">Rasgo analizado: ${rasgoPredominante}</small>
-    `;
-  }
-
-  // Mostrar instrucciones para leer la historia
-  const instruccionesDiv = document.createElement('div');
-  instruccionesDiv.style.background = 'rgba(127, 0, 255, 0.1)';
-  instruccionesDiv.style.padding = '15px';
-  instruccionesDiv.style.borderRadius = '10px';
-  instruccionesDiv.style.marginTop = '15px';
-  instruccionesDiv.style.textAlign = 'center';
-  instruccionesDiv.innerHTML = `
-    <strong>📝 Instrucciones IMPORTANTES:</strong>
-    <div style="margin: 10px 0; padding: 10px; background: rgba(127, 0, 255, 0.2); border-radius: 8px;">
-      <p style="margin: 5px 0; color: var(--text-secondary);">
-        <strong>1.</strong> Lee esta historia detenidamente<br>
-        <strong>2.</strong> <span style="color: #ff6384; font-weight: bold;">PERMANECE EN SILENCIO - NO HABLES</span><br>
-        <strong>3.</strong> Piensa en cómo te haría sentir esta situación<br>
-        <strong>4.</strong> Mantén una expresión facial natural mientras procesas la historia<br>
-        <strong>5.</strong> La cámara grabará tus reacciones faciales automáticamente
-      </p>
-    </div>
-    <p style="margin: 0; color: var(--accent); font-weight: bold;">
-      La grabación comenzará en 3 segundos...
-    </p>
-  `;
-  
-  if (textoHistoriaDiv) {
-    textoHistoriaDiv.appendChild(instruccionesDiv);
-  }
-
-  // Devolver una promesa que se resuelve después de 3 segundos (para dar tiempo a leer)
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // Remover las instrucciones después del tiempo
-      if (instruccionesDiv.parentNode) {
-        instruccionesDiv.parentNode.removeChild(instruccionesDiv);
-      }
-      resolve();
-    }, 3000); // 3 segundos para leer antes de empezar a grabar
-  });
-}
-
 /* ---------- CONFIRMACIÓN PARTICIPANTE ---------- */
 function mostrarConfirmacionParticipante(analisisVideo = null) {
   const resultadoDiv = document.getElementById('resultado-micro');
@@ -935,7 +674,7 @@ function mostrarConfirmacionParticipante(analisisVideo = null) {
   `;
 }
 
-/* ---------- PANEL INVESTIGADOR MEJORADO ---------- */
+/* ---------- PANEL INVESTIGADOR ---------- */
 async function cargarDatosParticipantes() {
   const listaDiv = document.getElementById('lista-participantes');
   if (listaDiv) listaDiv.innerHTML = '<p style="text-align:center; color:var(--text-secondary);">📡 Cargando datos desde Supabase...</p>';
@@ -957,26 +696,7 @@ async function cargarDatosParticipantes() {
     
   } catch (err) {
     console.warn('⚠️ Error cargando desde Supabase:', err);
-    // Datos de ejemplo
-    participantesData = [{
-      id: 'DEMO_001',
-      created_at: new Date().toISOString(),
-      nombre: 'Participante Demo',
-      edad: 28,
-      genero: 'masculino',
-      pais: 'Argentina',
-      maquiavelismo: 3.2,
-      narcisismo: 2.8,
-      psicopatia: 2.5,
-      tiempo_total_seg: 7.50,
-      emocion_princ: 'Alegría',
-      image_url: '',
-      total_frames: 15,
-      duracion_video: 15.0,
-      emociones_detectadas: ['Alegría', 'Neutral'],
-      correlaciones: { maquiavelismo: 0.3, narcisismo: 0.5, psicopatia: 0.2 },
-      historia_utilizada: 'narcisismo'
-    }];
+    participantesData = [];
   }
   
   poblarListaInvestigador();
@@ -993,7 +713,6 @@ function poblarListaInvestigador() {
   
   listaDiv.innerHTML = '';
   
-  // ✅ AGREGAR BOTÓN DE CSV
   const headerDiv = document.createElement('div');
   headerDiv.style.display = 'flex';
   headerDiv.style.justifyContent = 'space-between';
@@ -1039,7 +758,6 @@ function poblarListaInvestigador() {
     listaDiv.appendChild(item);
   });
 
-  // Event listeners
   document.querySelectorAll('#lista-participantes .btn-ver').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const idx = parseInt(e.currentTarget.getAttribute('data-index'));
@@ -1047,7 +765,6 @@ function poblarListaInvestigador() {
     });
   });
 
-  // ✅ EVENT LISTENER PARA BOTÓN CSV
   document.getElementById('btn-descargar-csv')?.addEventListener('click', async () => {
     const btn = document.getElementById('btn-descargar-csv');
     const originalText = btn.innerHTML;
@@ -1070,7 +787,6 @@ async function generarYDescargarCSV() {
   try {
     console.log('📊 Generando CSV...');
     
-    // Obtener datos actualizados de Supabase
     const { data: participantes, error } = await supabase
       .from('darklens_records')
       .select('*')
@@ -1085,7 +801,6 @@ async function generarYDescargarCSV() {
       return;
     }
 
-    // Encabezados del CSV
     const headers = [
       'ID', 'Fecha', 'Nombre', 'Edad', 'Género', 'País',
       'Maquiavelismo', 'Narcisismo', 'Psicopatia',
@@ -1124,10 +839,9 @@ async function generarYDescargarCSV() {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     
-    // Crear enlace de descarga
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `datos_participantes_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `datos_darklens_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     
     document.body.appendChild(link);
@@ -1146,7 +860,6 @@ async function generarYDescargarCSV() {
 /* ---------- INICIALIZACIÓN ---------- */
 document.addEventListener('DOMContentLoaded', () => {
   sessionStorage.clear();
-  imagenCapturada = null;
   tiemposRespuesta = {};
   tiempoInicioItem = {};
   testInicioTimestamp = null;
@@ -1158,7 +871,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnParticipante?.addEventListener('click', () => {
     sessionStorage.clear();
-    imagenCapturada = null;
     tiemposRespuesta = {};
     tiempoInicioItem = {};
     testInicioTimestamp = null;
@@ -1243,7 +955,6 @@ document.addEventListener('DOMContentLoaded', () => {
 /* ---------- FUNCIONES GLOBALES ---------- */
 function volverAlInicio() {
   sessionStorage.clear();
-  imagenCapturada = null;
   tiemposRespuesta = {};
   tiempoInicioItem = {};
   testInicioTimestamp = null;
