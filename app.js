@@ -1,5 +1,5 @@
 /* ========================================
-   app.js - VERSIÓN OPTIMIZADA SIN ANÁLISIS DE VIDEO
+   app.js - VERSIÓN COMPLETA CON ANÁLISIS DE VIDEO Y FACS
    ======================================== */
 
 /* ---------- CONFIG SUPABASE ---------- */
@@ -7,6 +7,7 @@ const SUPABASE_CONFIG = {
   URL: 'https://cdhndtzuwtmvhiulvzbp.supabase.co',
   ANON_KEY: 'sb_publishable_mzTN7UGk3aZJ8b3Zxf_44g_gK5kaJlV'
 };
+const FASTAPI_URL = "https://darklnesapp-api-1.onrender.com"; // ✅ AGREGADO
 const PASSWORD_INVESTIGADOR = "investigador2025";
 
 // Inicializar Supabase
@@ -22,8 +23,13 @@ let participantesData = [];
 let participanteSeleccionado = null;
 
 /* ---------- UTILIDADES ---------- */
-function safeJsonParse(respText) {
-  try { return JSON.parse(respText); } catch { return null; }
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 function calcularEstadisticasTiempo(tiemposArray) {
@@ -202,7 +208,7 @@ async function calcularSD3() {
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
-/* ---------- GRABACIÓN DE VIDEO OPTIMIZADA ---------- */
+/* ---------- GRABACIÓN DE VIDEO COMPLETA ---------- */
 function configurarGrabacionVideo() {
   const video = document.getElementById('video');
   const btnActivarCamara = document.getElementById('btn-activar-camara');
@@ -223,7 +229,7 @@ function configurarGrabacionVideo() {
   let grabacionEnCurso = false;
   let tiempoInicioGrabacion = null;
   let intervaloProgress = null;
-  let duracionGrabacion = 5000; // REDUCIDO A 5 SEGUNDOS
+  let duracionGrabacion = 15000; // ✅ CAMBIADO A 15 SEGUNDOS
 
   // Activar cámara
   btnActivarCamara.addEventListener('click', async function() {
@@ -231,11 +237,11 @@ function configurarGrabacionVideo() {
       stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           facingMode: 'user',
-          width: { ideal: 640 },  // REDUCIDO
-          height: { ideal: 480 }, // REDUCIDO
-          frameRate: { ideal: 15 } // REDUCIDO
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          frameRate: { ideal: 15 }
         },
-        audio: false // DESACTIVADO
+        audio: false
       });
       
       if (video) { 
@@ -265,7 +271,7 @@ function configurarGrabacionVideo() {
     recordedChunks = [];
     
     try {
-      const options = { mimeType: 'video/webm; codecs=vp9' };
+      const options = { mimeType: 'video/webm; codecs=vp9,opus' };
       mediaRecorder = new MediaRecorder(stream, options);
       
       mediaRecorder.ondataavailable = function(event) {
@@ -284,8 +290,8 @@ function configurarGrabacionVideo() {
         const duracion = (Date.now() - tiempoInicioGrabacion) / 1000;
         infoVideo.innerHTML = `
           <p>Duración: ${duracion.toFixed(1)} segundos</p>
-          <p>Tamaño: ${(blob.size / 1024).toFixed(2)} KB</p>
-          <p>Video listo para guardar</p>
+          <p>Tamaño: ${(blob.size / 1024 / 1024).toFixed(2)} MB</p>
+          <p>Se analizarán ${Math.floor(duracion)} frames (1 por segundo)</p>
         `;
       };
       
@@ -352,44 +358,92 @@ function configurarGrabacionVideo() {
     }
   }
 
-  // SUBIR VIDEO - SIN ANÁLISIS PARA EVITAR SATURACIÓN
+  // ✅ SUBIR VIDEO CON ANÁLISIS COMPLETO
   btnSubirVideo.addEventListener('click', async function() {
+    if (recordedChunks.length === 0) {
+      alert('No hay video para analizar');
+      return;
+    }
+
     btnSubirVideo.disabled = true;
-    btnSubirVideo.textContent = '⏳ Guardando datos...';
+    btnSubirVideo.textContent = '⏳ Analizando video...';
 
     try {
+      const blob = new Blob(recordedChunks, { type: 'video/webm' });
+      
+      // Convertir a base64 para enviar
+      const base64Video = await blobToBase64(blob);
+      
       const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
       const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
 
-      // ✅ GUARDAR DIRECTAMENTE SIN ANÁLISIS DE VIDEO
-      const resultadoDirecto = {
-        emocion_predominante: "Datos guardados - Análisis posterior",
-        total_frames: 0,
-        duracion_video: 5,
-        emociones_detectadas: ["Datos registrados"],
-        correlaciones: { maquiavelismo: 0, narcisismo: 0, psicopatia: 0 },
-        mensaje: "Video guardado para análisis posterior"
-      };
+      console.log('🎬 Iniciando análisis de video...');
 
-      const guardado = await guardarDatosDirectosSupabase(persona, sd3, resultadoDirecto);
+      // ✅ ENVIAR VIDEO A LA API PARA ANÁLISIS
+      const analisisVideo = await analizarVideoCompleto(base64Video, persona, sd3);
       
-      if (guardado.success) {
-        mostrarConfirmacionParticipante({success: true, analisis: resultadoDirecto});
+      if (analisisVideo.success) {
+        mostrarConfirmacionParticipante(analisisVideo);
       } else {
-        throw new Error(guardado.error || 'Error guardando datos');
+        throw new Error(analisisVideo.error || 'Error en el análisis del video');
       }
 
     } catch (err) {
-      console.error("❌ Error:", err);
-      alert("Error guardando datos: " + err.message);
+      console.error("❌ Error procesando video:", err);
+      alert("Error: " + err.message);
       btnSubirVideo.disabled = false;
-      btnSubirVideo.textContent = "📤 Guardar Datos";
+      btnSubirVideo.textContent = "📤 Subir Video y Analizar";
     }
   });
 }
 
-// GUARDAR DATOS DIRECTOS EN SUPABASE
-async function guardarDatosDirectosSupabase(persona, sd3, analisisBasico) {
+/* ---------- ANÁLISIS DE VIDEO COMPLETO ---------- */
+async function analizarVideoCompleto(videoBase64, datosPersonales, datosSD3) {
+  try {
+    console.log('🎬 Enviando video para análisis...');
+    
+    const response = await fetch(`${FASTAPI_URL}/analyze-video`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        video_data: videoBase64,
+        participant_data: datosPersonales,
+        sd3_data: datosSD3
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error del servidor: ${response.status}`);
+    }
+
+    const resultado = await response.json();
+    console.log('✅ Análisis de video completado:', resultado);
+
+    // Guardar en Supabase
+    const guardado = await guardarAnalisisVideoEnSupabase(resultado, datosPersonales, datosSD3);
+    
+    return {
+      success: true,
+      analisis: resultado,
+      guardado: guardado,
+      mensaje: 'Video analizado y guardado correctamente'
+    };
+
+  } catch (error) {
+    console.error('❌ Error en análisis de video:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/* ---------- GUARDAR ANÁLISIS DE VIDEO EN SUPABASE ---------- */
+async function guardarAnalisisVideoEnSupabase(analisis, persona, sd3) {
+  console.log("📤 Guardando análisis de video en Supabase...");
+
   try {
     const rasgos = {
       maquiavelismo: parseFloat(sd3.mach) || 0,
@@ -410,17 +464,19 @@ async function guardarDatosDirectosSupabase(persona, sd3, analisisBasico) {
       narc: parseFloat(sd3.narc) || 0,
       psych: parseFloat(sd3.psych) || 0,
       tiempo_total_seg: parseFloat(sd3.tiempo_total_segundos) || 0,
-      emocion_princ: analisisBasico.emocion_predominante || 'Datos guardados',
+      emocion_princ: analisis.emocion_predominante || 'No analizada',
       image_url: '',
-      total_frames: 0,
-      duracion_video: 5,
-      emociones_detectadas: analisisBasico.emociones_detectadas || [],
-      correlaciones: analisisBasico.correlaciones || {},
+      total_frames: analisis.total_frames || 0,
+      duracion_video: analisis.duracion_video || 0,
+      emociones_detectadas: analisis.emociones_detectadas || [],
+      correlaciones: analisis.correlaciones || {},
+      aus_frecuentes: analisis.aus_frecuentes || [],
+      facs_promedio: analisis.facs_promedio || {},
       historia_utilizada: rasgoPredominante,
       created_at: new Date().toISOString()
     };
 
-    console.log('💾 Guardando datos en Supabase...');
+    console.log('💾 Guardando datos de video:', videoData);
 
     const { data, error } = await supabase
       .from('darklens_records')
@@ -431,12 +487,20 @@ async function guardarDatosDirectosSupabase(persona, sd3, analisisBasico) {
       throw new Error(`Error Supabase: ${error.message}`);
     }
 
-    console.log('✅ Datos guardados en Supabase!');
-    return { success: true, id: data[0]?.id };
+    console.log('✅ Análisis de video guardado en Supabase!', data);
+
+    return {
+      success: true,
+      id: data[0]?.id,
+      message: 'Datos de video guardados correctamente'
+    };
 
   } catch (error) {
-    console.error('❌ Error guardando datos:', error);
-    return { success: false, error: error.message };
+    console.error('❌ Error guardando análisis de video:', error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
 }
 
@@ -454,20 +518,37 @@ function reproducirHistoria() {
     rasgos[a] > rasgos[b] ? a : b
   );
 
+  console.log('🎭 Rasgo predominante:', rasgoPredominante, rasgos);
+
   const historias = {
     maquiavelismo: {
       titulo: "El Dilema del Compañero",
-      texto: `"Imagina que estás trabajando en un proyecto muy importante con un compañero. Has descubierto que tu compañero cometió un error que podría hacer fracasar todo el proyecto. Tienes la oportunidad de señalar su error públicamente ante el jefe, lo que te haría quedar bien y probablemente te daría una ventaja para el próximo ascenso. Sin embargo, si lo haces, tu compañero podría ser despedido. ¿Qué harías en esta situación?"`
+      texto: `"Imagina que estás trabajando en un proyecto muy importante con un compañero. 
+      Has descubierto que tu compañero cometió un error que podría hacer fracasar todo el proyecto. 
+      Tienes la oportunidad de señalar su error públicamente ante el jefe, lo que te haría quedar bien 
+      y probablemente te daría una ventaja para el próximo ascenso. Sin embargo, si lo haces, 
+      tu compañero podría ser despedido. Por otro lado, si no dices nada y el proyecto fracasa, 
+      ambos podrían ser afectados. ¿Qué harías en esta situación?"`
     },
     
     narcisismo: {
       titulo: "El Reconocimiento Perdido",
-      texto: `"Estás en una reunión importante donde se presentan los resultados de un proyecto en el que trabajaste intensamente. Tu jefe está dando crédito a otra persona por tu trabajo y todos están aplaudiendo los logros de tu colega. Nadie parece recordar tu contribución fundamental. ¿Cómo te sientes al ver que otro recibe el mérito por tu trabajo excepcional?"`
+      texto: `"Estás en una reunión importante donde se presentan los resultados de un proyecto 
+      en el que trabajaste intensamente. Tu jefe está dando crédito a otra persona por tu trabajo 
+      y todos están aplaudiendo los logros de tu colega. Nadie parece recordar tu contribución 
+      fundamental. Te sientes invisible y no reconocido, a pesar de que sin tu esfuerzo 
+      el proyecto no habría sido posible. ¿Cómo te sientes al ver que otro recibe el mérito 
+      por tu trabajo excepcional?"`
     },
     
     psicopatia: {
       titulo: "El Encuentro Inesperado",
-      texto: `"Caminas solo por un callejón oscuro tarde en la noche. De repente, escuchas ruidos de una pelea cercana. Al acercarte, ves a dos personas discutiendo intensamente. Una de ellas saca un arma y la situación se vuelve peligrosa. ¿Cuál sería tu reacción inmediata en esta situación de alto riesgo?"`
+      texto: `"Caminas solo por un callejón oscuro tarde en la noche. De repente, escuchas 
+      ruidos de una pelea cercana. Al acercarte, ves a dos personas discutiendo intensamente. 
+      Una de ellas saca un arma y la situación se vuelve peligrosa. Tienes la oportunidad 
+      de intervenir o llamar a la policía, pero también podrías simplemente alejarte 
+      y evitar cualquier problema. No hay testigos alrededor. ¿Cuál sería tu reacción 
+      inmediata en esta situación de alto riesgo?"`
     }
   };
 
@@ -496,18 +577,48 @@ function mostrarConfirmacionParticipante(analisisVideo = null) {
   const resultadoDiv = document.getElementById('resultado-micro');
   if (!resultadoDiv) return;
   
+  let analisisHTML = '';
+  if (analisisVideo && analisisVideo.success) {
+    const analisis = analisisVideo.analisis;
+    analisisHTML = `
+      <div style="background: rgba(127, 0, 255, 0.1); padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center;">
+        <h4 style="color: var(--accent);">🎬 Análisis de Video Completado</h4>
+        <p style="font-size: 1.3em; font-weight: bold; color: #7f00ff;">
+          Emoción predominante: ${analisis.emocion_predominante || 'No detectada'}
+        </p>
+        ${analisis.total_frames ? `
+          <p style="color: var(--text-secondary);">
+            <strong>Frames analizados:</strong> ${analisis.total_frames}
+          </p>
+        ` : ''}
+        ${analisis.aus_frecuentes && analisis.aus_frecuentes.length > 0 ? `
+          <p style="color: var(--text-secondary);">
+            <strong>AUs detectadas:</strong> ${analisis.aus_frecuentes.join(', ')}
+          </p>
+        ` : ''}
+        <p style="color: var(--text-secondary); margin-top: 10px;">
+          El video y análisis han sido guardados en la base de datos
+        </p>
+      </div>
+    `;
+  } else {
+    analisisHTML = `
+      <div style="background: rgba(255, 99, 132, 0.1); padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center;">
+        <h4 style="color: #ff6384;">⚠️ Análisis No Disponible</h4>
+        <p style="color: var(--text-secondary);">
+          El análisis de video no pudo completarse, pero tus datos fueron guardados.
+        </p>
+      </div>
+    `;
+  }
+  
   resultadoDiv.classList.remove('hidden');
   resultadoDiv.innerHTML = `
     <div class="confirmacion-final" style="text-align:center; padding:30px;">
       <h3 style="color: var(--accent);">¡Gracias por participar!</h3>
-      <p style="margin:15px 0;">Tus respuestas del test SD3 han sido registradas correctamente.</p>
+      <p style="margin:15px 0;">Tu video, respuestas y análisis han sido registrados correctamente.</p>
       
-      <div style="background: rgba(127, 0, 255, 0.1); padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center;">
-        <h4 style="color: var(--accent);">✅ Datos Guardados Exitosamente</h4>
-        <p style="color: var(--text-secondary);">
-          Tu participación ha sido registrada en nuestra base de datos de investigación.
-        </p>
-      </div>
+      ${analisisHTML}
       
       <div style="margin-top:20px; display:flex; gap:15px; justify-content:center; flex-wrap:wrap;">
         <button class="btn-primary" onclick="volverAlInicio()">🏠 Volver al inicio</button>
@@ -648,7 +759,8 @@ async function generarYDescargarCSV() {
       'Maquiavelismo', 'Narcisismo', 'Psicopatia',
       'Tiempo_Total_Seg', 'Emoción_Principal', 'Historia_Utilizada',
       'Total_Frames', 'Duración_Video', 'Correlación_Maquiavelismo', 
-      'Correlación_Narcisismo', 'Correlación_Psicopatia'
+      'Correlación_Narcisismo', 'Correlación_Psicopatia',
+      'AUs_Frecuentes'
     ];
     
     const csvRows = [headers.join(',')];
@@ -671,7 +783,8 @@ async function generarYDescargarCSV() {
         p.duracion_video || 0,
         p.correlaciones?.maquiavelismo || 0,
         p.correlaciones?.narcisismo || 0,
-        p.correlaciones?.psicopatia || 0
+        p.correlaciones?.psicopatia || 0,
+        `"${(p.aus_frecuentes || []).join('; ')}"`
       ];
       
       csvRows.push(row.join(','));
