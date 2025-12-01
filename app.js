@@ -95,6 +95,40 @@ function generarItemsTest() {
   const form = document.getElementById('form-sd3');
   if (!form) return;
   form.innerHTML = '';
+
+  // ✅ AGREGAR INSTRUCCIONES
+  const instrucciones = document.createElement('div');
+  instrucciones.className = 'instrucciones';
+  instrucciones.innerHTML = `
+    <h3>📝 Instrucciones</h3>
+    <p>Por favor, respondé cada ítem según lo que mejor describe tus actitudes. Usá la siguiente escala:</p>
+    <div style="display: flex; justify-content: space-around; margin: 20px 0; text-align: center;">
+      <div>
+        <div style="font-size: 2em; color: var(--accent);">1</div>
+        <div style="font-weight: bold; color: var(--text-primary);">Muy en desacuerdo</div>
+      </div>
+      <div>
+        <div style="font-size: 2em; color: var(--accent);">2</div>
+        <div style="color: var(--text-primary);">En desacuerdo</div>
+      </div>
+      <div>
+        <div style="font-size: 2em; color: var(--accent);">3</div>
+        <div style="color: var(--text-primary);">Neutral</div>
+      </div>
+      <div>
+        <div style="font-size: 2em; color: var(--accent);">4</div>
+        <div style="color: var(--text-primary);">De acuerdo</div>
+      </div>
+      <div>
+        <div style="font-size: 2em; color: var(--accent);">5</div>
+        <div style="font-weight: bold; color: var(--text-primary);">Muy de acuerdo</div>
+      </div>
+    </div>
+    <p><strong>Recordá:</strong> 1 = Muy en desacuerdo, 5 = Muy de acuerdo. Algunos ítems están invertidos (R) y se calificarán de manera inversa.</p>
+  `;
+  form.appendChild(instrucciones);
+
+  // Generar los ítems
   itemsSD3.forEach((texto, idx) => {
     const num = idx + 1;
     const div = document.createElement('div');
@@ -188,20 +222,91 @@ async function calcularSD3() {
   var resultadosSD3 = { mach: mach, narc: narc, psych: psych, respuestas: respuestasObj, tiempos_respuesta: tiemposRespuesta, tiempo_total_ms: tiempoTotal, tiempo_total_segundos: (tiempoTotal/1000).toFixed(2), estadisticas_tiempo: estadisticasTiempo };
   sessionStorage.setItem('resultadosSD3', JSON.stringify(resultadosSD3));
 
-  // ✅ CORREGIDO: Ocultar test y mostrar directamente la sección micro con la historia
+  // ✅ CORREGIDO: Ocultar test y mostrar directamente la sección micro
   var seccionTest = document.getElementById('seccion-test');
   var seccionMicro = document.getElementById('seccion-micro');
   if (seccionTest) seccionTest.classList.add('hidden');
   if (seccionMicro) seccionMicro.classList.remove('hidden');
   
-  // ✅ CORREGIDO: Mostrar historia inmediatamente sin resultados del test
+  // ✅ CORREGIDO: Mostrar historia inmediatamente
   mostrarHistoriaInmediata();
   
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
+/* ---------- MOSTRAR HISTORIA INMEDIATA ---------- */
+function mostrarHistoriaInmediata() {
+  console.log('🎭 Mostrando historia inmediata...');
+  
+  const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
+  
+  const rasgos = {
+    maquiavelismo: parseFloat(sd3.mach) || 0,
+    narcisismo: parseFloat(sd3.narc) || 0,
+    psicopatia: parseFloat(sd3.psych) || 0
+  };
+  
+  const rasgoPredominante = Object.keys(rasgos).reduce((a, b) => 
+    rasgos[a] > rasgos[b] ? a : b
+  );
+
+  console.log('🎭 Rasgo predominante:', rasgoPredominante, rasgos);
+
+  const historias = {
+    maquiavelismo: {
+      titulo: "El Dilema del Compañero",
+      texto: `"Imagina que estás trabajando en un proyecto muy importante con un compañero. 
+      Has descubierto que tu compañero cometió un error que podría hacer fracasar todo el proyecto. 
+      Tienes la oportunidad de señalar su error públicamente ante el jefe, lo que te haría quedar bien 
+      y probablemente te daría una ventaja para el próximo ascenso. Sin embargo, si lo haces, 
+      tu compañero podría ser despedido. Por otro lado, si no dices nada y el proyecto fracasa, 
+      ambos podrían ser afectados. ¿Qué harías en esta situación?"`
+    },
+    
+    narcisismo: {
+      titulo: "El Reconocimiento Perdido",
+      texto: `"Estás en una reunión importante donde se presentan los resultados de un proyecto 
+      en el que trabajaste intensamente. Tu jefe está dando crédito a otra persona por tu trabajo 
+      y todos están aplaudiendo los logros de tu colega. Nadie parece recordar tu contribución 
+      fundamental. Te sientes invisible y no reconocido, a pesar de que sin tu esfuerzo 
+      el proyecto no habría sido posible. ¿Cómo te sientes al ver que otro recibe el mérito 
+      por tu trabajo excepcional?"`
+    },
+    
+    psicopatia: {
+      titulo: "El Encuentro Inesperado",
+      texto: `"Caminas solo por un callejón oscuro tarde en la noche. De repente, escuchas 
+      ruidos de una pelea cercana. Al acercarte, ves a dos personas discutiendo intensamente. 
+      Una de ellas saca un arma y la situación se vuelve peligrosa. Tienes la oportunidad 
+      de intervenir o llamar a la policía, pero también podrías simplemente alejarte 
+      y evitar cualquier problema. No hay testigos alrededor. ¿Cuál sería tu reacción 
+      inmediata en esta situación de alto riesgo?"`
+    }
+  };
+
+  const historiaSeleccionada = historias[rasgoPredominante] || historias.maquiavelismo;
+  
+  const textoHistoriaDiv = document.getElementById('texto-historia');
+  if (textoHistoriaDiv) {
+    textoHistoriaDiv.innerHTML = `
+      <strong>Historia: ${historiaSeleccionada.titulo}</strong>
+      <p style="margin: 10px 0; font-style: italic; color: var(--text-secondary); line-height: 1.6;">
+        ${historiaSeleccionada.texto}
+      </p>
+      <small style="color: var(--accent);">Rasgo analizado: ${rasgoPredominante}</small>
+    `;
+    // ✅ Asegurar que el contenedor sea visible
+    textoHistoriaDiv.classList.remove('hidden');
+    document.getElementById('audio-container')?.classList.remove('hidden');
+  }
+
+  console.log('✅ Historia mostrada para rasgo:', rasgoPredominante);
+}
+
 /* ---------- GRABACIÓN DE VIDEO CORREGIDA ---------- */
 function configurarGrabacionVideo() {
+  console.log('🎥 Configurando grabación de video...');
+  
   var video = document.getElementById('video');
   var btnActivarCamara = document.getElementById('btn-activar-camara');
   var btnIniciarGrabacion = document.getElementById('btn-iniciar-grabacion');
@@ -217,7 +322,11 @@ function configurarGrabacionVideo() {
   var stream = null; var mediaRecorder = null; var recordedChunks = []; var grabacionEnCurso = false;
   var tiempoInicioGrabacion = null; var intervaloProgress = null; var duracionGrabacion = 15000;
 
+  // ✅ MOSTRAR HISTORIA INMEDIATAMENTE
+  mostrarHistoriaInmediata();
+  
   btnActivarCamara.addEventListener('click', async function() {
+    console.log('📷 Activando cámara...');
     try {
       stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
@@ -228,24 +337,35 @@ function configurarGrabacionVideo() {
         }, 
         audio: false 
       });
-      if (video) { video.srcObject = stream; video.classList.remove('hidden'); video.play(); }
+      if (video) { 
+        video.srcObject = stream; 
+        video.classList.remove('hidden'); 
+        video.play(); 
+      }
       btnActivarCamara.classList.add('hidden');
       btnIniciarGrabacion.classList.remove('hidden');
       document.getElementById('audio-container').classList.remove('hidden');
       var cameraPlaceholder = document.getElementById('camera-placeholder');
       if (cameraPlaceholder) cameraPlaceholder.classList.add('hidden');
+      console.log('✅ Cámara activada');
     } catch (err) {
       console.error('Error accediendo a la cámara:', err);
       alert('No se pudo acceder a la cámara. Podés continuar sin video.');
+      // ✅ Mostrar botón de grabar igual aunque falle la cámara
+      btnActivarCamara.classList.add('hidden');
+      btnIniciarGrabacion.classList.remove('hidden');
+      document.getElementById('audio-container').classList.remove('hidden');
     }
   });
 
   btnIniciarGrabacion.addEventListener('click', function() {
-    if (!stream) { alert('Primero activá la cámara'); return; }
+    if (!stream) { 
+      console.warn('⚠️ No hay stream de cámara, pero iniciando grabación de audio...');
+    }
     recordedChunks = [];
     try {
       var options = { mimeType: 'video/webm; codecs=vp9,opus' };
-      mediaRecorder = new MediaRecorder(stream, options);
+      mediaRecorder = new MediaRecorder(stream || new MediaStream(), options);
       mediaRecorder.ondataavailable = function(event) { 
         if (event.data.size > 0) { recordedChunks.push(event.data); } 
       };
@@ -265,6 +385,7 @@ function configurarGrabacionVideo() {
       btnDetenerGrabacion.classList.remove('hidden'); 
       progressContainer.classList.remove('hidden');
       iniciarProgressBar();
+      console.log('🎬 Grabación iniciada');
     } catch (err) { 
       console.error('Error iniciando grabación:', err); 
       alert('Error al iniciar la grabación: ' + err.message); 
@@ -298,6 +419,7 @@ function configurarGrabacionVideo() {
         stream = null; 
         video.classList.add('hidden'); 
       }
+      console.log('🛑 Grabación detenida');
     }
   }
 
@@ -430,73 +552,6 @@ async function guardarAnalisisVideoEnSupabase(analisis, persona, sd3) {
       error: error.message
     };
   }
-}
-
-/* ---------- REPRODUCIR HISTORIA ---------- */
-function mostrarHistoriaInmediata() {
-  const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
-  
-  const rasgos = {
-    maquiavelismo: parseFloat(sd3.mach) || 0,
-    narcisismo: parseFloat(sd3.narc) || 0,
-    psicopatia: parseFloat(sd3.psych) || 0
-  };
-  
-  const rasgoPredominante = Object.keys(rasgos).reduce((a, b) => 
-    rasgos[a] > rasgos[b] ? a : b
-  );
-
-  console.log('🎭 Rasgo predominante:', rasgoPredominante, rasgos);
-
-  const historias = {
-    maquiavelismo: {
-      titulo: "El Dilema del Compañero",
-      texto: `"Imagina que estás trabajando en un proyecto muy importante con un compañero. 
-      Has descubierto que tu compañero cometió un error que podría hacer fracasar todo el proyecto. 
-      Tienes la oportunidad de señalar su error públicamente ante el jefe, lo que te haría quedar bien 
-      y probablemente te daría una ventaja para el próximo ascenso. Sin embargo, si lo haces, 
-      tu compañero podría ser despedido. Por otro lado, si no dices nada y el proyecto fracasa, 
-      ambos podrían ser afectados. ¿Qué harías en esta situación?"`
-    },
-    
-    narcisismo: {
-      titulo: "El Reconocimiento Perdido",
-      texto: `"Estás en una reunión importante donde se presentan los resultados de un proyecto 
-      en el que trabajaste intensamente. Tu jefe está dando crédito a otra persona por tu trabajo 
-      y todos están aplaudiendo los logros de tu colega. Nadie parece recordar tu contribución 
-      fundamental. Te sientes invisible y no reconocido, a pesar de que sin tu esfuerzo 
-      el proyecto no habría sido posible. ¿Cómo te sientes al ver que otro recibe el mérito 
-      por tu trabajo excepcional?"`
-    },
-    
-    psicopatia: {
-      titulo: "El Encuentro Inesperado",
-      texto: `"Caminas solo por un callejón oscuro tarde en la noche. De repente, escuchas 
-      ruidos de una pelea cercana. Al acercarte, ves a dos personas discutiendo intensamente. 
-      Una de ellas saca un arma y la situación se vuelve peligrosa. Tienes la oportunidad 
-      de intervenir o llamar a la policía, pero también podrías simplemente alejarte 
-      y evitar cualquier problema. No hay testigos alrededor. ¿Cuál sería tu reacción 
-      inmediata en esta situación de alto riesgo?"`
-    }
-  };
-
-  const historiaSeleccionada = historias[rasgoPredominante] || historias.maquiavelismo;
-  
-  const textoHistoriaDiv = document.getElementById('texto-historia');
-  if (textoHistoriaDiv) {
-    textoHistoriaDiv.innerHTML = `
-      <strong>Historia: ${historiaSeleccionada.titulo}</strong>
-      <p style="margin: 10px 0; font-style: italic; color: var(--text-secondary); line-height: 1.6;">
-        ${historiaSeleccionada.texto}
-      </p>
-      <small style="color: var(--accent);">Rasgo analizado: ${rasgoPredominante}</small>
-    `;
-  }
-
-  // Inicializar grabación de video después de mostrar la historia
-  setTimeout(() => {
-    configurarGrabacionVideo();
-  }, 100);
 }
 
 /* ---------- CONFIRMACIÓN PARTICIPANTE ---------- */
@@ -756,18 +811,23 @@ function mostrarParticipanteEnPanel(index) {
 
 /* ---------- INICIALIZACIÓN ---------- */
 document.addEventListener('DOMContentLoaded', () => {
-  // ✅ CORREGIDO: Inicializar Supabase DENTRO del DOMContentLoaded
+  console.log('🚀 Inicializando aplicación DARKLENS...');
+  
+  // ✅ CORREGIDO: Inicializar Supabase correctamente
   try {
-    supabase = window.supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
-    console.log('✅ Supabase inicializado correctamente');
+    // Verificar si Supabase está disponible globalmente
+    if (typeof window.supabase !== 'undefined') {
+      supabase = window.supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
+      console.log('✅ Supabase inicializado correctamente');
+    } else {
+      console.error('❌ Supabase no está disponible globalmente');
+      console.log('⚠️ Asegúrate de incluir: <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> en tu HTML');
+    }
   } catch (error) {
     console.error('❌ Error inicializando Supabase:', error);
-    // Fallback: intentar cargar desde CDN si no está disponible
-    if (!window.supabase) {
-      console.warn('⚠️ Supabase no está disponible globalmente');
-    }
   }
 
+  // Limpiar sesión
   sessionStorage.clear();
   tiemposRespuesta = {};
   tiempoInicioItem = {};
@@ -775,10 +835,12 @@ document.addEventListener('DOMContentLoaded', () => {
   window._capturaInicializada = false;
   console.log('✅ Sesión limpiada al cargar');
 
+  // Event listeners para botones principales
   const btnParticipante = document.querySelector('#card-participante .btn-primary');
   const btnInvestigador = document.querySelector('#card-investigador .btn-primary');
 
   btnParticipante?.addEventListener('click', () => {
+    console.log('👤 Iniciando como participante...');
     sessionStorage.clear();
     tiemposRespuesta = {};
     tiempoInicioItem = {};
@@ -791,11 +853,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   btnInvestigador?.addEventListener('click', () => {
+    console.log('🔬 Accediendo como investigador...');
     document.getElementById('pagina-inicio')?.classList.add('hidden');
     document.getElementById('seccion-login')?.classList.remove('hidden');
     window.scrollTo({ top:0, behavior:'smooth' });
   });
 
+  // Formulario de datos básicos
   const formDatos = document.getElementById('form-datos-basicos');
   formDatos?.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -819,19 +883,24 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('seccion-bienvenida')?.classList.add('hidden');
     document.getElementById('seccion-test')?.classList.remove('hidden');
     window.scrollTo({ top:0, behavior:'smooth' });
+    console.log('✅ Datos personales guardados');
   });
 
+  // Formulario SD3
   const formSD3 = document.getElementById('form-sd3');
   formSD3?.addEventListener('submit', (e) => {
     e.preventDefault();
+    console.log('📝 Enviando test SD3...');
     calcularSD3();
   });
 
+  // Login investigador
   const btnLoginInv = document.getElementById('btn-login-investigador');
   const inputPasswordInv = document.getElementById('password-investigador');
   btnLoginInv?.addEventListener('click', () => {
     const pw = inputPasswordInv?.value?.trim() || '';
     if (pw === PASSWORD_INVESTIGADOR) {
+      console.log('✅ Acceso investigador concedido');
       document.getElementById('seccion-login')?.classList.add('hidden');
       document.getElementById('seccion-investigador')?.classList.remove('hidden');
       cargarDatosParticipantes();
@@ -842,6 +911,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Botones de navegación
   document.getElementById('btn-volver-inicio-2')?.addEventListener('click', () => {
     document.getElementById('seccion-login')?.classList.add('hidden');
     document.getElementById('pagina-inicio')?.classList.remove('hidden');
@@ -859,6 +929,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('seccion-investigador')?.classList.remove('hidden');
     window.scrollTo({ top:0, behavior:'smooth' });
   });
+
+  console.log('✅ Aplicación inicializada');
 });
 
 /* ---------- FUNCIONES GLOBALES ---------- */
@@ -878,6 +950,7 @@ function volverAlInicio() {
   document.getElementById('pagina-inicio')?.classList.remove('hidden');
   window._capturaInicializada = false;
   window.scrollTo({ top:0, behavior:'smooth' });
+  console.log('🏠 Volviendo al inicio');
 }
 
 /* ---------- FIN ---------- */
