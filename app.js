@@ -5,13 +5,23 @@
 /* ---------- CONFIG SUPABASE ---------- */
 const SUPABASE_CONFIG = {
   URL: 'https://cdhndtzuwtmvhiulvzbp.supabase.co',
-  ANON_KEY: 'sb_publishable_mzTN7UGk3aZJ8b3Zxf_44g_gK5kaJlV'
+  ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNkaG5kdHp1d3RtdmhpdWx2emJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ5OTk2MTgsImV4cCI6MjA1MDU3NTYxOH0.KyBkGGgXXT_U2jXpN7uE9sLPI5Fq5_IgM_zA2xVxZ8Q'
 };
 const FASTAPI_URL = "https://darklnesapp-api-1.onrender.com";
 const PASSWORD_INVESTIGADOR = "investigador2025";
 
-// Inicializar Supabase
-const supabase = supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
+// Inicializar Supabase - ESPERAR A QUE LA LIBRERÍA ESTÉ CARGADA
+let supabase;
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.supabase) {
+    supabase = window.supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
+    console.log('✅ Supabase inicializado correctamente');
+  } else {
+    console.error('❌ Supabase no está disponible');
+  }
+  
+  // Resto del código de inicialización...
+});
 
 /* ---------- ESTADO GLOBAL ---------- */
 const invertidos = [11, 15, 17, 20, 25];
