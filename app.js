@@ -1,5 +1,5 @@
 /* ========================================
-   app.js - VERSIÓN COMPLETA CORREGIDA
+   app.js - VERSIÓN COMPLETA CON ANÁLISIS DE VIDEO Y FACS
    ======================================== */
 
 /* ---------- CONFIG SUPABASE ---------- */
@@ -10,8 +10,8 @@ const SUPABASE_CONFIG = {
 const FASTAPI_URL = "https://darklnesapp-api-1.onrender.com";
 const PASSWORD_INVESTIGADOR = "investigador2025";
 
-// ✅ CORREGIDO: Declarar sin inicializar
-let supabase;
+// Inicializar Supabase
+const supabase = supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
 
 /* ---------- ESTADO GLOBAL ---------- */
 const invertidos = [11, 15, 17, 20, 25];
@@ -67,10 +67,10 @@ const itemsSD3 = [
   "Hagas lo que hagas, debes conseguir que las personas importantes estén de tu lado.",
   "Evito el conflicto directo con los demás porque pueden serme útiles en el futuro.",
   "Es sabio guardar información que puedas usar en contra de otras personas más adelante.",
-  "Debes esperar el momento oportuno para vengarte de las personas.",
+  "Debes esperar el momento oportuno para vengarme de las personas.",
   "Hay cosas que deberías ocultar a los demás porque no necesitan saberlas.",
-  "Asegúrate de que tus planes te beneficien a ti, no a los demás.",
-  "La mayoría de las personas pueden ser manipuladas.",
+  "Asegúrate de que tus planes te beneficien a ti, not a los demás.",
+  "La mayoría de las personas puede ser manipulada.",
   "La gente me ve como un líder nato.",
   "(R) Odio ser el centro de atención.",
   "Muchas actividades grupales tienden a ser aburridas sin mí.",
@@ -95,40 +95,6 @@ function generarItemsTest() {
   const form = document.getElementById('form-sd3');
   if (!form) return;
   form.innerHTML = '';
-
-  // ✅ AGREGAR INSTRUCCIONES
-  const instrucciones = document.createElement('div');
-  instrucciones.className = 'instrucciones';
-  instrucciones.innerHTML = `
-    <h3>📝 Instrucciones</h3>
-    <p>Por favor, respondé cada ítem según lo que mejor describe tus actitudes. Usá la siguiente escala:</p>
-    <div style="display: flex; justify-content: space-around; margin: 20px 0; text-align: center;">
-      <div>
-        <div style="font-size: 2em; color: var(--accent);">1</div>
-        <div style="font-weight: bold; color: var(--text-primary);">Muy en desacuerdo</div>
-      </div>
-      <div>
-        <div style="font-size: 2em; color: var(--accent);">2</div>
-        <div style="color: var(--text-primary);">En desacuerdo</div>
-      </div>
-      <div>
-        <div style="font-size: 2em; color: var(--accent);">3</div>
-        <div style="color: var(--text-primary);">Neutral</div>
-      </div>
-      <div>
-        <div style="font-size: 2em; color: var(--accent);">4</div>
-        <div style="color: var(--text-primary);">De acuerdo</div>
-      </div>
-      <div>
-        <div style="font-size: 2em; color: var(--accent);">5</div>
-        <div style="font-weight: bold; color: var(--text-primary);">Muy de acuerdo</div>
-      </div>
-    </div>
-    <p><strong>Recordá:</strong> 1 = Muy en desacuerdo, 5 = Muy de acuerdo. Algunos ítems están invertidos (R) y se calificarán de manera inversa.</p>
-  `;
-  form.appendChild(instrucciones);
-
-  // Generar los ítems
   itemsSD3.forEach((texto, idx) => {
     const num = idx + 1;
     const div = document.createElement('div');
@@ -197,249 +163,235 @@ function registrarTiempoRespuesta(itemNum) {
 
 /* ---------- CALCULAR SD3 ---------- */
 async function calcularSD3() {
-  var respuestas = []; var respuestasObj = {};
-  for (var i = 1; i <= itemsSD3.length; i++) {
-    var sel = document.querySelector('input[name="item' + i + '"]:checked');
+  const respuestas = [];
+  const respuestasObj = {};
+  for (let i=1;i<=itemsSD3.length;i++) {
+    const sel = document.querySelector(`input[name="item${i}"]:checked`);
     if (!sel) {
-      alert('Por favor respondé el ítem ' + i);
-      var primer = document.querySelector('input[name="item' + i + '"]');
+      alert(`Por favor respondé el ítem ${i}`);
+      const primer = document.querySelector(`input[name="item${i}"]`);
       if (primer) primer.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
-    var val = parseInt(sel.value);
+    let val = parseInt(sel.value);
     if (invertidos.includes(i)) val = 6 - val;
     respuestas.push(val);
-    respuestasObj['item' + i] = val;
+    respuestasObj[`item${i}`] = val;
   }
-  var mean = function(arr) { return arr.reduce(function(a,b) { return a + b; }, 0) / arr.length; };
-  var mach = parseFloat(mean(respuestas.slice(0,9)).toFixed(2));
-  var narc = parseFloat(mean(respuestas.slice(9,18)).toFixed(2));
-  var psych = parseFloat(mean(respuestas.slice(18,27)).toFixed(2));
-  var fin = Date.now();
-  var tiempoTotal = fin - (testInicioTimestamp || fin);
-  var tiemposArray = Object.values(tiemposRespuesta).map(function(t) { return t ? t.tiempo_ms : 0; });
-  var estadisticasTiempo = calcularEstadisticasTiempo(tiemposArray);
-  var resultadosSD3 = { mach: mach, narc: narc, psych: psych, respuestas: respuestasObj, tiempos_respuesta: tiemposRespuesta, tiempo_total_ms: tiempoTotal, tiempo_total_segundos: (tiempoTotal/1000).toFixed(2), estadisticas_tiempo: estadisticasTiempo };
+
+  const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+  const mach = parseFloat(mean(respuestas.slice(0,9)).toFixed(2));
+  const narc = parseFloat(mean(respuestas.slice(9,18)).toFixed(2));
+  const psych = parseFloat(mean(respuestas.slice(18,27)).toFixed(2));
+  const fin = Date.now();
+  const tiempoTotal = fin - (testInicioTimestamp || fin);
+  const tiemposArray = Object.values(tiemposRespuesta).map(t => t?.tiempo_ms || 0);
+  const estadisticasTiempo = calcularEstadisticasTiempo(tiemposArray);
+
+  const resultadosSD3 = { 
+    mach, narc, psych, 
+    respuestas: respuestasObj, 
+    tiempos_respuesta: tiemposRespuesta, 
+    tiempo_total_ms: tiempoTotal, 
+    tiempo_total_segundos: (tiempoTotal/1000).toFixed(2), 
+    estadisticas_tiempo: estadisticasTiempo 
+  };
+  
   sessionStorage.setItem('resultadosSD3', JSON.stringify(resultadosSD3));
 
-  // ✅ CORREGIDO: Ocultar test y mostrar directamente la sección micro
-  var seccionTest = document.getElementById('seccion-test');
-  var seccionMicro = document.getElementById('seccion-micro');
-  if (seccionTest) seccionTest.classList.add('hidden');
-  if (seccionMicro) seccionMicro.classList.remove('hidden');
-  
-  // ✅ CORREGIDO: Mostrar historia inmediatamente
-  mostrarHistoriaInmediata();
-  
+  document.getElementById('seccion-test')?.classList.add('hidden');
+  document.getElementById('seccion-micro')?.classList.remove('hidden');
+  if (!window._capturaInicializada) { 
+    configurarGrabacionVideo(); 
+    window._capturaInicializada = true; 
+  }
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
-/* ---------- MOSTRAR HISTORIA INMEDIATA ---------- */
-function mostrarHistoriaInmediata() {
-  console.log('🎭 Mostrando historia inmediata...');
-  
-  const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
-  
-  const rasgos = {
-    maquiavelismo: parseFloat(sd3.mach) || 0,
-    narcisismo: parseFloat(sd3.narc) || 0,
-    psicopatia: parseFloat(sd3.psych) || 0
-  };
-  
-  const rasgoPredominante = Object.keys(rasgos).reduce((a, b) => 
-    rasgos[a] > rasgos[b] ? a : b
-  );
-
-  console.log('🎭 Rasgo predominante:', rasgoPredominante, rasgos);
-
-  const historias = {
-    maquiavelismo: {
-      titulo: "El Dilema del Compañero",
-      texto: `"Imagina que estás trabajando en un proyecto muy importante con un compañero. 
-      Has descubierto que tu compañero cometió un error que podría hacer fracasar todo el proyecto. 
-      Tienes la oportunidad de señalar su error públicamente ante el jefe, lo que te haría quedar bien 
-      y probablemente te daría una ventaja para el próximo ascenso. Sin embargo, si lo haces, 
-      tu compañero podría ser despedido. Por otro lado, si no dices nada y el proyecto fracasa, 
-      ambos podrían ser afectados. ¿Qué harías en esta situación?"`
-    },
-    
-    narcisismo: {
-      titulo: "El Reconocimiento Perdido",
-      texto: `"Estás en una reunión importante donde se presentan los resultados de un proyecto 
-      en el que trabajaste intensamente. Tu jefe está dando crédito a otra persona por tu trabajo 
-      y todos están aplaudiendo los logros de tu colega. Nadie parece recordar tu contribución 
-      fundamental. Te sientes invisible y no reconocido, a pesar de que sin tu esfuerzo 
-      el proyecto no habría sido posible. ¿Cómo te sientes al ver que otro recibe el mérito 
-      por tu trabajo excepcional?"`
-    },
-    
-    psicopatia: {
-      titulo: "El Encuentro Inesperado",
-      texto: `"Caminas solo por un callejón oscuro tarde en la noche. De repente, escuchas 
-      ruidos de una pelea cercana. Al acercarte, ves a dos personas discutiendo intensamente. 
-      Una de ellas saca un arma y la situación se vuelve peligrosa. Tienes la oportunidad 
-      de intervenir o llamar a la policía, pero también podrías simplemente alejarte 
-      y evitar cualquier problema. No hay testigos alrededor. ¿Cuál sería tu reacción 
-      inmediata en esta situación de alto riesgo?"`
-    }
-  };
-
-  const historiaSeleccionada = historias[rasgoPredominante] || historias.maquiavelismo;
-  
-  const textoHistoriaDiv = document.getElementById('texto-historia');
-  if (textoHistoriaDiv) {
-    textoHistoriaDiv.innerHTML = `
-      <strong>Historia: ${historiaSeleccionada.titulo}</strong>
-      <p style="margin: 10px 0; font-style: italic; color: var(--text-secondary); line-height: 1.6;">
-        ${historiaSeleccionada.texto}
-      </p>
-      <small style="color: var(--accent);">Rasgo analizado: ${rasgoPredominante}</small>
-    `;
-    // ✅ Asegurar que el contenedor sea visible
-    textoHistoriaDiv.classList.remove('hidden');
-    document.getElementById('audio-container')?.classList.remove('hidden');
-  }
-
-  console.log('✅ Historia mostrada para rasgo:', rasgoPredominante);
-}
-
-/* ---------- GRABACIÓN DE VIDEO CORREGIDA ---------- */
+/* ---------- GRABACIÓN DE VIDEO COMPLETA ---------- */
 function configurarGrabacionVideo() {
-  console.log('🎥 Configurando grabación de video...');
-  
-  var video = document.getElementById('video');
-  var btnActivarCamara = document.getElementById('btn-activar-camara');
-  var btnIniciarGrabacion = document.getElementById('btn-iniciar-grabacion');
-  var btnDetenerGrabacion = document.getElementById('btn-detener-grabacion');
-  var btnSubirVideo = document.getElementById('btn-subir-video');
-  var previewContainer = document.getElementById('preview-container');
-  var previewVideo = document.getElementById('preview-video');
-  var progressContainer = document.getElementById('progress-container');
-  var progressBar = document.getElementById('progress-bar');
-  var tiempoGrabacion = document.getElementById('tiempo-grabacion');
-  var infoVideo = document.getElementById('info-video');
+  const video = document.getElementById('video');
+  const btnActivarCamara = document.getElementById('btn-activar-camara');
+  const btnIniciarGrabacion = document.getElementById('btn-iniciar-grabacion');
+  const btnDetenerGrabacion = document.getElementById('btn-detener-grabacion');
+  const btnSubirVideo = document.getElementById('btn-subir-video');
+  const previewContainer = document.getElementById('preview-container');
+  const previewVideo = document.getElementById('preview-video');
+  const audioContainer = document.getElementById('audio-container');
+  const progressContainer = document.getElementById('progress-container');
+  const progressBar = document.getElementById('progress-bar');
+  const tiempoGrabacion = document.getElementById('tiempo-grabacion');
+  const infoVideo = document.getElementById('info-video');
 
-  var stream = null; var mediaRecorder = null; var recordedChunks = []; var grabacionEnCurso = false;
-  var tiempoInicioGrabacion = null; var intervaloProgress = null; var duracionGrabacion = 15000;
+  let stream = null;
+  let mediaRecorder = null;
+  let recordedChunks = [];
+  let grabacionEnCurso = false;
+  let tiempoInicioGrabacion = null;
+  let intervaloProgress = null;
+  let duracionGrabacion = 15000; // 15 segundos
 
-  // ✅ MOSTRAR HISTORIA INMEDIATAMENTE
-  mostrarHistoriaInmediata();
-  
+  // Activar cámara
   btnActivarCamara.addEventListener('click', async function() {
-    console.log('📷 Activando cámara...');
     try {
       stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
-          facingMode: 'user', 
-          width: { ideal: 640 }, 
-          height: { ideal: 480 }, 
-          frameRate: { ideal: 15 } 
-        }, 
-        audio: false 
+          facingMode: 'user',
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          frameRate: { ideal: 15 }
+        },
+        audio: false
       });
+      
       if (video) { 
         video.srcObject = stream; 
         video.classList.remove('hidden'); 
         video.play(); 
       }
+      
       btnActivarCamara.classList.add('hidden');
       btnIniciarGrabacion.classList.remove('hidden');
-      document.getElementById('audio-container').classList.remove('hidden');
-      var cameraPlaceholder = document.getElementById('camera-placeholder');
-      if (cameraPlaceholder) cameraPlaceholder.classList.add('hidden');
-      console.log('✅ Cámara activada');
+      audioContainer.classList.remove('hidden');
+      document.getElementById('camera-placeholder')?.classList?.add('hidden');
+      
     } catch (err) {
       console.error('Error accediendo a la cámara:', err);
       alert('No se pudo acceder a la cámara. Podés continuar sin video.');
-      // ✅ Mostrar botón de grabar igual aunque falle la cámara
-      btnActivarCamara.classList.add('hidden');
-      btnIniciarGrabacion.classList.remove('hidden');
-      document.getElementById('audio-container').classList.remove('hidden');
     }
   });
 
+  // Iniciar grabación
   btnIniciarGrabacion.addEventListener('click', function() {
-    if (!stream) { 
-      console.warn('⚠️ No hay stream de cámara, pero iniciando grabación de audio...');
+    if (!stream) {
+      alert('Primero activá la cámara');
+      return;
     }
+
     recordedChunks = [];
+    
     try {
-      var options = { mimeType: 'video/webm; codecs=vp9,opus' };
-      mediaRecorder = new MediaRecorder(stream || new MediaStream(), options);
-      mediaRecorder.ondataavailable = function(event) { 
-        if (event.data.size > 0) { recordedChunks.push(event.data); } 
+      const options = { mimeType: 'video/webm; codecs=vp9,opus' };
+      mediaRecorder = new MediaRecorder(stream, options);
+      
+      mediaRecorder.ondataavailable = function(event) {
+        if (event.data.size > 0) {
+          recordedChunks.push(event.data);
+        }
       };
+      
       mediaRecorder.onstop = function() {
-        var blob = new Blob(recordedChunks, { type: 'video/webm' });
-        var videoURL = URL.createObjectURL(blob);
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        const videoURL = URL.createObjectURL(blob);
         previewVideo.src = videoURL;
         previewContainer.classList.remove('hidden');
         btnSubirVideo.classList.remove('hidden');
-        var duracion = (Date.now() - tiempoInicioGrabacion) / 1000;
-        infoVideo.innerHTML = '<p>Duración: ' + duracion.toFixed(1) + ' segundos</p><p>Tamaño: ' + (blob.size / 1024 / 1024).toFixed(2) + ' MB</p><p>Se analizarán ' + Math.floor(duracion) + ' frames (1 por segundo)</p>';
+        
+        const duracion = (Date.now() - tiempoInicioGrabacion) / 1000;
+        infoVideo.innerHTML = `
+          <p>Duración: ${duracion.toFixed(1)} segundos</p>
+          <p>Tamaño: ${(blob.size / 1024 / 1024).toFixed(2)} MB</p>
+          <p>Se analizarán ${Math.floor(duracion)} frames (1 por segundo)</p>
+        `;
       };
-      mediaRecorder.start(1000); 
-      grabacionEnCurso = true; 
+      
+      mediaRecorder.start(1000);
+      grabacionEnCurso = true;
       tiempoInicioGrabacion = Date.now();
-      btnIniciarGrabacion.classList.add('hidden'); 
-      btnDetenerGrabacion.classList.remove('hidden'); 
+      
+      btnIniciarGrabacion.classList.add('hidden');
+      btnDetenerGrabacion.classList.remove('hidden');
       progressContainer.classList.remove('hidden');
+      
       iniciarProgressBar();
-      console.log('🎬 Grabación iniciada');
-    } catch (err) { 
-      console.error('Error iniciando grabación:', err); 
-      alert('Error al iniciar la grabación: ' + err.message); 
+      
+    } catch (err) {
+      console.error('Error iniciando grabación:', err);
+      alert('Error al iniciar la grabación: ' + err.message);
     }
   });
 
   function iniciarProgressBar() {
-    var tiempoTranscurrido = 0; 
+    let tiempoTranscurrido = 0;
     progressBar.style.width = '0%';
-    console.log('🎬 Iniciando grabación de reacción...');
-    intervaloProgress = setInterval(function() {
-      tiempoTranscurrido += 100;
-      var porcentaje = (tiempoTranscurrido / duracionGrabacion) * 100;
-      progressBar.style.width = Math.min(porcentaje, 100) + '%';
-      tiempoGrabacion.textContent = (tiempoTranscurrido / 1000).toFixed(1) + 's';
-      if (tiempoTranscurrido >= duracionGrabacion) { detenerGrabacion(); }
-    }, 100);
+    
+    reproducirHistoria().then(() => {
+      console.log('🎬 Iniciando grabación...');
+      
+      intervaloProgress = setInterval(() => {
+        tiempoTranscurrido += 100;
+        const porcentaje = (tiempoTranscurrido / duracionGrabacion) * 100;
+        
+        progressBar.style.width = `${Math.min(porcentaje, 100)}%`;
+        tiempoGrabacion.textContent = `${(tiempoTranscurrido / 1000).toFixed(1)}s`;
+        
+        if (tiempoTranscurrido >= duracionGrabacion) {
+          detenerGrabacion();
+        }
+      }, 100);
+    });
   }
 
-  btnDetenerGrabacion.addEventListener('click', function() { detenerGrabacion(); });
-  
+  // Detener grabación manualmente
+  btnDetenerGrabacion.addEventListener('click', function() {
+    detenerGrabacion();
+  });
+
   function detenerGrabacion() {
     if (mediaRecorder && grabacionEnCurso) {
-      mediaRecorder.stop(); 
+      mediaRecorder.stop();
       grabacionEnCurso = false;
-      if (intervaloProgress) { clearInterval(intervaloProgress); intervaloProgress = null; }
-      btnDetenerGrabacion.classList.add('hidden'); 
-      progressContainer.classList.add('hidden');
-      if (stream) { 
-        stream.getTracks().forEach(function(track) { track.stop(); }); 
-        stream = null; 
-        video.classList.add('hidden'); 
+      
+      if (intervaloProgress) {
+        clearInterval(intervaloProgress);
+        intervaloProgress = null;
       }
-      console.log('🛑 Grabación detenida');
+      
+      btnDetenerGrabacion.classList.add('hidden');
+      progressContainer.classList.add('hidden');
+      
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+        video.classList.add('hidden');
+      }
     }
   }
 
+  // SUBIR VIDEO CON ANÁLISIS COMPLETO
   btnSubirVideo.addEventListener('click', async function() {
-    if (recordedChunks.length === 0) { alert('No hay video para analizar'); return; }
-    btnSubirVideo.disabled = true; 
-    btnSubirVideo.textContent = '⏳ Enviando a Render...';
+    if (recordedChunks.length === 0) {
+      alert('No hay video para analizar');
+      return;
+    }
+
+    btnSubirVideo.disabled = true;
+    btnSubirVideo.textContent = '⏳ Analizando video...';
+
     try {
-      var blob = new Blob(recordedChunks, { type: 'video/webm' });
-      var base64Video = await blobToBase64(blob);
-      var persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
-      var sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
+      const blob = new Blob(recordedChunks, { type: 'video/webm' });
+      
+      // Convertir a base64 para enviar
+      const base64Video = await blobToBase64(blob);
+      
+      const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
+      const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
+
       console.log('🎬 Iniciando análisis de video...');
-      var analisisVideo = await analizarVideoCompleto(base64Video, persona, sd3);
-      if (analisisVideo.success) { mostrarConfirmacionParticipante(analisisVideo); } 
-      else { throw new Error(analisisVideo.error || 'Error en el análisis del video'); }
+
+      // ENVIAR VIDEO A LA API PARA ANÁLISIS
+      const analisisVideo = await analizarVideoCompleto(base64Video, persona, sd3);
+      
+      if (analisisVideo.success) {
+        mostrarConfirmacionParticipante(analisisVideo);
+      } else {
+        throw new Error(analisisVideo.error || 'Error en el análisis del video');
+      }
+
     } catch (err) {
-      console.error("❌ Error procesando video:", err); 
+      console.error("❌ Error procesando video:", err);
       alert("Error: " + err.message);
-      btnSubirVideo.disabled = false; 
+      btnSubirVideo.disabled = false;
       btnSubirVideo.textContent = "📤 Subir Video y Analizar";
     }
   });
@@ -513,15 +465,13 @@ async function guardarAnalisisVideoEnSupabase(analisis, persona, sd3) {
       psych: parseFloat(sd3.psych) || 0,
       tiempo_total_seg: parseFloat(sd3.tiempo_total_segundos) || 0,
       emocion_princ: analisis.emocion_predominante || 'No analizada',
+      image_url: '',
       total_frames: analisis.total_frames || 0,
       duracion_video: analisis.duracion_video || 0,
       emociones_detectadas: analisis.emociones_detectadas || [],
       correlaciones: analisis.correlaciones || {},
       aus_frecuentes: analisis.aus_frecuentes || [],
       facs_promedio: analisis.facs_promedio || {},
-      intensidad_promedio: analisis.intensidad_promedio || 0,
-      variabilidad_emocional: analisis.variabilidad_emocional || 0,
-      modelos_utilizados: analisis.modelos_utilizados || {},
       historia_utilizada: rasgoPredominante,
       created_at: new Date().toISOString()
     };
@@ -552,6 +502,74 @@ async function guardarAnalisisVideoEnSupabase(analisis, persona, sd3) {
       error: error.message
     };
   }
+}
+
+/* ---------- REPRODUCIR HISTORIA ---------- */
+function reproducirHistoria() {
+  const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
+  
+  const rasgos = {
+    maquiavelismo: parseFloat(sd3.mach) || 0,
+    narcisismo: parseFloat(sd3.narc) || 0,
+    psicopatia: parseFloat(sd3.psych) || 0
+  };
+  
+  const rasgoPredominante = Object.keys(rasgos).reduce((a, b) => 
+    rasgos[a] > rasgos[b] ? a : b
+  );
+
+  console.log('🎭 Rasgo predominante:', rasgoPredominante, rasgos);
+
+  const historias = {
+    maquiavelismo: {
+      titulo: "El Dilema del Compañero",
+      texto: `"Imagina que estás trabajando en un proyecto muy importante con un compañero. 
+      Has descubierto que tu compañero cometió un error que podría hacer fracasar todo el proyecto. 
+      Tienes la oportunidad de señalar su error públicamente ante el jefe, lo que te haría quedar bien 
+      y probablemente te daría una ventaja para el próximo ascenso. Sin embargo, si lo haces, 
+      tu compañero podría ser despedido. Por otro lado, si no dices nada y el proyecto fracasa, 
+      ambos podrían ser afectados. ¿Qué harías en esta situación?"`
+    },
+    
+    narcisismo: {
+      titulo: "El Reconocimiento Perdido",
+      texto: `"Estás en una reunión importante donde se presentan los resultados de un proyecto 
+      en el que trabajaste intensamente. Tu jefe está dando crédito a otra persona por tu trabajo 
+      y todos están aplaudiendo los logros de tu colega. Nadie parece recordar tu contribución 
+      fundamental. Te sientes invisible y no reconocido, a pesar de que sin tu esfuerzo 
+      el proyecto no habría sido posible. ¿Cómo te sientes al ver que otro recibe el mérito 
+      por tu trabajo excepcional?"`
+    },
+    
+    psicopatia: {
+      titulo: "El Encuentro Inesperado",
+      texto: `"Caminas solo por un callejón oscuro tarde en la noche. De repente, escuchas 
+      ruidos de una pelea cercana. Al acercarte, ves a dos personas discutiendo intensamente. 
+      Una de ellas saca un arma y la situación se vuelve peligrosa. Tienes la oportunidad 
+      de intervenir o llamar a la policía, pero también podrías simplemente alejarte 
+      y evitar cualquier problema. No hay testigos alrededor. ¿Cuál sería tu reacción 
+      inmediata en esta situación de alto riesgo?"`
+    }
+  };
+
+  const historiaSeleccionada = historias[rasgoPredominante] || historias.maquiavelismo;
+  
+  const textoHistoriaDiv = document.getElementById('texto-historia');
+  if (textoHistoriaDiv) {
+    textoHistoriaDiv.innerHTML = `
+      <strong>Historia: ${historiaSeleccionada.titulo}</strong>
+      <p style="margin: 10px 0; font-style: italic; color: var(--text-secondary); line-height: 1.6;">
+        ${historiaSeleccionada.texto}
+      </p>
+      <small style="color: var(--accent);">Rasgo analizado: ${rasgoPredominante}</small>
+    `;
+  }
+
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve();
+    }, 3000);
+  });
 }
 
 /* ---------- CONFIRMACIÓN PARTICIPANTE ---------- */
@@ -742,7 +760,7 @@ async function generarYDescargarCSV() {
       'Tiempo_Total_Seg', 'Emoción_Principal', 'Historia_Utilizada',
       'Total_Frames', 'Duración_Video', 'Correlación_Maquiavelismo', 
       'Correlación_Narcisismo', 'Correlación_Psicopatia',
-      'AUs_Frecuentes', 'Intensidad_Promedio', 'Variabilidad_Emocional'
+      'AUs_Frecuentes'
     ];
     
     const csvRows = [headers.join(',')];
@@ -766,9 +784,7 @@ async function generarYDescargarCSV() {
         p.correlaciones?.maquiavelismo || 0,
         p.correlaciones?.narcisismo || 0,
         p.correlaciones?.psicopatia || 0,
-        `"${(p.aus_frecuentes || []).join('; ')}"`,
-        p.intensidad_promedio || 0,
-        p.variabilidad_emocional || 0
+        `"${(p.aus_frecuentes || []).join('; ')}"`
       ];
       
       csvRows.push(row.join(','));
@@ -796,38 +812,8 @@ async function generarYDescargarCSV() {
   }
 }
 
-/* ---------- MOSTRAR PARTICIPANTE EN PANEL ---------- */
-function mostrarParticipanteEnPanel(index) {
-  if (!participantesData || index >= participantesData.length) return;
-  
-  participanteSeleccionado = participantesData[index];
-  
-  // Aquí puedes implementar la lógica para mostrar detalles del participante
-  console.log('Mostrando participante:', participanteSeleccionado);
-  
-  // Por ahora solo mostramos un alert
-  alert(`Participante: ${participanteSeleccionado.nombre}\nEmoción: ${participanteSeleccionado.emocion_princ}\nHistoria: ${participanteSeleccionado.historia_utilizada}`);
-}
-
 /* ---------- INICIALIZACIÓN ---------- */
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 Inicializando aplicación DARKLENS...');
-  
-  // ✅ CORREGIDO: Inicializar Supabase correctamente
-  try {
-    // Verificar si Supabase está disponible globalmente
-    if (typeof window.supabase !== 'undefined') {
-      supabase = window.supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
-      console.log('✅ Supabase inicializado correctamente');
-    } else {
-      console.error('❌ Supabase no está disponible globalmente');
-      console.log('⚠️ Asegúrate de incluir: <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> en tu HTML');
-    }
-  } catch (error) {
-    console.error('❌ Error inicializando Supabase:', error);
-  }
-
-  // Limpiar sesión
   sessionStorage.clear();
   tiemposRespuesta = {};
   tiempoInicioItem = {};
@@ -835,12 +821,10 @@ document.addEventListener('DOMContentLoaded', () => {
   window._capturaInicializada = false;
   console.log('✅ Sesión limpiada al cargar');
 
-  // Event listeners para botones principales
   const btnParticipante = document.querySelector('#card-participante .btn-primary');
   const btnInvestigador = document.querySelector('#card-investigador .btn-primary');
 
   btnParticipante?.addEventListener('click', () => {
-    console.log('👤 Iniciando como participante...');
     sessionStorage.clear();
     tiemposRespuesta = {};
     tiempoInicioItem = {};
@@ -853,13 +837,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   btnInvestigador?.addEventListener('click', () => {
-    console.log('🔬 Accediendo como investigador...');
     document.getElementById('pagina-inicio')?.classList.add('hidden');
     document.getElementById('seccion-login')?.classList.remove('hidden');
     window.scrollTo({ top:0, behavior:'smooth' });
   });
 
-  // Formulario de datos básicos
   const formDatos = document.getElementById('form-datos-basicos');
   formDatos?.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -883,24 +865,19 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('seccion-bienvenida')?.classList.add('hidden');
     document.getElementById('seccion-test')?.classList.remove('hidden');
     window.scrollTo({ top:0, behavior:'smooth' });
-    console.log('✅ Datos personales guardados');
   });
 
-  // Formulario SD3
   const formSD3 = document.getElementById('form-sd3');
   formSD3?.addEventListener('submit', (e) => {
     e.preventDefault();
-    console.log('📝 Enviando test SD3...');
     calcularSD3();
   });
 
-  // Login investigador
   const btnLoginInv = document.getElementById('btn-login-investigador');
   const inputPasswordInv = document.getElementById('password-investigador');
   btnLoginInv?.addEventListener('click', () => {
     const pw = inputPasswordInv?.value?.trim() || '';
     if (pw === PASSWORD_INVESTIGADOR) {
-      console.log('✅ Acceso investigador concedido');
       document.getElementById('seccion-login')?.classList.add('hidden');
       document.getElementById('seccion-investigador')?.classList.remove('hidden');
       cargarDatosParticipantes();
@@ -911,7 +888,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Botones de navegación
   document.getElementById('btn-volver-inicio-2')?.addEventListener('click', () => {
     document.getElementById('seccion-login')?.classList.add('hidden');
     document.getElementById('pagina-inicio')?.classList.remove('hidden');
@@ -929,8 +905,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('seccion-investigador')?.classList.remove('hidden');
     window.scrollTo({ top:0, behavior:'smooth' });
   });
-
-  console.log('✅ Aplicación inicializada');
 });
 
 /* ---------- FUNCIONES GLOBALES ---------- */
@@ -950,7 +924,6 @@ function volverAlInicio() {
   document.getElementById('pagina-inicio')?.classList.remove('hidden');
   window._capturaInicializada = false;
   window.scrollTo({ top:0, behavior:'smooth' });
-  console.log('🏠 Volviendo al inicio');
 }
 
 /* ---------- FIN ---------- */
