@@ -853,8 +853,8 @@
         // CONFIGURACIÓN DE SUPABASE
         // ============================================
         // REEMPLAZA ESTOS VALORES CON TUS PROPIAS CREDENCIALES
-        const SUPABASE_URL = 'https://tus-proyecto-id.supabase.co'; // Tu URL de Supabase
-        const SUPABASE_ANON_KEY = 'tu-clave-anon-publica'; // Tu clave anónima pública
+        URL: 'https://cdhndtzuwtmvhiulvzbp.supabase.co',
+        ANON_KEY: 'sb_publishable_mzTN7UGk3aZJ8b3Zxf_44g_gK5kaJlV'
         
         // Inicializar cliente de Supabase
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1081,7 +1081,7 @@
         
         // Mostrar mensaje de configuración si no se han configurado las credenciales
         window.addEventListener('load', function() {
-            if (SUPABASE_URL.includes('tus-proyecto-id') || SUPABASE_ANON_KEY.includes('tu-clave-anon-publica')) {
+            if (SUPABASE_URL.includes('https://cdhndtzuwtmvhiulvzbp.supabase.co') || SUPABASE_ANON_KEY.includes('sb_publishable_mzTN7UGk3aZJ8b3Zxf_44g_gK5kaJlV')) {
                 const configMessage = document.createElement('div');
                 configMessage.style.cssText = `
                     position: fixed;
