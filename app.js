@@ -274,7 +274,6 @@ function configurarGrabacionVideo() {
   function iniciarProgressBar() {
     var tiempoTranscurrido = 0; 
     progressBar.style.width = '0%';
-    // ✅ CORREGIDO: No reproducir historia aquí, solo grabar
     console.log('🎬 Iniciando grabación de reacción...');
     intervaloProgress = setInterval(function() {
       tiempoTranscurrido += 100;
@@ -392,13 +391,15 @@ async function guardarAnalisisVideoEnSupabase(analisis, persona, sd3) {
       psych: parseFloat(sd3.psych) || 0,
       tiempo_total_seg: parseFloat(sd3.tiempo_total_segundos) || 0,
       emocion_princ: analisis.emocion_predominante || 'No analizada',
-      image_url: '',
       total_frames: analisis.total_frames || 0,
       duracion_video: analisis.duracion_video || 0,
       emociones_detectadas: analisis.emociones_detectadas || [],
       correlaciones: analisis.correlaciones || {},
       aus_frecuentes: analisis.aus_frecuentes || [],
       facs_promedio: analisis.facs_promedio || {},
+      intensidad_promedio: analisis.intensidad_promedio || 0,
+      variabilidad_emocional: analisis.variabilidad_emocional || 0,
+      modelos_utilizados: analisis.modelos_utilizados || {},
       historia_utilizada: rasgoPredominante,
       created_at: new Date().toISOString()
     };
@@ -432,7 +433,7 @@ async function guardarAnalisisVideoEnSupabase(analisis, persona, sd3) {
 }
 
 /* ---------- REPRODUCIR HISTORIA ---------- */
-function reproducirHistoria() {
+function mostrarHistoriaInmediata() {
   const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
   
   const rasgos = {
@@ -492,11 +493,10 @@ function reproducirHistoria() {
     `;
   }
 
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve();
-    }, 3000);
-  });
+  // Inicializar grabación de video después de mostrar la historia
+  setTimeout(() => {
+    configurarGrabacionVideo();
+  }, 100);
 }
 
 /* ---------- CONFIRMACIÓN PARTICIPANTE ---------- */
@@ -687,7 +687,7 @@ async function generarYDescargarCSV() {
       'Tiempo_Total_Seg', 'Emoción_Principal', 'Historia_Utilizada',
       'Total_Frames', 'Duración_Video', 'Correlación_Maquiavelismo', 
       'Correlación_Narcisismo', 'Correlación_Psicopatia',
-      'AUs_Frecuentes'
+      'AUs_Frecuentes', 'Intensidad_Promedio', 'Variabilidad_Emocional'
     ];
     
     const csvRows = [headers.join(',')];
@@ -711,7 +711,9 @@ async function generarYDescargarCSV() {
         p.correlaciones?.maquiavelismo || 0,
         p.correlaciones?.narcisismo || 0,
         p.correlaciones?.psicopatia || 0,
-        `"${(p.aus_frecuentes || []).join('; ')}"`
+        `"${(p.aus_frecuentes || []).join('; ')}"`,
+        p.intensidad_promedio || 0,
+        p.variabilidad_emocional || 0
       ];
       
       csvRows.push(row.join(','));
@@ -739,14 +741,31 @@ async function generarYDescargarCSV() {
   }
 }
 
+/* ---------- MOSTRAR PARTICIPANTE EN PANEL ---------- */
+function mostrarParticipanteEnPanel(index) {
+  if (!participantesData || index >= participantesData.length) return;
+  
+  participanteSeleccionado = participantesData[index];
+  
+  // Aquí puedes implementar la lógica para mostrar detalles del participante
+  console.log('Mostrando participante:', participanteSeleccionado);
+  
+  // Por ahora solo mostramos un alert
+  alert(`Participante: ${participanteSeleccionado.nombre}\nEmoción: ${participanteSeleccionado.emocion_princ}\nHistoria: ${participanteSeleccionado.historia_utilizada}`);
+}
+
 /* ---------- INICIALIZACIÓN ---------- */
 document.addEventListener('DOMContentLoaded', () => {
   // ✅ CORREGIDO: Inicializar Supabase DENTRO del DOMContentLoaded
   try {
-    supabase = supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
+    supabase = window.supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
     console.log('✅ Supabase inicializado correctamente');
   } catch (error) {
     console.error('❌ Error inicializando Supabase:', error);
+    // Fallback: intentar cargar desde CDN si no está disponible
+    if (!window.supabase) {
+      console.warn('⚠️ Supabase no está disponible globalmente');
+    }
   }
 
   sessionStorage.clear();
