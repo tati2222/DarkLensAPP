@@ -1,1115 +1,1135 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Sitio Web con Supabase</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Incluir Supabase JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        /* Estilos generales */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        :root {
-            --primary: #4a6fa5;
-            --secondary: #166088;
-            --accent: #ff7e5f;
-            --light: #f8f9fa;
-            --dark: #343a40;
-            --gray: #6c757d;
-            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            --transition: all 0.3s ease;
-            --success: #28a745;
-            --error: #dc3545;
-        }
-
-        body {
-            line-height: 1.6;
-            color: var(--dark);
-            background-color: #f5f7fa;
-        }
-
-        .container {
-            width: 90%;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 15px;
-        }
-
-        /* Header y Navegación */
-        header {
-            background-color: white;
-            box-shadow: var(--shadow);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-
-        .navbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 0;
-        }
-
-        .logo {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: var(--primary);
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-        }
-
-        .logo i {
-            margin-right: 10px;
-            color: var(--accent);
-        }
-
-        .nav-links {
-            display: flex;
-            list-style: none;
-        }
-
-        .nav-links li {
-            margin-left: 30px;
-        }
-
-        .nav-links a {
-            text-decoration: none;
-            color: var(--dark);
-            font-weight: 500;
-            transition: var(--transition);
-            padding: 5px 0;
-            position: relative;
-        }
-
-        .nav-links a:hover {
-            color: var(--primary);
-        }
-
-        .nav-links a::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 0;
-            height: 2px;
-            background-color: var(--accent);
-            transition: var(--transition);
-        }
-
-        .nav-links a:hover::after {
-            width: 100%;
-        }
-
-        .mobile-menu-btn {
-            display: none;
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            color: var(--primary);
-            cursor: pointer;
-        }
-
-        /* Hero Section */
-        .hero {
-            background: linear-gradient(rgba(74, 111, 165, 0.9), rgba(22, 96, 136, 0.9)), url('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80');
-            background-size: cover;
-            background-position: center;
-            color: white;
-            padding: 100px 0;
-            text-align: center;
-        }
-
-        .hero h1 {
-            font-size: 3rem;
-            margin-bottom: 20px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-        }
-
-        .hero p {
-            font-size: 1.2rem;
-            max-width: 700px;
-            margin: 0 auto 30px;
-            opacity: 0.9;
-        }
-
-        .btn {
-            display: inline-block;
-            background-color: var(--accent);
-            color: white;
-            padding: 12px 30px;
-            border-radius: 30px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: var(--transition);
-            border: none;
-            cursor: pointer;
-        }
-
-        .btn:hover {
-            background-color: #ff6b47;
-            transform: translateY(-3px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-        }
-
-        .btn-outline {
-            background-color: transparent;
-            border: 2px solid white;
-            margin-left: 15px;
-        }
-
-        .btn-outline:hover {
-            background-color: white;
-            color: var(--primary);
-        }
-
-        /* Secciones */
-        section {
-            padding: 80px 0;
-        }
-
-        .section-title {
-            text-align: center;
-            margin-bottom: 50px;
-        }
-
-        .section-title h2 {
-            font-size: 2.5rem;
-            color: var(--primary);
-            margin-bottom: 15px;
-            position: relative;
-            display: inline-block;
-        }
-
-        .section-title h2::after {
-            content: '';
-            position: absolute;
-            bottom: -10px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 70px;
-            height: 3px;
-            background-color: var(--accent);
-        }
-
-        .section-title p {
-            color: var(--gray);
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        /* Servicios */
-        .services-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-        }
-
-        .service-card {
-            background-color: white;
-            border-radius: 10px;
-            padding: 40px 30px;
-            text-align: center;
-            box-shadow: var(--shadow);
-            transition: var(--transition);
-        }
-
-        .service-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
-        }
-
-        .service-icon {
-            font-size: 3rem;
-            color: var(--primary);
-            margin-bottom: 20px;
-        }
-
-        .service-card h3 {
-            font-size: 1.5rem;
-            margin-bottom: 15px;
-            color: var(--dark);
-        }
-
-        /* Sobre Nosotros */
-        .about-content {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 50px;
-            align-items: center;
-        }
-
-        .about-img {
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: var(--shadow);
-        }
-
-        .about-img img {
-            width: 100%;
-            height: auto;
-            display: block;
-            transition: var(--transition);
-        }
-
-        .about-img img:hover {
-            transform: scale(1.05);
-        }
-
-        .about-text h3 {
-            font-size: 1.8rem;
-            margin-bottom: 20px;
-            color: var(--primary);
-        }
-
-        .features {
-            margin-top: 30px;
-        }
-
-        .feature {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 20px;
-        }
-
-        .feature i {
-            color: var(--accent);
-            margin-right: 15px;
-            font-size: 1.2rem;
-            margin-top: 5px;
-        }
-
-        /* Contacto */
-        .contact-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 50px;
-        }
-
-        .contact-info {
-            background-color: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: var(--shadow);
-        }
-
-        .contact-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-
-        .contact-item i {
-            font-size: 1.5rem;
-            color: var(--primary);
-            margin-right: 15px;
-            width: 50px;
-            height: 50px;
-            background-color: #f0f4f8;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .contact-form {
-            background-color: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: var(--shadow);
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 1rem;
-            transition: var(--transition);
-        }
-
-        .form-control:focus {
-            border-color: var(--primary);
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.2);
-        }
-
-        textarea.form-control {
-            min-height: 150px;
-            resize: vertical;
-        }
-
-        /* Mensajes de estado */
-        .message {
-            padding: 12px 20px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            display: none;
-        }
-
-        .message.success {
-            background-color: rgba(40, 167, 69, 0.1);
-            border-left: 4px solid var(--success);
-            color: var(--success);
-            display: block;
-        }
-
-        .message.error {
-            background-color: rgba(220, 53, 69, 0.1);
-            border-left: 4px solid var(--error);
-            color: var(--error);
-            display: block;
-        }
-
-        .message.info {
-            background-color: rgba(23, 162, 184, 0.1);
-            border-left: 4px solid #17a2b8;
-            color: #17a2b8;
-            display: block;
-        }
-
-        /* Footer */
-        footer {
-            background-color: var(--dark);
-            color: white;
-            padding: 70px 0 20px;
-        }
-
-        .footer-content {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 40px;
-            margin-bottom: 50px;
-        }
-
-        .footer-logo {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: white;
-            margin-bottom: 20px;
-            display: block;
-        }
-
-        .footer-about p {
-            margin-bottom: 20px;
-            opacity: 0.8;
-        }
-
-        .footer-links h3, .footer-newsletter h3 {
-            font-size: 1.3rem;
-            margin-bottom: 25px;
-            position: relative;
-            padding-bottom: 10px;
-        }
-
-        .footer-links h3::after, .footer-newsletter h3::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 40px;
-            height: 2px;
-            background-color: var(--accent);
-        }
-
-        .footer-links ul {
-            list-style: none;
-        }
-
-        .footer-links li {
-            margin-bottom: 12px;
-        }
-
-        .footer-links a {
-            color: #aaa;
-            text-decoration: none;
-            transition: var(--transition);
-        }
-
-        .footer-links a:hover {
-            color: white;
-            padding-left: 5px;
-        }
-
-        .footer-newsletter p {
-            margin-bottom: 20px;
-            opacity: 0.8;
-        }
-
-        .newsletter-form {
-            display: flex;
-        }
-
-        .newsletter-form input {
-            flex: 1;
-            padding: 12px 15px;
-            border: none;
-            border-radius: 5px 0 0 5px;
-        }
-
-        .newsletter-form button {
-            background-color: var(--accent);
-            color: white;
-            border: none;
-            padding: 0 20px;
-            border-radius: 0 5px 5px 0;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .newsletter-form button:hover {
-            background-color: #ff6b47;
-        }
-
-        .social-links {
-            display: flex;
-            margin-top: 20px;
-        }
-
-        .social-links a {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 40px;
-            height: 40px;
-            background-color: rgba(255, 255, 255, 0.1);
-            color: white;
-            border-radius: 50%;
-            margin-right: 10px;
-            transition: var(--transition);
-        }
-
-        .social-links a:hover {
-            background-color: var(--accent);
-            transform: translateY(-3px);
-        }
-
-        .copyright {
-            text-align: center;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            font-size: 0.9rem;
-            opacity: 0.7;
-        }
-
-        /* Responsive */
-        @media (max-width: 992px) {
-            .hero h1 {
-                font-size: 2.5rem;
-            }
-            
-            section {
-                padding: 60px 0;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .nav-links {
-                display: none;
-                position: absolute;
-                top: 100%;
-                left: 0;
-                width: 100%;
-                background-color: white;
-                flex-direction: column;
-                padding: 20px 0;
-                box-shadow: 0 10px 10px rgba(0, 0, 0, 0.1);
-            }
-
-            .nav-links.active {
-                display: flex;
-            }
-
-            .nav-links li {
-                margin: 0;
-                text-align: center;
-            }
-
-            .nav-links a {
-                display: block;
-                padding: 15px;
-            }
-
-            .mobile-menu-btn {
-                display: block;
-            }
-
-            .hero h1 {
-                font-size: 2rem;
-            }
-            
-            .hero p {
-                font-size: 1rem;
-            }
-            
-            .btn {
-                display: block;
-                margin-bottom: 10px;
-                width: 100%;
-                max-width: 250px;
-                margin-left: auto;
-                margin-right: auto;
-            }
-            
-            .btn-outline {
-                margin-left: 0;
-            }
-            
-            .newsletter-form {
-                flex-direction: column;
-            }
-            
-            .newsletter-form input {
-                border-radius: 5px;
-                margin-bottom: 10px;
-            }
-            
-            .newsletter-form button {
-                border-radius: 5px;
-                padding: 12px;
-            }
-        }
-
-        @media (max-width: 576px) {
-            .hero {
-                padding: 70px 0;
-            }
-            
-            .section-title h2 {
-                font-size: 2rem;
-            }
-            
-            .service-card, .contact-info, .contact-form {
-                padding: 30px 20px;
-            }
-        }
-    </style>
+  <!-- ===============================
+       META y ASSETS
+       =============================== -->
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>DarkLnes - Participante</title>
+
+  <!-- Chart.js (necesario para los gráficos) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* ===========================
+       VARIABLES CSS
+       =========================== */
+    :root {
+      --bg-primary: #0a0e27;
+      --bg-secondary: #1a1f3a;
+      --accent: #667eea;
+      --accent-hover: #764ba2;
+      --text-primary: #ffffff;
+      --text-secondary: #a0aec0;
+      --border: #2d3748;
+      --success: #48bb78;
+      --error: #f56565;
+      --primary: #7f00ff;
+    }
+
+    /* ===========================
+       RESET Y BASE
+       =========================== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, var(--bg-primary) 0%, #1a1f3a 100%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    /* ===========================
+       CONTAINER
+       =========================== */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* ===========================
+       HEADER
+       =========================== */
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding: 30px;
+      background: var(--bg-secondary);
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .header h1 {
+      font-size: 2.5em;
+      background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 1.1em;
+    }
+
+    /* ===========================
+       CONTENT BOX
+       =========================== */
+    .content-box {
+      background: var(--bg-secondary);
+      border-radius: 20px;
+      padding: 40px;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      border: 1px solid var(--border);
+    }
+
+    .content-box h2 {
+      color: var(--accent);
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 2em;
+    }
+
+    .content-box h3 {
+      color: var(--accent);
+      margin-bottom: 15px;
+      margin-top: 30px;
+      font-size: 1.3em;
+    }
+
+    .content-box h4 {
+      color: var(--accent);
+      margin-bottom: 15px;
+      font-size: 1.2em;
+    }
+
+    /* ===========================
+       FORM ELEMENTS
+       =========================== */
+    .form-box {
+      background: rgba(0,0,0,0.2);
+      padding: 30px;
+      border-radius: 15px;
+      border: 1px solid var(--border);
+    }
+
+    .form-group {
+      margin-bottom: 25px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 12px 15px;
+      background: var(--bg-primary);
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-primary);
+      font-size: 1em;
+      transition: all 0.3s ease;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-group input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    /* ===========================
+       TEST ITEMS
+       =========================== */
+    .test-item {
+      background: rgba(0,0,0,0.2);
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+      transition: all 0.3s ease;
+    }
+
+    .test-item:hover {
+      border-color: var(--accent);
+      background: rgba(102, 126, 234, 0.05);
+    }
+
+    .test-item p {
+      margin-bottom: 15px;
+      line-height: 1.6;
+    }
+
+    .opciones {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .opciones input[type="radio"] {
+      display: none;
+    }
+
+    .opciones label {
+      padding: 10px 20px;
+      background: var(--bg-primary);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 600;
+      min-width: 50px;
+      text-align: center;
+    }
+
+    .opciones label:hover {
+      border-color: var(--accent);
+      background: rgba(102, 126, 234, 0.1);
+    }
+
+    .opciones input[type="radio"]:checked + label {
+      background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+      border-color: var(--accent);
+      color: white;
+    }
+
+    /* ===========================
+       CONSENT BOX
+       =========================== */
+    .consent-box {
+      background: rgba(102, 126, 234, 0.1);
+      padding: 20px;
+      border-radius: 10px;
+      border-left: 4px solid var(--accent);
+      margin: 25px 0;
+    }
+
+    .consent-box h3 {
+      color: var(--accent);
+      margin-bottom: 10px;
+      margin-top: 0;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: flex-start;
+      gap: 15px;
+      cursor: pointer;
+      margin-top: 15px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      margin-top: 3px;
+      accent-color: var(--accent);
+    }
+
+    /* ===========================
+       BUTTONS
+       =========================== */
+    .btn-primary,
+    .btn-secondary {
+      padding: 15px 30px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-block;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+      color: white;
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.6);
+    }
+
+    .btn-secondary {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border: 2px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--accent);
+      background: rgba(102, 126, 234, 0.1);
+    }
+
+    .btn-primary:disabled,
+    .btn-secondary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ===========================
+       INSTRUCCIONES
+       =========================== */
+    .instrucciones {
+      background: rgba(102, 126, 234, 0.1);
+      padding: 20px;
+      border-radius: 10px;
+      border-left: 4px solid var(--accent);
+      margin-bottom: 25px;
+    }
+
+    .instrucciones h3 {
+      margin-top: 0;
+    }
+
+    .instrucciones ul {
+      margin-left: 20px;
+      margin-top: 10px;
+      line-height: 1.8;
+    }
+
+    /* ===========================
+       CAMERA CONTAINER
+       =========================== */
+    .camera-container {
+      text-align: center;
+      margin: 30px 0;
+    }
+
+    #video,
+    #preview-video {
+      max-width: 100%;
+      border-radius: 15px;
+      border: 2px solid var(--border);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      margin: 20px auto;
+      display: block;
+    }
+
+    #camera-placeholder {
+      padding: 100px;
+      background: var(--bg-primary);
+      border-radius: 15px;
+      border: 2px dashed var(--border);
+      margin: 20px 0;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    /* ===========================
+       RESULTADO BOX
+       =========================== */
+    .resultado-box {
+      background: rgba(0,0,0,0.2);
+      padding: 25px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+
+    /* ===========================
+       LOADING
+       =========================== */
+    .analisis-loading {
+      text-align: center;
+      padding: 40px;
+      font-size: 1.2em;
+      color: var(--accent);
+    }
+
+    /* ===========================
+       STATS & INFO GRIDS
+       =========================== */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .info-item {
+      background: rgba(0,0,0,0.2);
+      padding: 15px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .info-item strong {
+      color: var(--accent);
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .stats-mini {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .stat-mini {
+      background: rgba(0,0,0,0.3);
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+
+    .stat-mini-label {
+      color: var(--text-secondary);
+      font-size: 0.9em;
+      margin-bottom: 8px;
+    }
+
+    .stat-mini-value {
+      font-size: 1.8em;
+      font-weight: bold;
+      color: var(--accent);
+    }
+
+    /* ===========================
+       EMOTION BARS
+       =========================== */
+    .emotion-bar {
+      margin-bottom: 20px;
+    }
+
+    .emotion-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+    }
+
+    .bar-container {
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      height: 30px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .bar-fill {
+      background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      transition: width 0.5s ease;
+    }
+
+    /* ===========================
+       SCORES GRID (para resultados)
+       =========================== */
+    .scores-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 25px;
+      margin-top: 30px;
+    }
+
+    .score-card {
+      background: rgba(0,0,0,0.3);
+      padding: 30px;
+      border-radius: 15px;
+      border: 2px solid var(--border);
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .score-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-5px);
+    }
+
+    .score-icon {
+      font-size: 3em;
+      display: block;
+      margin-bottom: 15px;
+    }
+
+    .score-label {
+      color: var(--text-secondary);
+      font-size: 1.1em;
+      margin-bottom: 10px;
+    }
+
+    .score-value {
+      font-size: 3em;
+      font-weight: bold;
+      color: var(--accent);
+      margin: 15px 0;
+    }
+
+    .progress-bar {
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      height: 8px;
+      overflow: hidden;
+      margin: 15px 0;
+    }
+
+    .progress-fill {
+      background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+      height: 100%;
+      transition: width 0.5s ease;
+    }
+
+    .score-level {
+      display: inline-block;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.9em;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    .nivel-bajo {
+      background: rgba(76, 175, 80, 0.2);
+      color: #4CAF50;
+      border: 1px solid #4CAF50;
+    }
+
+    .nivel-medio {
+      background: rgba(255, 206, 86, 0.2);
+      color: #ffce56;
+      border: 1px solid #ffce56;
+    }
+
+    .nivel-alto {
+      background: rgba(255, 99, 132, 0.2);
+      color: #ff6384;
+      border: 1px solid #ff6384;
+    }
+
+    /* ===========================
+       HIDDEN CLASS
+       =========================== */
+    .hidden {
+      display: none !important;
+    }
+
+    /* ===========================
+       ESTILOS PÁGINA INICIAL
+       =========================== */
+    .page-inicio {
+      text-align: center;
+    }
+
+    .page-inicio h1 {
+      font-size: 3em;
+      margin-bottom: 0.1em;
+      background: linear-gradient(135deg, #c080ff 0%, #7f00ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 800;
+    }
+
+    .page-inicio h2 {
+      font-weight: 400;
+      color: #c080ff;
+      margin-top: 0;
+      margin-bottom: 1em;
+      font-size: 1.3em;
+    }
+
+    .page-inicio p {
+      font-size: 1.05em;
+      line-height: 1.8;
+      margin-bottom: 20px;
+      color: #d0d0ff;
+    }
+
+    .page-inicio h3 {
+      color: #c080ff;
+      font-size: 1.5em;
+      margin-top: 30px;
+      margin-bottom: 15px;
+    }
+
+    .page-inicio ol, .page-inicio ul {
+      margin-left: 25px;
+      text-align: left;
+      color: #d0d0ff;
+      line-height: 1.8;
+      margin-bottom: 30px;
+    }
+
+    .page-inicio ol li, .page-inicio ul li {
+      margin-bottom: 12px;
+    }
+
+    /* BOTONES EN CUADRADOS */
+    .buttons-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 30px;
+      margin: 40px 0;
+    }
+
+    .btn-card {
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+      border: 2px solid rgba(192, 128, 255, 0.4);
+      border-radius: 15px;
+      padding: 40px 30px;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(127, 0, 255, 0.5);
+      border-color: #7f00ff;
+    }
+
+    .btn-card h3 {
+      margin: 0 0 15px 0;
+      font-size: 1.8em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      color: #c080ff;
+    }
+
+    .btn-card p {
+      margin: 0 0 20px 0;
+      font-size: 1em;
+      color: #b0a0ff;
+    }
+
+    /* SVG ICONS ANIMADOS */
+    .icon-svg {
+      width: 60px;
+      height: 60px;
+      animation: iconFloat 3s ease-in-out infinite;
+    }
+
+    @keyframes iconFloat {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .btn-card:hover .icon-svg {
+      animation: iconBounce 0.6s ease-in-out;
+    }
+
+    @keyframes iconBounce {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      25% { transform: translateY(-15px) rotate(-5deg); }
+      75% { transform: translateY(-15px) rotate(5deg); }
+    }
+
+    /* Animación del líquido del tubo de ensayo */
+    .liquid {
+      animation: liquidBubble 2s ease-in-out infinite;
+    }
+
+    @keyframes liquidBubble {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-2px); }
+    }
+
+    .btn-card .btn-primary {
+      padding: 15px 40px;
+      font-size: 1.1em;
+      border-radius: 30px;
+      cursor: pointer;
+      font-weight: 600;
+      border: none;
+      color: white;
+      background: linear-gradient(135deg, #7f00ff 0%, #6c63ff 100%);
+      box-shadow: 0 4px 15px rgba(127, 0, 255, 0.4);
+      transition: all 0.3s;
+      display: inline-block;
+      text-decoration: none;
+      margin: 0;
+    }
+
+    .btn-card .btn-primary:hover {
+      background: linear-gradient(135deg, #9000ff 0%, #7c73ff 100%);
+      box-shadow: 0 6px 20px rgba(127, 0, 255, 0.6);
+      transform: translateY(-3px);
+    }
+
+    .btn-investigador {
+      background: linear-gradient(135deg, #ff6384 0%, #ff4757 100%) !important;
+      box-shadow: 0 4px 15px rgba(255, 99, 132, 0.4) !important;
+    }
+
+    .btn-investigador:hover {
+      background: linear-gradient(135deg, #ff7394 0%, #ff5767 100%) !important;
+      box-shadow: 0 6px 20px rgba(255, 99, 132, 0.6) !important;
+    }
+
+    /* ===========================
+       RESPONSIVE
+       =========================== */
+    @media (max-width: 768px) {
+      .header h1 {
+        font-size: 1.8em;
+      }
+
+      .content-box {
+        padding: 25px;
+      }
+
+      .form-box {
+        padding: 20px;
+      }
+
+      .button-group {
+        flex-direction: column;
+      }
+
+      .btn-primary,
+      .btn-secondary {
+        width: 100%;
+      }
+
+      .opciones {
+        flex-direction: column;
+      }
+
+      .opciones label {
+        width: 100%;
+      }
+
+      #camera-placeholder {
+        padding: 50px 20px;
+      }
+    }
+
+    /* ===========================
+       CANVAS CHARTS
+       =========================== */
+    canvas {
+      display: block;
+      margin: 20px auto;
+    }
+
+    #grafico-container {
+      text-align: center;
+      padding: 20px;
+    }
+
+    /* ===========================
+       NUEVOS ESTILOS PARA VIDEO
+       =========================== */
+    #progress-container {
+      margin-top: 20px;
+    }
+
+    #progress-bar {
+      background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+      height: 100%;
+      width: 0%;
+      transition: width 0.1s;
+      border-radius: 4px;
+    }
+
+    #audio-container {
+      margin-top: 20px;
+      text-align: left;
+    }
+
+    #texto-historia {
+      background: rgba(127, 0, 255, 0.1);
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 15px;
+      text-align: left;
+      max-height: 300px;
+      overflow-y: auto;
+      font-size: 1.1em;
+      line-height: 1.6;
+    }
+
+    #texto-historia strong {
+      color: var(--accent);
+      display: block;
+      margin-bottom: 10px;
+      font-size: 1.2em;
+    }
+
+    #texto-historia p {
+      margin: 15px 0;
+      text-align: justify;
+    }
+
+    #info-video {
+      margin-top: 15px;
+      color: var(--text-secondary);
+    }
+  </style>
 </head>
 <body>
-    <!-- Header y Navegación -->
-    <header>
-        <div class="container">
-            <nav class="navbar">
-                <a href="#" class="logo"><i class="fas fa-rocket"></i>MiSitio</a>
-                
-                <ul class="nav-links">
-                    <li><a href="#inicio">Inicio</a></li>
-                    <li><a href="#servicios">Servicios</a></li>
-                    <li><a href="#nosotros">Nosotros</a></li>
-                    <li><a href="#contacto">Contacto</a></li>
-                </ul>
-                
-                <button class="mobile-menu-btn">
-                    <i class="fas fa-bars"></i>
-                </button>
-            </nav>
-        </div>
+  <div class="container">
+
+    <!-- ===============================
+         HEADER
+         =============================== -->
+    <header class="header">
+      <h1>DarkLens APP</h1>
+      <p class="subtitle">Investigación en microexpresiones y rasgos de personalidad</p>
     </header>
 
-    <!-- Hero Section -->
-    <section class="hero" id="inicio">
-        <div class="container">
-            <h1>Soluciones Digitales con Supabase</h1>
-            <p>Ahora todos los datos del formulario se guardan automáticamente en Supabase. Prueba enviar un mensaje o suscribirte al newsletter.</p>
-            <a href="#contacto" class="btn">Enviar Mensaje</a>
-            <a href="#servicios" class="btn btn-outline">Nuestros Servicios</a>
+    <!-- ===============================
+         PÁGINA DE INICIO
+         =============================== -->
+    <section id="pagina-inicio" class="content-box page-inicio">
+      <h1>DARKLENS</h1>
+      <h2>Explorador de rasgos de personalidad oscura mediante análisis de microexpresiones</h2>
+
+      <p><strong>Proyecto de investigación académica - Universidad del Gran Rosario (UGR)</strong></p>
+
+      <section>
+        <h3>📚 Sobre el Proyecto</h3>
+        <p>
+          DARKLENS es una herramienta experimental diseñada para explorar rasgos de personalidad oscura mediante el análisis automatizado de microexpresiones faciales. Esta investigación forma parte de la <strong>Licenciatura en Ciencia de Datos</strong> de la <strong>Universidad del Gran Rosario (UGR)</strong>.
+        </p>
+        <p>
+          El sistema utiliza modelos de inteligencia artificial entrenados para detectar emociones sutiles en expresiones faciales y relacionarlas con dimensiones de la tríada oscura de la personalidad (maquiavelismo, narcisismo y psicopatía subclínica).
+        </p>
+      </section>
+
+      <!-- BOTONES EN CUADRADOS -->
+      <div class="buttons-grid">
+        <!-- PARTICIPANTE -->
+        <div class="btn-card" id="card-participante">
+          <h3>
+            <!-- TUBO DE ENSAYO SVG -->
+            <svg class="icon-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+              <path d="M20 8 L20 50 Q20 56 26 56 L38 56 Q44 56 44 50 L44 8 Z" 
+                    fill="none" stroke="#c080ff" stroke-width="2.5" opacity="0.8"/>
+              <path class="liquid" d="M21 35 L21 50 Q21 55 26 55 L38 55 Q43 55 43 50 L43 35 Z" 
+                    fill="url(#liquidGradient)" opacity="0.7"/>
+              <circle cx="28" cy="45" r="2" fill="#ffffff" opacity="0.4">
+                <animate attributeName="cy" values="45;30;45" dur="3s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.4;0;0.4" dur="3s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="36" cy="48" r="1.5" fill="#ffffff" opacity="0.3">
+                <animate attributeName="cy" values="48;33;48" dur="4s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.3;0;0.3" dur="4s" repeatCount="indefinite"/>
+              </circle>
+              <rect x="18" y="5" width="28" height="4" rx="2" fill="#7f00ff" opacity="0.9"/>
+              <path d="M23 10 L23 50" stroke="#ffffff" stroke-width="1.5" opacity="0.2"/>
+              <defs>
+                <linearGradient id="liquidGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" style="stop-color:#a040ff;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#7f00ff;stop-opacity:1" />
+                </linearGradient>
+              </defs>
+            </svg>
+            Participar
+          </h3>
+          <p>Respondé el test SD3 y grabá tu video para contribuír a la investigación académica.</p>
+          <button class="btn-primary">Ir a la Aplicación</button>
         </div>
+
+        <!-- INVESTIGADOR -->
+        <div class="btn-card" id="card-investigador">
+          <h3>
+            <!-- MICROSCOPIO SVG -->
+            <svg class="icon-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+              <rect x="20" y="54" width="24" height="4" rx="2" fill="#7f00ff"/>
+              <path d="M32 54 L32 35 L38 25 L38 15" stroke="#c080ff" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <circle cx="38" cy="12" r="5" fill="none" stroke="#a040ff" stroke-width="2.5"/>
+              <circle cx="38" cy="12" r="3" fill="#7f00ff" opacity="0.3">
+                <animate attributeName="opacity" values="0.3;0.6;0.3" dur="2s" repeatCount="indefinite"/>
+              </circle>
+              <rect x="25" y="32" width="14" height="3" rx="1" fill="#c080ff"/>
+              <circle cx="32" cy="40" r="4" fill="#7f00ff"/>
+              <circle cx="32" cy="40" r="2.5" fill="#a040ff"/>
+              <circle cx="42" cy="35" r="2" fill="#c080ff"/>
+              <circle cx="42" cy="40" r="2" fill="#c080ff"/>
+              <circle cx="32" cy="30" r="1.5" fill="#ffff00" opacity="0.8">
+                <animate attributeName="opacity" values="0.8;0.3;0.8" dur="1.5s" repeatCount="indefinite"/>
+              </circle>
+            </svg>
+            Investigadores
+          </h3>
+          <p>Acceso restringido para visualizar y analizar los resultados de la investigación.</p>
+          <button class="btn-primary btn-investigador">Acceso Restringido</button>
+        </div>
+      </div>
+
+      <section>
+        <h3>🔬 Metodología</h3>
+        <ol>
+          <li><strong>Test SD3:</strong> El participante responde el cuestionario de personalidad oscura.</li>
+          <li><strong>Grabación de Video:</strong> Se graba un video de 15 segundos mientras el participante procesa una historia.</li>
+          <li><strong>Análisis Automático:</strong> Un modelo de deep learning analiza las microexpresiones en cada frame del video.</li>
+          <li><strong>Correlaciones:</strong> Los resultados se correlacionan con los rasgos de personalidad SD3.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h3>⚖️ Consideraciones Éticas</h3>
+        <ul>
+          <li><strong>Consentimiento informado:</strong> Todos los participantes aceptan voluntariamente los términos antes de comenzar.</li>
+          <li><strong>Anonimato:</strong> Los datos personales se tratan de forma confidencial y no permiten identificación individual.</li>
+          <li><strong>Uso académico:</strong> Toda la información recopilada se utiliza exclusivamente con fines de investigación.</li>
+          <li><strong>No diagnóstico:</strong> Esta herramienta <em>NO</em> sustituye evaluaciones psicológicas profesionales.</li>
+        </ul>
+      </section>
+
+      <footer style="margin-top: 40px; font-size: 0.9em; color: #c080ff;">
+        <p>Proyecto desarrollado en la Licenciatura en Ciencia de Datos - Universidad del Gran Rosario (UGR) - 2024/2025</p>
+        <p>© 2025 DARKLENS - Todos los derechos reservados</p>
+        <p>Universidad del Gran Rosario | Licenciatura en Ciencia de Datos</p>
+      </footer>
     </section>
 
-    <!-- Servicios -->
-    <section id="servicios">
-        <div class="container">
-            <div class="section-title">
-                <h2>Nuestros Servicios</h2>
-                <p>Ofrecemos una amplia gama de servicios digitales diseñados para llevar tu negocio al siguiente nivel.</p>
-            </div>
-            
-            <div class="services-grid">
-                <div class="service-card">
-                    <div class="service-icon">
-                        <i class="fas fa-code"></i>
-                    </div>
-                    <h3>Desarrollo Web</h3>
-                    <p>Creamos sitios web modernos, responsive y optimizados para motores de búsqueda que ofrecen una experiencia de usuario excepcional.</p>
-                </div>
-                
-                <div class="service-card">
-                    <div class="service-icon">
-                        <i class="fas fa-database"></i>
-                    </div>
-                    <h3>Integración Supabase</h3>
-                    <p>Implementamos bases de datos en tiempo real con Supabase para almacenar y gestionar datos de usuarios, formularios y aplicaciones.</p>
-                </div>
-                
-                <div class="service-card">
-                    <div class="service-icon">
-                        <i class="fas fa-chart-line"></i>
-                    </div>
-                    <h3>Marketing Digital</h3>
-                    <p>Desarrollamos estrategias de marketing digital personalizadas para aumentar tu visibilidad y atraer más clientes.</p>
-                </div>
-            </div>
+    <!-- ===============================
+         SECCIÓN 1: BIENVENIDA / DATOS PARTICIPANTE
+         =============================== -->
+    <section id="seccion-bienvenida" class="content-box hidden">
+      <h2>Antes de comenzar</h2>
+      <p class="subtitle" style="text-align:center; margin-bottom:20px;">
+        Completa tus datos y aceptá el consentimiento para continuar con el test.
+      </p>
+
+      <form id="form-datos-basicos" class="form-box" autocomplete="off">
+        <div class="form-group">
+          <label for="nombre">Nombre completo</label>
+          <input id="nombre" name="nombre" type="text" placeholder="Tu nombre" required />
         </div>
+
+        <div class="form-group">
+          <label for="edad">Edad</label>
+          <input id="edad" name="edad" type="number" min="14" max="120" placeholder="Ej: 28" required />
+        </div>
+
+        <div class="form-group">
+          <label for="genero">Género</label>
+          <select id="genero" name="genero" required>
+            <option value="">-- Seleccioná tu género --</option>
+            <option value="femenino">Femenino</option>
+            <option value="masculino">Masculino</option>
+            <option value="no-binario">No binario</option>
+            <option value="otro">Otro / Prefiero no decir</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="pais">País</label>
+          <input id="pais" name="pais" type="text" placeholder="Ej: Argentina" required />
+        </div>
+
+        <div class="consent-box">
+          <h3>Consentimiento informado</h3>
+          <p style="color:var(--text-secondary);">
+            Acepto participar en esta investigación. Comprendo que los datos serán almacenados de forma segura y utilizados sólo con fines académicos.
+          </p>
+
+          <label class="checkbox-group" for="consentimiento">
+            <input id="consentimiento" name="consentimiento" type="checkbox" />
+            <div style="display:flex; flex-direction:column;">
+              <strong>Acepto el consentimiento</strong>
+              <small style="color:var(--text-secondary);">Podés abandonar el estudio en cualquier momento.</small>
+            </div>
+          </label>
+        </div>
+
+        <div style="text-align:center; margin-top: 10px;">
+          <button type="submit" class="btn-primary">Iniciar test</button>
+        </div>
+      </form>
     </section>
 
-    <!-- Sobre Nosotros -->
-    <section id="nosotros" style="background-color: #f0f4f8;">
-        <div class="container">
-            <div class="section-title">
-                <h2>Sobre Nosotros</h2>
-                <p>Conoce más sobre nuestra empresa, misión y valores.</p>
-            </div>
-            
-            <div class="about-content">
-                <div class="about-img">
-                    <img src="https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80" alt="Equipo de trabajo">
-                </div>
-                
-                <div class="about-text">
-                    <h3>Innovación y Experiencia en Soluciones Digitales</h3>
-                    <p>Somos un equipo de profesionales apasionados por la tecnología y comprometidos con el éxito de nuestros clientes. Con más de 10 años de experiencia en el sector, hemos ayudado a más de 200 empresas a transformar sus negocios digitalmente.</p>
-                    
-                    <div class="features">
-                        <div class="feature">
-                            <i class="fas fa-check-circle"></i>
-                            <div>
-                                <h4>Integración con Supabase</h4>
-                                <p>Todos los datos de formularios se guardan automáticamente en la nube.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="feature">
-                            <i class="fas fa-check-circle"></i>
-                            <div>
-                                <h4>Tecnología de Vanguardia</h4>
-                                <p>Utilizamos las últimas herramientas y frameworks del mercado.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="feature">
-                            <i class="fas fa-check-circle"></i>
-                            <div>
-                                <h4>Soporte Continuo</h4>
-                                <p>Acompañamos a nuestros clientes en cada etapa del proceso.</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <a href="#contacto" class="btn" style="margin-top: 20px;">Contáctanos</a>
-                </div>
-            </div>
-        </div>
+    <!-- ===============================
+         SECCIÓN 2: TEST SD3
+         =============================== -->
+    <section id="seccion-test" class="content-box hidden">
+      <h2>Test SD3</h2>
+      <p class="subtitle" style="text-align:center; margin-bottom:10px;">
+        Respondé cada ítem según lo que mejor describe tus actitudes. (Escala 1 a 5)
+      </p>
+
+      <form id="form-sd3" class="form-box"></form>
     </section>
 
-    <!-- Contacto -->
-    <section id="contacto">
-        <div class="container">
-            <div class="section-title">
-                <h2>Contáctanos</h2>
-                <p>¿Tienes un proyecto en mente? Estamos aquí para ayudarte. Todos los mensajes se guardan en Supabase.</p>
-            </div>
-            
-            <div class="contact-container">
-                <div class="contact-info">
-                    <h3>Información de Contacto</h3>
-                    
-                    <div class="contact-item">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <div>
-                            <h4>Dirección</h4>
-                            <p>Calle Principal 123, Ciudad, País</p>
-                        </div>
-                    </div>
-                    
-                    <div class="contact-item">
-                        <i class="fas fa-phone"></i>
-                        <div>
-                            <h4>Teléfono</h4>
-                            <p>+1 (234) 567-8900</p>
-                        </div>
-                    </div>
-                    
-                    <div class="contact-item">
-                        <i class="fas fa-envelope"></i>
-                        <div>
-                            <h4>Email</h4>
-                            <p>info@misitio.com</p>
-                        </div>
-                    </div>
-                    
-                    <div class="contact-item">
-                        <i class="fas fa-database"></i>
-                        <div>
-                            <h4>Base de Datos</h4>
-                            <p>Datos guardados en Supabase</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="contact-form">
-                    <h3>Envíanos un Mensaje</h3>
-                    <div id="contactMessage" class="message"></div>
-                    
-                    <form id="contactForm">
-                        <div class="form-group">
-                            <label for="name">Nombre Completo</label>
-                            <input type="text" id="name" class="form-control" placeholder="Tu nombre" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="email">Correo Electrónico</label>
-                            <input type="email" id="email" class="form-control" placeholder="tu@email.com" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="subject">Asunto</label>
-                            <input type="text" id="subject" class="form-control" placeholder="Asunto del mensaje" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="message">Mensaje</label>
-                            <textarea id="message" class="form-control" placeholder="Describe tu proyecto o consulta..." required></textarea>
-                        </div>
-                        
-                        <button type="submit" class="btn" style="width: 100%;" id="contactSubmit">
-                            <span id="contactBtnText">Enviar Mensaje</span>
-                            <span id="contactSpinner" style="display: none;">
-                                <i class="fas fa-spinner fa-spin"></i> Enviando...
-                            </span>
-                        </button>
-                    </form>
-                </div>
-            </div>
+    <!-- ===============================
+         SECCIÓN 3: GRABACIÓN DE VIDEO
+         =============================== -->
+    <section id="seccion-micro" class="content-box hidden">
+      <h2>Grabación de Video</h2>
+      <p class="subtitle" style="text-align:center; margin-bottom:20px;">
+        Grabarás un video de 15 segundos mientras procesás una historia
+      </p>
+
+      <div class="instrucciones">
+        <h3>📌 Instrucciones IMPORTANTES</h3>
+        <ul>
+          <li><strong>Mira de frente a la cámara</strong> durante toda la grabación</li>
+          <li><strong>Lee atentamente</strong> la historia que aparecerá en pantalla</li>
+          <li><strong style="color: #ff6384;">PERMANECE EN SILENCIO - NO HABLES</strong> durante la grabación</li>
+          <li><strong>Piensa en la historia</strong> y cómo te haría sentir</li>
+          <li><strong>Mantén expresiones naturales</strong> - queremos captar tus reacciones faciales espontáneas</li>
+          <li>El video durará 15 segundos automáticamente</li>
+        </ul>
+      </div>
+
+      <div class="camera-container">
+        <video id="video" autoplay playsinline muted class="hidden"></video>
+        <div id="camera-placeholder">
+          <p style="color:var(--text-secondary);">La cámara está desactivada.</p>
         </div>
+
+        <!-- Controles de video -->
+        <div class="button-group">
+          <button id="btn-activar-camara" class="btn-primary">Activar cámara</button>
+          <button id="btn-iniciar-grabacion" class="btn-primary hidden">Iniciar Grabación</button>
+          <button id="btn-detener-grabacion" class="btn-secondary hidden">Detener Grabación</button>
+        </div>
+
+        <!-- Historia para leer -->
+        <div id="audio-container" class="hidden" style="margin-top: 20px;">
+          <h4 style="text-align: center; color: var(--accent);">📖 Historia para Leer</h4>
+          <div id="texto-historia" style="background: rgba(127, 0, 255, 0.1); padding: 20px; border-radius: 10px; margin-top: 15px; text-align: left; max-height: 300px; overflow-y: auto;">
+            <p style="text-align: center; color: var(--text-secondary); font-style: italic;">
+              La historia se cargará según tus respuestas al test SD3...
+            </p>
+          </div>
+        </div>
+
+        <!-- Progress bar para la grabación -->
+        <div id="progress-container" class="hidden" style="margin-top: 20px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+            <span>Tiempo de grabación:</span>
+            <span id="tiempo-grabacion">0s</span>
+          </div>
+          <div style="background: var(--bg-primary); height: 8px; border-radius: 4px; overflow: hidden;">
+            <div id="progress-bar"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vista previa del video grabado -->
+      <div id="preview-container" class="content-box hidden" style="text-align:center;">
+        <h3>🎥 Video grabado</h3>
+        <video id="preview-video" controls style="max-width:100%; border-radius:15px; border:2px solid var(--border); margin-top:20px;"></video>
+        <div id="info-video" style="margin-top: 15px; color: var(--text-secondary);"></div>
+      </div>
+
+      <div id="resultado-micro" class="hidden"></div>
+
+      <div style="text-align:center; margin-top:20px;">
+        <button id="btn-subir-video" class="btn-primary hidden">📤 Subir Video y Analizar</button>
+      </div>
     </section>
 
-    <!-- Footer -->
-    <footer>
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-about">
-                    <a href="#" class="footer-logo"><i class="fas fa-rocket"></i>MiSitio</a>
-                    <p>Somos una empresa dedicada a ofrecer soluciones digitales innovadoras que impulsan el crecimiento de tu negocio.</p>
-                    
-                    <div class="social-links">
-                        <a href="#"><i class="fab fa-facebook-f"></i></a>
-                        <a href="#"><i class="fab fa-twitter"></i></a>
-                        <a href="#"><i class="fab fa-instagram"></i></a>
-                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
-                    </div>
-                </div>
-                
-                <div class="footer-links">
-                    <h3>Enlaces Rápidos</h3>
-                    <ul>
-                        <li><a href="#inicio">Inicio</a></li>
-                        <li><a href="#servicios">Servicios</a></li>
-                        <li><a href="#nosotros">Sobre Nosotros</a></li>
-                        <li><a href="#contacto">Contacto</a></li>
-                    </ul>
-                </div>
-                
-                <div class="footer-newsletter">
-                    <h3>Newsletter</h3>
-                    <p>Suscríbete para recibir noticias y ofertas exclusivas. Los emails se guardan en Supabase.</p>
-                    
-                    <div id="newsletterMessage" class="message"></div>
-                    
-                    <form class="newsletter-form" id="newsletterForm">
-                        <input type="email" id="newsletterEmail" placeholder="Tu correo electrónico" required>
-                        <button type="submit" id="newsletterSubmit">
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
-                    </form>
-                </div>
-            </div>
-            
-            <div class="copyright">
-                <p>&copy; 2023 MiSitio. Todos los derechos reservados. | Datos guardados en Supabase</p>
-            </div>
-        </div>
-    </footer>
+    <!-- ===============================
+         SECCIÓN 4: LOGIN INVESTIGADOR
+         =============================== -->
+    <section id="seccion-login" class="content-box hidden">
+      <h2>Panel del Investigador</h2>
+      <p class="subtitle" style="text-align:center;">
+        Acceso restringido solo al equipo de investigación
+      </p>
+      <div class="form-group">
+        <label for="password-investigador">Contraseña</label>
+        <input type="password" id="password-investigador" placeholder="Ingresá la contraseña">
+      </div>
+      <div style="text-align:center;">
+        <button id="btn-login-investigador" class="btn-primary">Acceder</button>
+        <button id="btn-volver-inicio-2" class="btn-secondary" style="margin-top:20px;">
+          Volver al inicio
+        </button>
+      </div>
+    </section>
 
-    <script>
-        // ============================================
-        // CONFIGURACIÓN DE SUPABASE
-        // ============================================
-        // REEMPLAZA ESTOS VALORES CON TUS PROPIAS CREDENCIALES
-        URL: 'https://cdhndtzuwtmvhiulvzbp.supabase.co',
-        ANON_KEY: 'sb_publishable_mzTN7UGk3aZJ8b3Zxf_44g_gK5kaJlV'
-        
-        // Inicializar cliente de Supabase
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        
-        // ============================================
-        // FUNCIONES DE LA PÁGINA
-        // ============================================
-        
-        // Menú móvil
-        const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
-        const navLinks = document.querySelector('.nav-links');
-        
-        mobileMenuBtn.addEventListener('click', () => {
-            navLinks.classList.toggle('active');
-            mobileMenuBtn.innerHTML = navLinks.classList.contains('active') 
-                ? '<i class="fas fa-times"></i>' 
-                : '<i class="fas fa-bars"></i>';
-        });
-        
-        // Cerrar menú al hacer clic en un enlace
-        document.querySelectorAll('.nav-links a').forEach(link => {
-            link.addEventListener('click', () => {
-                navLinks.classList.remove('active');
-                mobileMenuBtn.innerHTML = '<i class="fas fa-bars"></i>';
-            });
-        });
-        
-        // ============================================
-        // FUNCIONES PARA SUPABASE
-        // ============================================
-        
-        // Función para guardar mensaje de contacto en Supabase
-        async function saveContactMessage(name, email, subject, message) {
-            try {
-                const { data, error } = await supabaseClient
-                    .from('contact_messages')
-                    .insert([
-                        { 
-                            name: name,
-                            email: email,
-                            subject: subject,
-                            message: message
-                        }
-                    ]);
-                
-                if (error) throw error;
-                return { success: true, data: data };
-            } catch (error) {
-                console.error('Error guardando mensaje de contacto:', error);
-                return { success: false, error: error.message };
-            }
-        }
-        
-        // Función para guardar suscriptor de newsletter en Supabase
-        async function saveNewsletterSubscriber(email) {
-            try {
-                const { data, error } = await supabaseClient
-                    .from('newsletter_subscribers')
-                    .insert([
-                        { email: email }
-                    ]);
-                
-                if (error) throw error;
-                return { success: true, data: data };
-            } catch (error) {
-                console.error('Error guardando suscriptor:', error);
-                return { success: false, error: error.message };
-            }
-        }
-        
-        // Función para verificar si un email ya está suscrito
-        async function checkExistingSubscriber(email) {
-            try {
-                const { data, error } = await supabaseClient
-                    .from('newsletter_subscribers')
-                    .select('email')
-                    .eq('email', email);
-                
-                if (error) throw error;
-                return { exists: data.length > 0, data: data };
-            } catch (error) {
-                console.error('Error verificando suscriptor:', error);
-                return { exists: false, error: error.message };
-            }
-        }
-        
-        // ============================================
-        // MANEJADORES DE FORMULARIOS
-        // ============================================
-        
-        // Formulario de contacto
-        document.getElementById('contactForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            // Obtener elementos del DOM
-            const name = document.getElementById('name').value;
-            const email = document.getElementById('email').value;
-            const subject = document.getElementById('subject').value;
-            const message = document.getElementById('message').value;
-            const contactMessage = document.getElementById('contactMessage');
-            const contactBtnText = document.getElementById('contactBtnText');
-            const contactSpinner = document.getElementById('contactSpinner');
-            const contactSubmit = document.getElementById('contactSubmit');
-            
-            // Validar campos
-            if (!name || !email || !subject || !message) {
-                contactMessage.textContent = 'Por favor, completa todos los campos.';
-                contactMessage.className = 'message error';
-                return;
-            }
-            
-            // Mostrar estado de carga
-            contactBtnText.style.display = 'none';
-            contactSpinner.style.display = 'inline';
-            contactSubmit.disabled = true;
-            
-            // Guardar en Supabase
-            const result = await saveContactMessage(name, email, subject, message);
-            
-            // Restaurar botón
-            contactBtnText.style.display = 'inline';
-            contactSpinner.style.display = 'none';
-            contactSubmit.disabled = false;
-            
-            // Mostrar resultado
-            if (result.success) {
-                contactMessage.textContent = '¡Mensaje enviado con éxito! Los datos han sido guardados en Supabase.';
-                contactMessage.className = 'message success';
-                document.getElementById('contactForm').reset();
-                
-                // Ocultar mensaje después de 5 segundos
-                setTimeout(() => {
-                    contactMessage.style.display = 'none';
-                }, 5000);
-            } else {
-                contactMessage.textContent = `Error: ${result.error}`;
-                contactMessage.className = 'message error';
-            }
-        });
-        
-        // Formulario de newsletter
-        document.getElementById('newsletterForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            // Obtener elementos del DOM
-            const email = document.getElementById('newsletterEmail').value;
-            const newsletterMessage = document.getElementById('newsletterMessage');
-            const newsletterSubmit = document.getElementById('newsletterSubmit');
-            
-            // Validar email
-            if (!email) {
-                newsletterMessage.textContent = 'Por favor, ingresa tu dirección de email.';
-                newsletterMessage.className = 'message error';
-                return;
-            }
-            
-            // Validar formato de email
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
-                newsletterMessage.textContent = 'Por favor, ingresa un email válido.';
-                newsletterMessage.className = 'message error';
-                return;
-            }
-            
-            // Mostrar estado de carga
-            newsletterSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            newsletterSubmit.disabled = true;
-            
-            // Verificar si el email ya está registrado
-            const checkResult = await checkExistingSubscriber(email);
-            
-            if (checkResult.exists) {
-                newsletterMessage.textContent = 'Este email ya está suscrito a nuestro newsletter.';
-                newsletterMessage.className = 'message info';
-                newsletterSubmit.innerHTML = '<i class="fas fa-paper-plane"></i>';
-                newsletterSubmit.disabled = false;
-                return;
-            }
-            
-            // Guardar en Supabase
-            const result = await saveNewsletterSubscriber(email);
-            
-            // Restaurar botón
-            newsletterSubmit.innerHTML = '<i class="fas fa-paper-plane"></i>';
-            newsletterSubmit.disabled = false;
-            
-            // Mostrar resultado
-            if (result.success) {
-                newsletterMessage.textContent = '¡Gracias por suscribirte! Tu email ha sido guardado en Supabase.';
-                newsletterMessage.className = 'message success';
-                document.getElementById('newsletterForm').reset();
-                
-                // Ocultar mensaje después de 5 segundos
-                setTimeout(() => {
-                    newsletterMessage.style.display = 'none';
-                }, 5000);
-            } else {
-                newsletterMessage.textContent = `Error: ${result.error}`;
-                newsletterMessage.className = 'message error';
-            }
-        });
-        
-        // ============================================
-        // FUNCIONES ADICIONALES
-        // ============================================
-        
-        // Smooth scroll para enlaces internos
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function(e) {
-                e.preventDefault();
-                
-                const targetId = this.getAttribute('href');
-                if(targetId === '#') return;
-                
-                const targetElement = document.querySelector(targetId);
-                if(targetElement) {
-                    window.scrollTo({
-                        top: targetElement.offsetTop - 80,
-                        behavior: 'smooth'
-                    });
-                }
-            });
-        });
-        
-        // Mostrar mensaje de configuración si no se han configurado las credenciales
-        window.addEventListener('load', function() {
-            if (SUPABASE_URL.includes('https://cdhndtzuwtmvhiulvzbp.supabase.co') || SUPABASE_ANON_KEY.includes('sb_publishable_mzTN7UGk3aZJ8b3Zxf_44g_gK5kaJlV')) {
-                const configMessage = document.createElement('div');
-                configMessage.style.cssText = `
-                    position: fixed;
-                    top: 10px;
-                    right: 10px;
-                    background-color: #ffc107;
-                    color: #333;
-                    padding: 15px;
-                    border-radius: 5px;
-                    z-index: 9999;
-                    max-width: 400px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                    font-weight: bold;
-                `;
-                configMessage.innerHTML = `
-                    <p>⚠️ Configura Supabase:</p>
-                    <ol style="margin: 10px 0; padding-left: 20px;">
-                        <li>Reemplaza SUPABASE_URL y SUPABASE_ANON_KEY en el código</li>
-                        <li>Crea las tablas en Supabase con el SQL proporcionado</li>
-                    </ol>
-                    <button onclick="this.parentElement.style.display='none'" 
-                            style="background: #333; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">
-                        Cerrar
-                    </button>
-                `;
-                document.body.appendChild(configMessage);
-            }
-        });
-    </script>
+    <!-- ===============================
+         SECCIÓN 5: PANEL INVESTIGADOR
+         =============================== -->
+    <section id="seccion-investigador" class="content-box hidden">
+      <h2>Listado de Participantes</h2>
+      <p class="subtitle" style="text-align:center; margin-bottom:25px;">
+        Seleccioná un participante para ver los resultados completos
+      </p>
+      <div id="lista-participantes" class="content-box" 
+           style="background:rgba(0,0,0,0.25); max-height:500px; overflow-y:auto;">
+        <p style="text-align:center; color:var(--text-secondary);">
+          Cargando datos...
+        </p>
+      </div>
+      <div style="text-align:center; margin-top:30px;">
+        <button id="btn-volver-login" class="btn-secondary">Salir del panel</button>
+      </div>
+    </section>
+
+    <!-- ===============================
+         SECCIÓN 6: RESULTADOS DETALLADOS (SOLO INVESTIGADOR)
+         =============================== -->
+    <section id="seccion-resultados" class="content-box hidden">
+      <h2>Resultados del Participante</h2>
+      
+      <h3>🧍‍♂️ Información del Participante</h3>
+      <div id="info-participante" class="resultado-box"></div>
+
+      <h3>📊 Resultados del Test SD3</h3>
+      <div id="resultados-sd3-detalle" class="resultado-box"></div>
+      <canvas id="grafico-sd3-resultados" style="margin:40px auto; max-width:600px;"></canvas>
+
+      <h3>⏱ Tiempos de Respuesta</h3>
+      <div id="tiempos-detalle" class="resultado-box"></div>
+      <canvas id="grafico-tiempos" style="margin:40px auto; max-width:600px;"></canvas>
+
+      <h3>😶‍🌫️ Microexpresiones Detectadas</h3>
+      <div id="microexpresiones-detalle" class="resultado-box"></div>
+      <canvas id="grafico-emociones" style="margin:40px auto; max-width:600px;"></canvas>
+
+      <h3>🔍 Unidades FACS</h3>
+      <div id="facs-detalle" class="resultado-box"></div>
+
+      <h3>🧠 Integración de Resultados</h3>
+      <div id="analisis-final" class="resultado-box"></div>
+
+      <h3>📷 Video del Participante</h3>
+      <div id="imagen-participante" style="text-align:center; margin-top:30px;"></div>
+
+      <div style="text-align:center; margin-top:30px;">
+        <button id="btn-volver-panel" class="btn-secondary">Volver al panel</button>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="app.js" defer></script>
+  
 </body>
 </html>
