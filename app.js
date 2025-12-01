@@ -10,18 +10,8 @@ const SUPABASE_CONFIG = {
 const FASTAPI_URL = "https://darklnesapp-api-1.onrender.com";
 const PASSWORD_INVESTIGADOR = "investigador2025";
 
-// Inicializar Supabase - ESPERAR A QUE LA LIBRERÍA ESTÉ CARGADA
+// Variable global para Supabase
 let supabase;
-document.addEventListener('DOMContentLoaded', () => {
-  if (window.supabase) {
-    supabase = window.supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
-    console.log('✅ Supabase inicializado correctamente');
-  } else {
-    console.error('❌ Supabase no está disponible');
-  }
-  
-  // Resto del código de inicialización...
-});
 
 /* ---------- ESTADO GLOBAL ---------- */
 const invertidos = [11, 15, 17, 20, 25];
@@ -233,7 +223,7 @@ function configurarGrabacionVideo() {
   const tiempoGrabacion = document.getElementById('tiempo-grabacion');
   const infoVideo = document.getElementById('info-video');
 
-  let stream = null;
+  let localStream = null;
   let mediaRecorder = null;
   let recordedChunks = [];
   let grabacionEnCurso = false;
@@ -244,7 +234,7 @@ function configurarGrabacionVideo() {
   // Activar cámara
   btnActivarCamara.addEventListener('click', async function() {
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ 
+      localStream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           facingMode: 'user',
           width: { ideal: 640 },
@@ -254,8 +244,11 @@ function configurarGrabacionVideo() {
         audio: false
       });
       
+      // Actualizar variable global
+      stream = localStream;
+      
       if (video) { 
-        video.srcObject = stream; 
+        video.srcObject = localStream; 
         video.classList.remove('hidden'); 
         video.play(); 
       }
@@ -273,7 +266,7 @@ function configurarGrabacionVideo() {
 
   // Iniciar grabación
   btnIniciarGrabacion.addEventListener('click', function() {
-    if (!stream) {
+    if (!localStream) {
       alert('Primero activá la cámara');
       return;
     }
@@ -282,7 +275,7 @@ function configurarGrabacionVideo() {
     
     try {
       const options = { mimeType: 'video/webm; codecs=vp9,opus' };
-      mediaRecorder = new MediaRecorder(stream, options);
+      mediaRecorder = new MediaRecorder(localStream, options);
       
       mediaRecorder.ondataavailable = function(event) {
         if (event.data.size > 0) {
@@ -360,8 +353,9 @@ function configurarGrabacionVideo() {
       btnDetenerGrabacion.classList.add('hidden');
       progressContainer.classList.add('hidden');
       
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
         stream = null;
         video.classList.add('hidden');
       }
@@ -822,8 +816,161 @@ async function generarYDescargarCSV() {
   }
 }
 
+/* ---------- FUNCIÓN PARA MOSTRAR PARTICIPANTE EN PANEL ---------- */
+function mostrarParticipanteEnPanel(index) {
+  if (!participantesData || !participantesData[index]) return;
+  
+  const p = participantesData[index];
+  participanteSeleccionado = p;
+  
+  // Llenar información del participante
+  const infoDiv = document.getElementById('info-participante');
+  if (infoDiv) {
+    infoDiv.innerHTML = `
+      <div class="info-grid">
+        <div class="info-item">
+          <strong>Nombre</strong> ${p.nombre || 'No disponible'}
+        </div>
+        <div class="info-item">
+          <strong>Edad</strong> ${p.edad || 'No disponible'}
+        </div>
+        <div class="info-item">
+          <strong>Género</strong> ${p.genero || 'No disponible'}
+        </div>
+        <div class="info-item">
+          <strong>País</strong> ${p.pais || 'No disponible'}
+        </div>
+        <div class="info-item">
+          <strong>Fecha</strong> ${new Date(p.created_at).toLocaleString('es-AR')}
+        </div>
+        <div class="info-item">
+          <strong>Historia utilizada</strong> ${p.historia_utilizada || 'No disponible'}
+        </div>
+      </div>
+    `;
+  }
+  
+  // Mostrar resultados SD3
+  const resultadosDiv = document.getElementById('resultados-sd3-detalle');
+  if (resultadosDiv) {
+    resultadosDiv.innerHTML = `
+      <div class="scores-grid">
+        <div class="score-card">
+          <div class="score-icon">🎭</div>
+          <div class="score-label">Maquiavelismo</div>
+          <div class="score-value">${p.mach || 0}</div>
+          <div class="score-level ${(p.mach || 0) < 2.5 ? 'nivel-bajo' : (p.mach || 0) < 3.5 ? 'nivel-medio' : 'nivel-alto'}">
+            ${(p.mach || 0) < 2.5 ? 'Bajo' : (p.mach || 0) < 3.5 ? 'Medio' : 'Alto'}
+          </div>
+        </div>
+        <div class="score-card">
+          <div class="score-icon">👑</div>
+          <div class="score-label">Narcisismo</div>
+          <div class="score-value">${p.narc || 0}</div>
+          <div class="score-level ${(p.narc || 0) < 2.5 ? 'nivel-bajo' : (p.narc || 0) < 3.5 ? 'nivel-medio' : 'nivel-alto'}">
+            ${(p.narc || 0) < 2.5 ? 'Bajo' : (p.narc || 0) < 3.5 ? 'Medio' : 'Alto'}
+          </div>
+        </div>
+        <div class="score-card">
+          <div class="score-icon">⚡</div>
+          <div class="score-label">Psicopatía</div>
+          <div class="score-value">${p.psych || 0}</div>
+          <div class="score-level ${(p.psych || 0) < 2.5 ? 'nivel-bajo' : (p.psych || 0) < 3.5 ? 'nivel-medio' : 'nivel-alto'}">
+            ${(p.psych || 0) < 2.5 ? 'Bajo' : (p.psych || 0) < 3.5 ? 'Medio' : 'Alto'}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  // Mostrar microexpresiones
+  const microDiv = document.getElementById('microexpresiones-detalle');
+  if (microDiv && p.emocion_princ) {
+    microDiv.innerHTML = `
+      <div style="text-align: center; padding: 20px;">
+        <h4 style="color: var(--accent);">Emoción predominante detectada</h4>
+        <p style="font-size: 2em; font-weight: bold; color: #7f00ff;">
+          ${p.emocion_princ}
+        </p>
+        ${p.total_frames ? `<p><strong>Frames analizados:</strong> ${p.total_frames}</p>` : ''}
+        ${p.duracion_video ? `<p><strong>Duración del video:</strong> ${p.duracion_video} segundos</p>` : ''}
+        ${p.aus_frecuentes && p.aus_frecuentes.length > 0 ? 
+          `<p><strong>AUs detectadas:</strong> ${p.aus_frecuentes.join(', ')}</p>` : ''}
+      </div>
+    `;
+  }
+  
+  // Mostrar sección de resultados
+  document.getElementById('seccion-investigador')?.classList.add('hidden');
+  document.getElementById('seccion-resultados')?.classList.remove('hidden');
+  window.scrollTo({ top:0, behavior:'smooth' });
+  
+  // Generar gráficos
+  generarGraficosParticipante(p);
+}
+
+/* ---------- GENERAR GRÁFICOS PARA PARTICIPANTE ---------- */
+function generarGraficosParticipante(participante) {
+  // Gráfico de resultados SD3
+  const ctxSD3 = document.getElementById('grafico-sd3-resultados');
+  if (ctxSD3) {
+    new Chart(ctxSD3, {
+      type: 'bar',
+      data: {
+        labels: ['Maquiavelismo', 'Narcisismo', 'Psicopatía'],
+        datasets: [{
+          label: 'Puntuación',
+          data: [participante.mach || 0, participante.narc || 0, participante.psych || 0],
+          backgroundColor: ['#667eea', '#764ba2', '#ff6384']
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 5
+          }
+        }
+      }
+    });
+  }
+}
+
+/* ---------- FUNCIONES GLOBALES ---------- */
+function volverAlInicio() {
+  sessionStorage.clear();
+  tiemposRespuesta = {};
+  tiempoInicioItem = {};
+  testInicioTimestamp = null;
+  participanteSeleccionado = null;
+  if (stream) { 
+    stream.getTracks().forEach(t=>t.stop()); 
+    stream = null; 
+  }
+  
+  // Ocultar todas las secciones
+  document.querySelectorAll('section').forEach(section => {
+    section.classList.add('hidden');
+  });
+  
+  // Mostrar solo la página de inicio
+  document.getElementById('pagina-inicio')?.classList.remove('hidden');
+  window._capturaInicializada = false;
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
 /* ---------- INICIALIZACIÓN ---------- */
 document.addEventListener('DOMContentLoaded', () => {
+  // Inicializar Supabase
+  if (window.supabase) {
+    supabase = window.supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
+    console.log('✅ Supabase inicializado correctamente');
+  } else {
+    console.error('❌ Supabase no está disponible');
+  }
+  
+  // Limpiar sesión
   sessionStorage.clear();
   tiemposRespuesta = {};
   tiempoInicioItem = {};
@@ -831,6 +978,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window._capturaInicializada = false;
   console.log('✅ Sesión limpiada al cargar');
 
+  // Configurar botones principales
   const btnParticipante = document.querySelector('#card-participante .btn-primary');
   const btnInvestigador = document.querySelector('#card-investigador .btn-primary');
 
@@ -852,6 +1000,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.scrollTo({ top:0, behavior:'smooth' });
   });
 
+  // Configurar formulario de datos básicos
   const formDatos = document.getElementById('form-datos-basicos');
   formDatos?.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -877,12 +1026,14 @@ document.addEventListener('DOMContentLoaded', () => {
     window.scrollTo({ top:0, behavior:'smooth' });
   });
 
+  // Configurar formulario SD3
   const formSD3 = document.getElementById('form-sd3');
   formSD3?.addEventListener('submit', (e) => {
     e.preventDefault();
     calcularSD3();
   });
 
+  // Configurar login investigador
   const btnLoginInv = document.getElementById('btn-login-investigador');
   const inputPasswordInv = document.getElementById('password-investigador');
   btnLoginInv?.addEventListener('click', () => {
@@ -898,6 +1049,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Configurar botones de navegación
   document.getElementById('btn-volver-inicio-2')?.addEventListener('click', () => {
     document.getElementById('seccion-login')?.classList.add('hidden');
     document.getElementById('pagina-inicio')?.classList.remove('hidden');
@@ -916,24 +1068,5 @@ document.addEventListener('DOMContentLoaded', () => {
     window.scrollTo({ top:0, behavior:'smooth' });
   });
 });
-
-/* ---------- FUNCIONES GLOBALES ---------- */
-function volverAlInicio() {
-  sessionStorage.clear();
-  tiemposRespuesta = {};
-  tiempoInicioItem = {};
-  testInicioTimestamp = null;
-  participanteSeleccionado = null;
-  if (stream) { 
-    stream.getTracks().forEach(t=>t.stop()); 
-    stream = null; 
-  }
-  document.getElementById('seccion-micro')?.classList.add('hidden');
-  document.getElementById('seccion-bienvenida')?.classList.add('hidden');
-  document.getElementById('seccion-test')?.classList.add('hidden');
-  document.getElementById('pagina-inicio')?.classList.remove('hidden');
-  window._capturaInicializada = false;
-  window.scrollTo({ top:0, behavior:'smooth' });
-}
 
 /* ---------- FIN ---------- */
