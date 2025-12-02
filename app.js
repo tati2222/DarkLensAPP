@@ -1,5 +1,5 @@
 /* ========================================
-   app.js - VERSIÓN CORREGIDA COMPLETA
+   app.js - VERSIÓN MEJORADA CON CAPTURA DE IMAGEN
    ======================================== */
 
 /* ---------- CONFIG SUPABASE ---------- */
@@ -7,11 +7,12 @@ const SUPABASE_CONFIG = {
   URL: 'https://cdhndtzuwtmvhiulvzbp.supabase.co',
   ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNkaG5kdHp1d3RtdmhpdWx2emJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNTE1OTcsImV4cCI6MjA3OTkyNzU5N30.KeyAfqJuCjgSpmd0kRdjDppkJwBRlF9oGyN0ozJMt6M'
 };
+
+// INICIALIZAR SUPABASE
+const supabase = window.supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
+
 const FASTAPI_URL = "https://darklnesapp-api-1.onrender.com";
 const PASSWORD_INVESTIGADOR = "investigador2025";
-
-// Variable global para Supabase
-let supabase;
 
 /* ---------- ESTADO GLOBAL ---------- */
 const invertidos = [11, 15, 17, 20, 25];
@@ -22,6 +23,7 @@ let stream = null;
 let participantesData = [];
 let participanteSeleccionado = null;
 let imagenCapturada = null;
+let capturedBlob = null; // Variable para la captura mejorada
 
 /* ---------- UTILIDADES ---------- */
 function blobToBase64(blob) {
@@ -343,8 +345,9 @@ async function reproducirHistoria() {
   });
 }
 
-/* ---------- CAPTURA DE IMAGEN ---------- */
+/* ---------- CAPTURA DE IMAGEN MEJORADA ---------- */
 function configurarCapturaImagen() {
+  // Elementos DOM
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
   const btnActivarCamara = document.getElementById('btn-activar-camara');
@@ -363,17 +366,20 @@ function configurarCapturaImagen() {
   let intervaloContador = null;
   let tiempoRestante = 5;
 
+  // Configurar canvas
   if (canvas) {
     ctx = canvas.getContext('2d');
+    canvas.style.display = 'none';
   }
 
-  btnActivarCamara.addEventListener('click', async function() {
+  // 1. Activar cámara
+  btnActivarCamara.addEventListener('click', async () => {
     try {
       localStream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           facingMode: 'user',
-          width: { ideal: 640 },
-          height: { ideal: 480 },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
           frameRate: { ideal: 30 }
         },
         audio: false
@@ -391,14 +397,17 @@ function configurarCapturaImagen() {
       btnCapturarImagen.classList.remove('hidden');
       document.getElementById('camera-placeholder')?.classList?.add('hidden');
       
-    } catch (err) {
-      console.error('Error accediendo a la cámara:', err);
-      alert('No se pudo acceder a la cámara. Podés continuar sin imagen.');
+      console.log('✅ Cámara activada');
+      
+    } catch (error) {
+      console.error('❌ Error accediendo a la cámara:', error);
+      alert('No se pudo activar la cámara. Asegúrate de dar permisos.');
     }
   });
 
-  btnCapturarImagen.addEventListener('click', function() {
-    if (!localStream) {
+  // 2. Capturar imagen con contador
+  btnCapturarImagen.addEventListener('click', () => {
+    if (!localStream || !video.videoWidth) {
       alert('Primero activá la cámara');
       return;
     }
@@ -406,10 +415,11 @@ function configurarCapturaImagen() {
     if (capturaEnCurso) return;
     
     capturaEnCurso = true;
-    tiempoRestante = 5;
+    tiempoRestante = 3;
     contadorElement.textContent = tiempoRestante;
     contadorContainer.classList.remove('hidden');
     btnCapturarImagen.disabled = true;
+    btnCapturarImagen.textContent = 'Preparando...';
     
     intervaloContador = setInterval(() => {
       tiempoRestante--;
@@ -417,20 +427,22 @@ function configurarCapturaImagen() {
       
       if (tiempoRestante <= 0) {
         clearInterval(intervaloContador);
-        capturarImagen();
+        realizarCaptura();
       }
     }, 1000);
   });
 
-  function capturarImagen() {
-    if (!video || !ctx) return;
+  // Función para realizar la captura
+  function realizarCaptura() {
+    if (!video || !ctx || !canvas) return;
     
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     
-    canvas.toBlob((blob) => {
+    canvas.toBlob(blob => {
+      capturedBlob = blob;
       imagenCapturada = blob;
       
       const imageURL = URL.createObjectURL(blob);
@@ -441,29 +453,44 @@ function configurarCapturaImagen() {
       btnRecapturar.classList.remove('hidden');
       btnSubirImagen.classList.remove('hidden');
       btnCapturarImagen.classList.add('hidden');
+      video.classList.add('hidden');
       
       const sizeKB = (blob.size / 1024).toFixed(2);
+      const resolution = `${canvas.width} × ${canvas.height}`;
       infoImagen.innerHTML = `
-        <p>Resolución: ${canvas.width} × ${canvas.height}</p>
-        <p>Tamaño: ${sizeKB} KB</p>
-        <p>Formato: JPEG</p>
+        <p><strong>Resolución:</strong> ${resolution}</p>
+        <p><strong>Tamaño:</strong> ${sizeKB} KB</p>
+        <p><strong>Formato:</strong> JPEG (alta calidad)</p>
+        <p><strong>Lista para analizar</strong></p>
       `;
+      
+      stopStream();
       
       capturaEnCurso = false;
       btnCapturarImagen.disabled = false;
+      btnCapturarImagen.textContent = '📸 Capturar Imagen';
       
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-        localStream = null;
-        stream = null;
-        video.classList.add('hidden');
-      }
+      console.log('✅ Imagen capturada:', { resolution, size: `${sizeKB} KB` });
       
     }, 'image/jpeg', 0.95);
   }
 
-  btnRecapturar.addEventListener('click', function() {
+  // 3. Función para detener la cámara
+  function stopStream() {
+    if (localStream) {
+      localStream.getTracks().forEach(track => {
+        track.stop();
+      });
+      localStream = null;
+      stream = null;
+    }
+  }
+
+  // 4. Recapturar
+  btnRecapturar.addEventListener('click', async () => {
+    capturedBlob = null;
     imagenCapturada = null;
+    
     previewContainer.classList.add('hidden');
     btnRecapturar.classList.add('hidden');
     btnSubirImagen.classList.add('hidden');
@@ -476,28 +503,52 @@ function configurarCapturaImagen() {
       intervaloContador = null;
     }
     capturaEnCurso = false;
+    
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'user',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+      
+      stream = localStream;
+      video.srcObject = localStream;
+      video.classList.remove('hidden');
+      btnCapturarImagen.classList.remove('hidden');
+      btnActivarCamara.classList.add('hidden');
+      
+    } catch (error) {
+      console.error('Error reactivando cámara:', error);
+      alert('No se pudo reactivar la cámara');
+    }
   });
 
-  btnSubirImagen.addEventListener('click', async function() {
-    if (!imagenCapturada) {
-      alert('No hay imagen para analizar');
+  // 5. Subir imagen y analizar
+  btnSubirImagen.addEventListener('click', async () => {
+    if (!capturedBlob) {
+      alert('No hay imagen capturada');
       return;
     }
 
     btnSubirImagen.disabled = true;
-    btnSubirImagen.textContent = '⏳ Analizando imagen...';
+    btnSubirImagen.textContent = '⏳ Subiendo y analizando...';
 
     try {
-      const base64Imagen = await blobToBase64(imagenCapturada);
+      const base64Imagen = await blobToBase64(capturedBlob);
       
       const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
       const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
 
-      console.log('📸 Iniciando análisis de imagen...');
+      console.log('📤 Enviando imagen para análisis...');
 
       const analisisImagen = await analizarImagenCompleta(base64Imagen, persona, sd3);
       
       if (analisisImagen.success) {
+        await subirImagenSupabaseStorage(capturedBlob, persona);
+        
         mostrarConfirmacionParticipante(analisisImagen);
       } else {
         throw new Error(analisisImagen.error || 'Error en el análisis de la imagen');
@@ -510,6 +561,37 @@ function configurarCapturaImagen() {
       btnSubirImagen.textContent = "📤 Subir Imagen y Analizar";
     }
   });
+}
+
+/* ---------- FUNCIÓN PARA SUBIR IMAGEN A SUPABASE STORAGE ---------- */
+async function subirImagenSupabaseStorage(imageBlob, datosPersonales) {
+  try {
+    const fileName = `microexpresiones/${datosPersonales.nombre || 'anonimo'}_${Date.now()}.jpg`;
+    
+    const { data, error } = await supabase.storage
+      .from('images')
+      .upload(fileName, imageBlob, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: 'image/jpeg'
+      });
+
+    if (error) {
+      console.error('❌ Error subiendo imagen a Storage:', error);
+      return null;
+    }
+
+    const { publicURL } = supabase.storage
+      .from('images')
+      .getPublicUrl(fileName);
+
+    console.log('✅ Imagen subida a Storage:', publicURL);
+    return publicURL;
+    
+  } catch (error) {
+    console.error('Error en subirImagenSupabaseStorage:', error);
+    return null;
+  }
 }
 
 /* ---------- ANÁLISIS DE IMAGEN COMPLETA ---------- */
@@ -536,7 +618,6 @@ async function analizarImagenCompleta(imagenBase64, datosPersonales, datosSD3) {
     const resultado = await response.json();
     console.log('✅ Análisis de imagen completado:', resultado);
 
-    // Guardar en Supabase
     const guardado = await guardarAnalisisImagenEnSupabase(resultado, datosPersonales, datosSD3);
     
     return {
@@ -576,9 +657,8 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
 
     const historiaUtilizada = sessionStorage.getItem('historiaUtilizada') || rasgoPredominante;
 
-    // ⚠️ IMPORTANTE: Cambia 'nombre' por 'name' para que coincida con tu tabla SQL
     const imagenData = {
-      name: persona.nombre || 'Anónimo',  // ← CAMBIO AQUÍ: 'name' en lugar de 'nombre'
+      nombre: persona.nombre || 'Anónimo',  
       edad: parseInt(persona.edad) || 0,
       genero: persona.genero || '',
       pais: persona.pais || '',
@@ -599,7 +679,6 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
       tipo_captura: 'imagen',
       imagen_analizada: true,
       analisis_completo: JSON.stringify(analisis || {})
-      // NO incluyas created_at - se genera automáticamente con DEFAULT NOW()
     };
 
     console.log('📤 Datos a insertar:', imagenData);
@@ -1392,6 +1471,7 @@ function volverAlInicio() {
   testInicioTimestamp = null;
   participanteSeleccionado = null;
   imagenCapturada = null;
+  capturedBlob = null;
   if (stream) { 
     stream.getTracks().forEach(t=>t.stop()); 
     stream = null; 
@@ -1410,13 +1490,8 @@ function volverAlInicio() {
 
 /* ---------- INICIALIZACIÓN ---------- */
 document.addEventListener('DOMContentLoaded', () => {
-  // Inicializar Supabase
-  if (window.supabase) {
-    supabase = window.supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
-    console.log('✅ Supabase inicializado correctamente');
-  } else {
-    console.error('❌ Supabase no está disponible');
-  }
+  // Verificar inicialización de Supabase
+  console.log('✅ Supabase inicializado correctamente:', supabase ? 'Sí' : 'No');
   
   // Limpiar sesión
   sessionStorage.clear();
@@ -1424,6 +1499,7 @@ document.addEventListener('DOMContentLoaded', () => {
   tiempoInicioItem = {};
   testInicioTimestamp = null;
   imagenCapturada = null;
+  capturedBlob = null;
   window._capturaInicializada = false;
   console.log('✅ Sesión limpiada al cargar');
 
@@ -1437,6 +1513,7 @@ document.addEventListener('DOMContentLoaded', () => {
     tiempoInicioItem = {};
     testInicioTimestamp = null;
     imagenCapturada = null;
+    capturedBlob = null;
     document.getElementById('pagina-inicio')?.classList.add('hidden');
     document.getElementById('seccion-bienvenida')?.classList.remove('hidden');
     const fd = document.getElementById('form-datos-basicos');
