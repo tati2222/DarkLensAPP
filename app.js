@@ -576,8 +576,9 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
 
     const historiaUtilizada = sessionStorage.getItem('historiaUtilizada') || rasgoPredominante;
 
+    // ⚠️ IMPORTANTE: Cambia 'nombre' por 'name' para que coincida con tu tabla SQL
     const imagenData = {
-      nombre: persona.nombre || 'Anónimo',
+      name: persona.nombre || 'Anónimo',  // ← CAMBIO AQUÍ: 'name' en lugar de 'nombre'
       edad: parseInt(persona.edad) || 0,
       genero: persona.genero || '',
       pais: persona.pais || '',
@@ -585,19 +586,23 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
       narc: parseFloat(sd3.narc) || 0,
       psych: parseFloat(sd3.psych) || 0,
       tiempo_total_seg: parseFloat(sd3.tiempo_total_segundos) || 0,
-      emocion_princ: analisis.emocion_predominante || analisis.emocion_principal || 'No analizada',
+      emocion_principal: analisis.emocion_predominante || analisis.emocion_principal || 'No analizada',
       total_frames: 1,
       duracion_video: 0,
-      emociones_detectadas: analisis.emociones_detectadas || Object.keys(analisis.emociones || {}),
+      emociones_detectadas: Array.isArray(analisis.emociones_detectadas) 
+        ? analisis.emociones_detectadas 
+        : Object.keys(analisis.emociones || {}),
       correlaciones: analisis.correlaciones || {},
       aus_frecuentes: analisis.aus_frecuentes || analisis.aus_detectadas || [],
       facs_promedio: analisis.facs_promedio || {},
       historia_utilizada: historiaUtilizada,
       tipo_captura: 'imagen',
-      created_at: new Date().toISOString()
+      imagen_analizada: true,
+      analisis_completo: JSON.stringify(analisis || {})
+      // NO incluyas created_at - se genera automáticamente con DEFAULT NOW()
     };
 
-    console.log('💾 Guardando datos de imagen en Supabase:', imagenData);
+    console.log('📤 Datos a insertar:', imagenData);
 
     const { data, error } = await supabase
       .from('darklens_records')
@@ -605,10 +610,11 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
       .select();
 
     if (error) {
-      throw new Error(`Error Supabase: ${error.message}`);
+      console.error('❌ Error detallado de Supabase:', error);
+      throw new Error(`Error Supabase: ${error.message} (Código: ${error.code})`);
     }
 
-    console.log('✅ Análisis de imagen guardado en Supabase!', data);
+    console.log('✅ Análisis de imagen guardado en Supabase! ID:', data[0]?.id);
 
     return {
       success: true,
@@ -624,7 +630,6 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
     };
   }
 }
-
 
 /* ---------- CONFIRMACIÓN PARTICIPANTE ---------- */
 function mostrarConfirmacionParticipante(analisisImagen = null) {
