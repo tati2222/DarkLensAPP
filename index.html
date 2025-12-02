@@ -919,6 +919,37 @@
       border: 1px solid var(--border);
       box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     }
+
+    /* ===========================
+       ESTILOS NUEVOS PARA ESCALA DEL TEST SD3
+       =========================== */
+    .escala-container {
+      margin: 25px auto;
+      max-width: 800px;
+      background: rgba(127, 0, 255, 0.1);
+      padding: 20px;
+      border-radius: 15px;
+      border: 2px solid var(--accent);
+    }
+
+    .escala-tabla {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: center;
+    }
+
+    .escala-tabla td {
+      padding: 15px 10px;
+      border: 1px solid rgba(102, 126, 234, 0.3);
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .escala-tabla td strong {
+      display: block;
+      font-size: 1.4em;
+      margin-bottom: 5px;
+      color: var(--accent);
+    }
   </style>
 </head>
 <body>
@@ -982,7 +1013,7 @@
             Participar
           </h3>
           <p>Respondé el test SD3 y capturá tu imagen para contribuír a la investigación académica.</p>
-          <button class="btn-primary">Ir a la Aplicación</button>
+          <button class="btn-primary" id="btn-iniciar-participante">Ir a la Aplicación</button>
         </div>
 
         <!-- INVESTIGADOR -->
@@ -1008,7 +1039,7 @@
             Investigadores
           </h3>
           <p>Acceso restringido para visualizar y analizar los resultados de la investigación.</p>
-          <button class="btn-primary btn-investigador">Acceso Restringido</button>
+          <button class="btn-primary btn-investigador" id="btn-iniciar-investigador">Acceso Restringido</button>
         </div>
       </div>
 
@@ -1035,7 +1066,6 @@
       <footer style="margin-top: 40px; font-size: 0.9em; color: #c080ff;">
         <p>Proyecto desarrollado en la Licenciatura en Ciencia de Datos - Universidad del Gran Rosario (UGR) - 2024/2025</p>
         <p>© 2025 DARKLENS - Todos los derechos reservados</p>
-        <p>Universidad del Gran Rosario | Licenciatura en Ciencia de Datos</p>
       </footer>
     </section>
 
@@ -1082,7 +1112,7 @@
           </p>
 
           <label class="checkbox-group" for="consentimiento">
-            <input id="consentimiento" name="consentimiento" type="checkbox" />
+            <input id="consentimiento" name="consentimiento" type="checkbox" required />
             <div style="display:flex; flex-direction:column;">
               <strong>Acepto el consentimiento</strong>
               <small style="color:var(--text-secondary);">Podés abandonar el estudio en cualquier momento.</small>
@@ -1102,83 +1132,98 @@
     <section id="seccion-test" class="content-box hidden">
       <h2>Test SD3</h2>
       <p class="subtitle" style="text-align:center; margin-bottom:10px;">
-        Respondé cada ítem según lo que mejor describe tus actitudes. (Escala 1 a 5)
-          1: Muy de acuerdo, 2: De acuerdo, 3: Neutral/ni de acuerdo ni en desacuerdo, 4: En desacuerdo, 5: Muy de acuerdo
+        Respondé cada ítem según lo que mejor describe tus actitudes.
       </p>
 
+      <!-- ESCALA CORREGIDA - SOLO UNA VEZ -->
+      <div class="escala-container">
+        <table class="escala-tabla">
+          <tr>
+            <td><strong>1</strong><br>Totalmente en desacuerdo</td>
+            <td><strong>2</strong><br>En desacuerdo</td>
+            <td><strong>3</strong><br>Neutral</td>
+            <td><strong>4</strong><br>De acuerdo</td>
+            <td><strong>5</strong><br>Totalmente de acuerdo</td>
+          </tr>
+        </table>
+      </div>
+
       <form id="form-sd3" class="form-box"></form>
+      
+      <div style="text-align:center; margin-top:20px;">
+        <button id="btn-enviar-test" class="btn-primary">Enviar respuestas</button>
+      </div>
     </section>
 
     <!-- ===============================
          SECCIÓN 3: CAPTURA DE IMAGEN
          =============================== -->
-    <section id="seccion-micro" class="content-box">
-  <h2>Captura de Imagen Facial</h2>
-  
-  <!-- Historia para leer, visible al inicio -->
-  <div id="audio-container" style="margin-top: 20px;">
-    <h4 style="text-align: center; color: var(--accent);">📖 Historia para Leer</h4>
-    <div id="texto-historia" style="background: rgba(127, 0, 255, 0.1); padding: 20px; border-radius: 10px; margin-top: 15px; text-align: left; max-height: 300px; overflow-y: auto;">
-      <p style="text-align: center; color: var(--text-secondary); font-style: italic;">
-        La historia se cargará según tus respuestas al test SD3...
-      </p>
-    </div>
-    <div style="text-align:center; margin-top: 15px;">
-      <button id="btn-listo-capturar" class="btn-primary">Listo para capturar imagen 📸</button>
-    </div>
-  </div>
-
-  <!-- Controles de cámara, ocultos inicialmente -->
-  <div id="camera-section" class="hidden">
-    <div class="instrucciones">
-      <h3>📌 Instrucciones IMPORTANTES</h3>
-      <ul>
-        <li><strong>Mira de frente a la cámara</strong> durante la captura</li>
-        <li><strong>Piensa en la historia</strong> y cómo te haría sentir</li>
-        <li><strong>Mantén una expresión natural</strong> - queremos captar tu reacción facial espontánea</li>
-        <li><strong>Captura única:</strong> Se tomará una sola fotografía de alta calidad</li>
-        <li><strong>Buena iluminación:</strong> Asegurate de estar en un lugar bien iluminado</li>
-      </ul>
-    </div>
-
-    <div class="camera-container">
-      <video id="video" autoplay playsinline muted class="hidden"></video>
-      <canvas id="canvas" class="hidden"></canvas>
-      <div id="camera-placeholder">
-        <p style="color:var(--text-secondary);">La cámara está desactivada.</p>
-      </div>
-
-      <div id="preview-container" class="hidden" style="text-align:center;">
-        <h3>📸 Imagen capturada</h3>
-        <img id="preview-image" style="max-width:100%; border-radius:15px; border:2px solid var(--border); margin-top:20px;" />
-        <div id="info-imagen" style="margin-top: 15px; color: var(--text-secondary);"></div>
-      </div>
-
-      <div class="button-group">
-        <button id="btn-activar-camara" class="btn-primary">Activar cámara</button>
-        <button id="btn-capturar-imagen" class="btn-primary hidden">📸 Capturar Imagen</button>
-        <button id="btn-recapturar" class="btn-secondary hidden">🔄 Recapturar</button>
-      </div>
-
-      <div id="contador-container" class="hidden" style="margin-top: 20px; text-align: center;">
-        <div style="font-size: 1.2em; color: var(--accent); margin-bottom: 10px;">
-          Prepárate para la captura en:
+    <section id="seccion-micro" class="content-box hidden">
+      <h2>Captura de Imagen Facial</h2>
+      
+      <!-- Historia para leer, visible al inicio -->
+      <div id="audio-container" style="margin-top: 20px;">
+        <h4 style="text-align: center; color: var(--accent);">📖 Historia para Leer</h4>
+        <div id="texto-historia" style="background: rgba(127, 0, 255, 0.1); padding: 20px; border-radius: 10px; margin-top: 15px; text-align: left; max-height: 300px; overflow-y: auto;">
+          <p style="text-align: center; color: var(--text-secondary); font-style: italic;">
+            La historia se cargará según tus respuestas al test SD3...
+          </p>
         </div>
-        <div id="contador" style="font-size: 3em; font-weight: bold; color: var(--accent);">5</div>
-        <div style="margin-top: 10px; color: var(--text-secondary); font-size: 0.9em;">
-          Mantén la mirada en la cámara y piensa en la historia
+        <div style="text-align:center; margin-top: 15px;">
+          <button id="btn-listo-capturar" class="btn-primary">Listo para capturar imagen 📸</button>
         </div>
       </div>
-    </div>
 
-    <div id="resultado-micro" class="hidden"></div>
+      <!-- Controles de cámara, ocultos inicialmente -->
+      <div id="camera-section" class="hidden">
+        <div class="instrucciones">
+          <h3>📌 Instrucciones IMPORTANTES</h3>
+          <ul>
+            <li><strong>Mira de frente a la cámara</strong> durante la captura</li>
+            <li><strong>Piensa en la historia</strong> y cómo te haría sentir</li>
+            <li><strong>Mantén una expresión natural</strong> - queremos captar tu reacción facial espontánea</li>
+            <li><strong>Captura única:</strong> Se tomará una sola fotografía de alta calidad</li>
+            <li><strong>Buena iluminación:</strong> Asegurate de estar en un lugar bien iluminado</li>
+          </ul>
+        </div>
 
-    <div style="text-align:center; margin-top:20px;">
-      <button id="btn-subir-imagen" class="btn-primary hidden">📤 Subir Imagen y Analizar</button>
-    </div>
-  </div>
-</section>
+        <div class="camera-container">
+          <video id="video" autoplay playsinline muted class="hidden"></video>
+          <canvas id="canvas" class="hidden"></canvas>
+          <div id="camera-placeholder">
+            <p style="color:var(--text-secondary);">La cámara está desactivada.</p>
+          </div>
 
+          <div id="preview-container" class="hidden" style="text-align:center;">
+            <h3>📸 Imagen capturada</h3>
+            <img id="preview-image" style="max-width:100%; border-radius:15px; border:2px solid var(--border); margin-top:20px;" />
+            <div id="info-imagen" style="margin-top: 15px; color: var(--text-secondary);"></div>
+          </div>
+
+          <div class="button-group">
+            <button id="btn-activar-camara" class="btn-primary">Activar cámara</button>
+            <button id="btn-capturar-imagen" class="btn-primary hidden">📸 Capturar Imagen</button>
+            <button id="btn-recapturar" class="btn-secondary hidden">🔄 Recapturar</button>
+          </div>
+
+          <div id="contador-container" class="hidden" style="margin-top: 20px; text-align: center;">
+            <div style="font-size: 1.2em; color: var(--accent); margin-bottom: 10px;">
+              Prepárate para la captura en:
+            </div>
+            <div id="contador" style="font-size: 3em; font-weight: bold; color: var(--accent);">5</div>
+            <div style="margin-top: 10px; color: var(--text-secondary); font-size: 0.9em;">
+              Mantén la mirada en la cámara y piensa en la historia
+            </div>
+          </div>
+        </div>
+
+        <div id="resultado-micro" class="hidden"></div>
+
+        <div style="text-align:center; margin-top:20px;">
+          <button id="btn-subir-imagen" class="btn-primary hidden">📤 Subir Imagen y Analizar</button>
+        </div>
+      </div>
+    </section>
 
     <!-- ===============================
          SECCIÓN 4: LOGIN INVESTIGADOR
