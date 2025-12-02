@@ -1,5 +1,5 @@
 /* ========================================
-   app.js - VERSIÓN COMPLETA CON CAPTURA DE IMAGEN Y FACS
+   app.js - VERSIÓN COMPLETA CON PANEL DE INVESTIGADOR AVANZADO
    ======================================== */
 
 /* ---------- CONFIG SUPABASE ---------- */
@@ -155,10 +155,25 @@ function registrarTiempoRespuesta(itemNum) {
   const ahora = Date.now();
   if (inicio) {
     const lapso = ahora - inicio;
-    tiemposRespuesta[itemNum] = { tiempo_ms: lapso, tiempo_segundos: (lapso/1000).toFixed(2), timestamp_inicio: inicio, timestamp_respuesta: ahora };
+    tiemposRespuesta[itemNum] = { 
+      item_number: itemNum,
+      tiempo_ms: lapso, 
+      tiempo_segundos: (lapso/1000).toFixed(2), 
+      timestamp_inicio: inicio, 
+      timestamp_respuesta: ahora,
+      pregunta: itemsSD3[itemNum-1]
+    };
   } else {
     const desdeInicio = testInicioTimestamp ? (ahora - testInicioTimestamp) : 0;
-    tiemposRespuesta[itemNum] = { tiempo_ms: desdeInicio, tiempo_segundos: (desdeInicio/1000).toFixed(2), timestamp_inicio: testInicioTimestamp, timestamp_respuesta: ahora, nota: 'respondido_sin_intersection' };
+    tiemposRespuesta[itemNum] = { 
+      item_number: itemNum,
+      tiempo_ms: desdeInicio, 
+      tiempo_segundos: (desdeInicio/1000).toFixed(2), 
+      timestamp_inicio: testInicioTimestamp, 
+      timestamp_respuesta: ahora, 
+      nota: 'respondido_sin_intersection',
+      pregunta: itemsSD3[itemNum-1]
+    };
   }
 }
 
@@ -672,9 +687,14 @@ function poblarListaInvestigador() {
   
   headerDiv.innerHTML = `
     <h3 style="color: var(--accent); margin: 0;">Participantes Registrados</h3>
-    <button id="btn-descargar-csv" class="btn-primary" style="display: flex; align-items: center; gap: 8px;">
-      📊 Descargar CSV (${participantesData.length})
-    </button>
+    <div style="display:flex; gap:10px;">
+      <button id="btn-descargar-csv" class="btn-primary" style="display: flex; align-items: center; gap: 8px;">
+        📊 Descargar CSV (${participantesData.length})
+      </button>
+      <button id="btn-ir-analisis" class="btn-secondary" style="display: flex; align-items: center; gap: 8px;">
+        📈 Análisis Avanzado
+      </button>
+    </div>
   `;
   
   listaDiv.appendChild(headerDiv);
@@ -730,6 +750,13 @@ function poblarListaInvestigador() {
     if (!resultado.success) {
       alert('Error generando CSV: ' + resultado.error);
     }
+  });
+
+  document.getElementById('btn-ir-analisis')?.addEventListener('click', () => {
+    document.getElementById('seccion-investigador').classList.add('hidden');
+    document.getElementById('seccion-analisis').classList.remove('hidden');
+    cargarAnalisisAvanzado();
+    window.scrollTo({ top:0, behavior:'smooth' });
   });
 }
 
@@ -931,6 +958,389 @@ function generarGraficosParticipante(participante) {
   }
 }
 
+/* ---------- ANÁLISIS ESTADÍSTICO AVANZADO ---------- */
+async function cargarAnalisisAvanzado() {
+  try {
+    console.log('📈 Cargando análisis avanzado...');
+    
+    // Obtener datos de participantes
+    const { data: participantes, error } = await supabase
+      .from('darklens_records')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    if (!participantes || participantes.length === 0) {
+      mostrarMensajeAnalisis('No hay suficientes datos para análisis estadístico');
+      return;
+    }
+
+    // Preparar datos para análisis
+    const sd3Scores = participantes.map(p => ({
+      mach: p.mach || 0,
+      narc: p.narc || 0,
+      psych: p.psych || 0
+    }));
+
+    const facsScores = participantes.map(p => {
+      const facs = {};
+      if (p.facs_promedio && typeof p.facs_promedio === 'object') {
+        Object.entries(p.facs_promedio).forEach(([au, intensity]) => {
+          facs[au] = intensity;
+        });
+      }
+      return facs;
+    });
+
+    // 1. Análisis de correlaciones SD3-FACS
+    await analizarCorrelaciones(sd3Scores, facsScores);
+
+    // 2. Análisis de tiempos de respuesta
+    await analizarTiemposRespuesta(participantes);
+
+    // 3. Análisis de regresión por rasgo predominante
+    await analizarRegresiones(participantes);
+
+  } catch (error) {
+    console.error('❌ Error en análisis avanzado:', error);
+    mostrarMensajeAnalisis('Error cargando análisis: ' + error.message);
+  }
+}
+
+async function analizarCorrelaciones(sd3Scores, facsScores) {
+  try {
+    const response = await fetch(`${FASTAPI_URL}/analyze-correlations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sd3_scores: sd3Scores,
+        facs_scores: facsScores
+      })
+    });
+
+    if (!response.ok) throw new Error('Error en análisis de correlaciones');
+
+    const result = await response.json();
+    
+    if (result.success) {
+      mostrarResultadosCorrelaciones(result.correlation_analysis, result.plots);
+    }
+  } catch (error) {
+    console.error('❌ Error analizando correlaciones:', error);
+  }
+}
+
+function mostrarResultadosCorrelaciones(analysis, plots) {
+  const container = document.getElementById('resultados-correlaciones');
+  if (!container) return;
+
+  let html = '<h4 style="color: var(--accent); margin-bottom: 20px;">🔗 Correlaciones Significativas</h4>';
+
+  // Mostrar correlaciones significativas
+  const significant = analysis.significant_correlations || [];
+  
+  if (significant.length > 0) {
+    html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;">';
+    
+    significant.forEach(corr => {
+      html += `
+        <div class="resultado-box" style="background: rgba(127, 0, 255, 0.1); border-left: 4px solid var(--accent);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <strong style="color: var(--accent);">${corr.sd3_trait} ↔ ${corr.au}</strong>
+            <span style="background: ${Math.abs(corr.correlation) > 0.5 ? '#ff6384' : '#36a2eb'}; 
+                         color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.9em;">
+              r = ${corr.correlation.toFixed(3)}
+            </span>
+          </div>
+          <div style="color: var(--text-secondary); font-size: 0.9em;">
+            <div>Fuerza: <strong>${corr.strength}</strong></div>
+            <div>Dirección: <strong>${corr.direction}</strong></div>
+            <div>Interpretación: ${interpretarCorrelacion(corr.correlation, corr.sd3_trait, corr.au)}</div>
+          </div>
+        </div>
+      `;
+    });
+    
+    html += '</div>';
+
+    // Mostrar gráficos
+    html += '<h4 style="color: var(--accent); margin: 30px 0 20px 0;">📊 Gráficos de Correlación</h4>';
+    html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px;">';
+    
+    Object.entries(plots).forEach(([key, plotBase64]) => {
+      html += `
+        <div class="resultado-box">
+          <img src="data:image/png;base64,${plotBase64}" 
+               style="width: 100%; border-radius: 10px; border: 1px solid var(--border);">
+        </div>
+      `;
+    });
+    
+    html += '</div>';
+  } else {
+    html += '<p style="color: var(--text-secondary); text-align: center;">No se encontraron correlaciones significativas (|r| > 0.3)</p>';
+  }
+
+  container.innerHTML = html;
+}
+
+function interpretarCorrelacion(r, sd3Trait, au) {
+  const traits = {
+    'mach': 'maquiavelismo',
+    'narc': 'narcisismo', 
+    'psych': 'psicopatía'
+  };
+  
+  const aus = {
+    'AU1': 'elevación de ceja interna',
+    'AU4': 'fruncimiento de cejas',
+    'AU12': 'sonrisa (estiramiento de labios)',
+    'AU15': 'comisuras labiales hacia abajo'
+  };
+  
+  const traitName = traits[sd3Trait] || sd3Trait;
+  const auName = aus[au] || au;
+  
+  if (r > 0.5) {
+    return `Personas con ${traitName} alto muestran más ${auName}`;
+  } else if (r > 0.3) {
+    return `Relación moderada entre ${traitName} y ${auName}`;
+  } else if (r < -0.3) {
+    return `Personas con ${traitName} alto muestran menos ${auName}`;
+  }
+  
+  return 'Correlación débil o no significativa';
+}
+
+async function analizarTiemposRespuesta(participantes) {
+  try {
+    // Extraer datos de tiempos (si están disponibles)
+    const tiemposData = [];
+    
+    participantes.forEach(p => {
+      if (p.tiempos_respuesta) {
+        const tiempos = typeof p.tiempos_respuesta === 'string' 
+          ? JSON.parse(p.tiempos_respuesta)
+          : p.tiempos_respuesta;
+        
+        Object.values(tiempos).forEach(tiempo => {
+          if (tiempo && typeof tiempo === 'object') {
+            tiemposData.push({
+              item_number: tiempo.item_number,
+              tiempo_ms: tiempo.tiempo_ms || 0,
+              pregunta: tiempo.pregunta
+            });
+          }
+        });
+      }
+    });
+
+    if (tiemposData.length === 0) {
+      document.getElementById('resultados-tiempos').innerHTML = 
+        '<p style="color: var(--text-secondary); text-align: center;">No hay datos de tiempos de respuesta disponibles</p>';
+      return;
+    }
+
+    const response = await fetch(`${FASTAPI_URL}/analyze-response-times`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tiempos_data: tiemposData })
+    });
+
+    if (!response.ok) throw new Error('Error en análisis de tiempos');
+
+    const result = await response.json();
+    
+    if (result.success) {
+      mostrarResultadosTiempos(result.response_time_analysis);
+    }
+  } catch (error) {
+    console.error('❌ Error analizando tiempos:', error);
+  }
+}
+
+function mostrarResultadosTiempos(analysis) {
+  const container = document.getElementById('resultados-tiempos');
+  if (!container) return;
+
+  let html = '<h4 style="color: var(--accent); margin-bottom: 20px;">⏱️ Análisis de Tiempos de Respuesta</h4>';
+
+  // Gráfico de tiempos
+  if (analysis.times_plot) {
+    html += `
+      <div style="text-align: center; margin-bottom: 30px;">
+        <img src="data:image/png;base64,${analysis.times_plot}" 
+             style="max-width: 100%; border-radius: 10px; border: 1px solid var(--border);">
+      </div>
+    `;
+  }
+
+  // Ítems más rápidos y más lentos
+  html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">';
+  
+  // Ítems más rápidos
+  if (analysis.fastest_items && analysis.fastest_items.length > 0) {
+    html += `
+      <div class="resultado-box">
+        <h5 style="color: #4CAF50; margin-bottom: 15px;">🚀 Ítems Más Rápidos</h5>
+        ${analysis.fastest_items.map(item => `
+          <div style="margin-bottom: 10px; padding: 10px; background: rgba(76, 175, 80, 0.1); border-radius: 5px;">
+            <div style="font-weight: bold;">${item.question}</div>
+            <div style="color: var(--text-secondary); font-size: 0.9em;">
+              Tiempo promedio: <strong>${item.mean_time.toFixed(0)} ms</strong>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  // Ítems más lentos
+  if (analysis.slowest_items && analysis.slowest_items.length > 0) {
+    html += `
+      <div class="resultado-box">
+        <h5 style="color: #ff6384; margin-bottom: 15px;">🐌 Ítems Más Lentos</h5>
+        ${analysis.slowest_items.map(item => `
+          <div style="margin-bottom: 10px; padding: 10px; background: rgba(255, 99, 132, 0.1); border-radius: 5px;">
+            <div style="font-weight: bold;">${item.question}</div>
+            <div style="color: var(--text-secondary); font-size: 0.9em;">
+              Tiempo promedio: <strong>${item.mean_time.toFixed(0)} ms</strong>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  html += '</div>';
+
+  container.innerHTML = html;
+}
+
+async function analizarRegresiones(participantes) {
+  try {
+    // Preparar datos para regresión: Maquiavelismo vs Intensidad de AU4
+    const xData = participantes.map(p => p.mach || 0).filter(val => val > 0);
+    const yData = participantes.map(p => {
+      if (p.facs_promedio && typeof p.facs_promedio === 'object') {
+        return p.facs_promedio.AU4 || 0;
+      }
+      return 0;
+    }).filter(val => val > 0);
+
+    if (xData.length < 3 || yData.length < 3) {
+      document.getElementById('resultados-regresion').innerHTML = 
+        '<p style="color: var(--text-secondary); text-align: center;">Datos insuficientes para análisis de regresión</p>';
+      return;
+    }
+
+    const response = await fetch(`${FASTAPI_URL}/regression-analysis`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        x_data: xData,
+        y_data: yData,
+        x_label: 'Maquiavelismo (SD3)',
+        y_label: 'Intensidad AU4 (FACS)'
+      })
+    });
+
+    if (!response.ok) throw new Error('Error en análisis de regresión');
+
+    const result = await response.json();
+    
+    if (result.success) {
+      mostrarResultadosRegresion(result);
+    }
+  } catch (error) {
+    console.error('❌ Error analizando regresiones:', error);
+  }
+}
+
+function mostrarResultadosRegresion(result) {
+  const container = document.getElementById('resultados-regresion');
+  if (!container) return;
+
+  const regression = result.regression_results;
+  const correlation = result.correlation_stats;
+  
+  let html = '<h4 style="color: var(--accent); margin-bottom: 20px;">📈 Análisis de Regresión Lineal</h4>';
+
+  // Gráfico de dispersión con línea de regresión
+  if (result.scatter_plot) {
+    html += `
+      <div style="text-align: center; margin-bottom: 30px;">
+        <img src="data:image/png;base64,${result.scatter_plot}" 
+             style="max-width: 100%; border-radius: 10px; border: 1px solid var(--border);">
+      </div>
+    `;
+  }
+
+  // Estadísticas
+  html += `
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+      <div class="stat-mini">
+        <div class="stat-mini-label">Ecuación de Regresión</div>
+        <div class="stat-mini-value" style="font-size: 1.2em;">${regression.equation}</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-label">R² (Ajuste)</div>
+        <div class="stat-mini-value">${regression.r_squared.toFixed(3)}</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-label">Correlación (r)</div>
+        <div class="stat-mini-value">${correlation.pearson_r.toFixed(3)}</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-label">Significancia</div>
+        <div class="stat-mini-value" style="color: ${correlation.p_value < 0.05 ? '#4CAF50' : '#ff6384'};">
+          ${correlation.significance}
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Interpretación
+  html += `
+    <div class="resultado-box" style="background: rgba(127, 0, 255, 0.1); border-left: 4px solid var(--accent);">
+      <h5 style="color: var(--accent); margin-bottom: 10px;">🧠 Interpretación</h5>
+      <p style="color: var(--text-secondary); line-height: 1.6;">
+        ${result.interpretation}
+      </p>
+      <p style="color: var(--text-secondary); margin-top: 10px; font-size: 0.9em;">
+        <strong>Nota:</strong> p = ${correlation.p_value.toFixed(4)} | 
+        La regresión muestra cómo cambia la intensidad de AU4 por cada punto de maquiavelismo.
+      </p>
+    </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+function mostrarMensajeAnalisis(mensaje) {
+  const container = document.getElementById('seccion-analisis');
+  if (container) {
+    container.innerHTML = `
+      <div class="content-box">
+        <h2 style="color: var(--accent);">Análisis Estadístico Avanzado</h2>
+        <div style="text-align: center; padding: 40px;">
+          <p style="color: var(--text-secondary); font-size: 1.2em;">${mensaje}</p>
+          <button id="btn-volver-investigador2" class="btn-secondary" style="margin-top: 20px;">
+            Volver al panel
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.getElementById('btn-volver-investigador2')?.addEventListener('click', () => {
+      document.getElementById('seccion-analisis').classList.add('hidden');
+      document.getElementById('seccion-investigador').classList.remove('hidden');
+      window.scrollTo({ top:0, behavior:'smooth' });
+    });
+  }
+}
+
 /* ---------- FUNCIONES GLOBALES ---------- */
 function volverAlInicio() {
   sessionStorage.clear();
@@ -1061,6 +1471,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('btn-volver-panel')?.addEventListener('click', () => {
     document.getElementById('seccion-resultados')?.classList.add('hidden');
+    document.getElementById('seccion-investigador')?.classList.remove('hidden');
+    window.scrollTo({ top:0, behavior:'smooth' });
+  });
+
+  document.getElementById('btn-volver-investigador')?.addEventListener('click', () => {
+    document.getElementById('seccion-analisis')?.classList.add('hidden');
     document.getElementById('seccion-investigador')?.classList.remove('hidden');
     window.scrollTo({ top:0, behavior:'smooth' });
   });
