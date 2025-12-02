@@ -739,7 +739,18 @@ function mostrarConfirmacionParticipante(analisisImagen = null) {
 /* ---------- PANEL INVESTIGADOR ---------- */
 async function cargarDatosParticipantes() {
   const listaDiv = document.getElementById('lista-participantes');
-  if (listaDiv) listaDiv.innerHTML = '<p style="text-align:center; color:var(--text-secondary);">📡 Cargando datos desde Supabase...</p>';
+  if (listaDiv) {
+    listaDiv.innerHTML = `
+      <div style="text-align: center; padding: 40px;">
+        <div style="display: inline-block; padding: 20px; background: rgba(127, 0, 255, 0.1); border-radius: 50%;">
+          <span style="font-size: 2em;">⏳</span>
+        </div>
+        <p style="color: var(--text-secondary); margin-top: 20px;">
+          Cargando datos desde la base de datos...
+        </p>
+      </div>
+    `;
+  }
   
   try {
     console.log('🔍 Cargando datos desde Supabase...');
@@ -747,21 +758,53 @@ async function cargarDatosParticipantes() {
     const { data: participantes, error } = await supabase
       .from('darklens_records')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100); // Limitar a 100 registros para mejor performance
 
     if (error) {
-      throw new Error(`Error Supabase: ${error.message}`);
+      console.error('❌ Error de Supabase:', error);
+      throw new Error(`Error cargando datos: ${error.message}`);
     }
 
     participantesData = participantes || [];
     console.log(`✅ ${participantesData.length} participantes cargados desde Supabase`);
     
+    if (participantesData.length === 0) {
+      if (listaDiv) {
+        listaDiv.innerHTML = `
+          <div style="text-align: center; padding: 40px;">
+            <div style="display: inline-block; padding: 20px; background: rgba(255, 99, 132, 0.1); border-radius: 50%;">
+              <span style="font-size: 2em;">📭</span>
+            </div>
+            <h3 style="color: var(--accent); margin-top: 20px;">No hay participantes registrados</h3>
+            <p style="color: var(--text-secondary);">
+              Cuando los participantes completen el test SD3 y capturen su imagen, aparecerán aquí.
+            </p>
+          </div>
+        `;
+      }
+      return;
+    }
+    
+    poblarListaInvestigador();
+    
   } catch (err) {
-    console.warn('⚠️ Error cargando desde Supabase:', err);
-    participantesData = [];
+    console.error('❌ Error cargando participantes:', err);
+    if (listaDiv) {
+      listaDiv.innerHTML = `
+        <div style="text-align: center; padding: 40px;">
+          <div style="display: inline-block; padding: 20px; background: rgba(255, 99, 132, 0.1); border-radius: 50%;">
+            <span style="font-size: 2em;">⚠️</span>
+          </div>
+          <h3 style="color: #ff6384; margin-top: 20px;">Error cargando datos</h3>
+          <p style="color: var(--text-secondary);">${err.message}</p>
+          <button class="btn-primary" onclick="cargarDatosParticipantes()" style="margin-top: 20px;">
+            🔄 Reintentar
+          </button>
+        </div>
+      `;
+    }
   }
-  
-  poblarListaInvestigador();
 }
 
 function poblarListaInvestigador() {
@@ -798,7 +841,7 @@ function poblarListaInvestigador() {
   
   participantesData.forEach((p, idx) => {
     const fecha = new Date(p.created_at).toLocaleString('es-AR');
-    const emocion = p.emocion_princ || 'No analizado';
+    const emocion = p.emocion_principal || p.emocion_princ || 'No analizado';
     const tipo = p.tipo_captura === 'imagen' ? '📸' : '🎬';
     
     const item = document.createElement('div');
@@ -898,7 +941,7 @@ async function generarYDescargarCSV() {
         p.narc || 0,
         p.psych || 0,
         p.tiempo_total_seg || '',
-        p.emocion_princ || '',
+        p.emocion_principal || p.emocion_princ || '',
         p.historia_utilizada || '',
         p.tipo_captura || 'imagen',
         `"${(p.aus_frecuentes || []).join('; ')}"`,
@@ -1004,12 +1047,12 @@ function mostrarParticipanteEnPanel(index) {
   
   // Mostrar microexpresiones
   const microDiv = document.getElementById('microexpresiones-detalle');
-  if (microDiv && p.emocion_princ) {
+  if (microDiv && (p.emocion_principal || p.emocion_princ)) {
     microDiv.innerHTML = `
       <div style="text-align: center; padding: 20px;">
         <h4 style="color: var(--accent);">Emoción predominante detectada</h4>
         <p style="font-size: 2em; font-weight: bold; color: #7f00ff;">
-          ${p.emocion_princ}
+          ${p.emocion_principal || p.emocion_princ}
         </p>
         ${p.aus_frecuentes && p.aus_frecuentes.length > 0 ? 
           `<p><strong>AUs detectadas:</strong> ${p.aus_frecuentes.join(', ')}</p>` : ''}
@@ -1073,22 +1116,59 @@ async function cargarAnalisisAvanzado() {
       return;
     }
 
-    // Preparar datos para análisis
-    const sd3Scores = participantes.map(p => ({
-      mach: p.mach || 0,
-      narc: p.narc || 0,
-      psych: p.psych || 0
-    }));
+    console.log(`📊 Total de participantes para análisis: ${participantes.length}`);
 
-    const facsScores = participantes.map(p => {
-      const facs = {};
-      if (p.facs_promedio && typeof p.facs_promedio === 'object') {
-        Object.entries(p.facs_promedio).forEach(([au, intensity]) => {
-          facs[au] = intensity;
-        });
+    // Preparar datos para análisis - FILTRANDO Y LIMPIANDO DATOS
+    const sd3Scores = [];
+    const facsScores = [];
+    
+    participantes.forEach(p => {
+      // Solo incluir participantes con datos SD3 válidos
+      if (p.mach !== null && p.narc !== null && p.psych !== null) {
+        const mach = parseFloat(p.mach);
+        const narc = parseFloat(p.narc);
+        const psych = parseFloat(p.psych);
+        
+        // Verificar que sean números válidos (no NaN)
+        if (!isNaN(mach) && !isNaN(narc) && !isNaN(psych)) {
+          sd3Scores.push({
+            mach: mach,
+            narc: narc,
+            psych: psych
+          });
+
+          // Preparar datos FACS - asegurarse de que sean números válidos
+          const facs = {};
+          if (p.facs_promedio && typeof p.facs_promedio === 'object') {
+            Object.entries(p.facs_promedio).forEach(([au, intensity]) => {
+              const numIntensity = parseFloat(intensity);
+              if (!isNaN(numIntensity) && isFinite(numIntensity)) {
+                facs[au] = numIntensity;
+              }
+            });
+          }
+          facsScores.push(facs);
+        }
       }
-      return facs;
     });
+
+    console.log(`📊 Datos SD3 válidos: ${sd3Scores.length}`);
+    console.log(`📊 Datos FACS válidos: ${facsScores.length}`);
+
+    if (sd3Scores.length < 3) {
+      document.getElementById('resultados-correlaciones').innerHTML = `
+        <div class="resultado-box" style="text-align: center;">
+          <h4 style="color: var(--accent);">🔗 Correlaciones entre Rasgos SD3 y Unidades FACS</h4>
+          <p style="color: var(--text-secondary);">
+            Se necesitan al menos 3 participantes con datos SD3 válidos para análisis de correlaciones.
+          </p>
+          <p style="color: var(--text-secondary); font-size: 0.9em; margin-top: 10px;">
+            <strong>Participantes con datos válidos:</strong> ${sd3Scores.length}
+          </p>
+        </div>
+      `;
+      return;
+    }
 
     // 1. Análisis de correlaciones SD3-FACS
     await analizarCorrelaciones(sd3Scores, facsScores);
@@ -1107,24 +1187,75 @@ async function cargarAnalisisAvanzado() {
 
 async function analizarCorrelaciones(sd3Scores, facsScores) {
   try {
+    console.log('🔗 Enviando datos para análisis de correlaciones...');
+    
+    // LIMPIAR DATOS ANTES DE ENVIAR - eliminar NaN, undefined, null, valores no finitos
+    const cleanedSd3Scores = sd3Scores.map(score => ({
+      mach: isFinite(score.mach) ? score.mach : 0,
+      narc: isFinite(score.narc) ? score.narc : 0,
+      psych: isFinite(score.psych) ? score.psych : 0
+    }));
+
+    const cleanedFacsScores = facsScores.map(facs => {
+      const cleanFacs = {};
+      if (facs && typeof facs === 'object') {
+        Object.entries(facs).forEach(([key, value]) => {
+          const numValue = parseFloat(value);
+          if (isFinite(numValue)) {
+            cleanFacs[key] = numValue;
+          }
+        });
+      }
+      return cleanFacs;
+    });
+
+    console.log('🧹 Datos limpiados para análisis de correlaciones');
+
     const response = await fetch(`${FASTAPI_URL}/analyze-correlations`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
       body: JSON.stringify({
-        sd3_scores: sd3Scores,
-        facs_scores: facsScores
+        sd3_scores: cleanedSd3Scores,
+        facs_scores: cleanedFacsScores
       })
     });
 
-    if (!response.ok) throw new Error('Error en análisis de correlaciones');
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Error del servidor:', errorText);
+      throw new Error(`Error en análisis de correlaciones: ${response.status} ${response.statusText}`);
+    }
 
     const result = await response.json();
+    console.log('✅ Resultado de correlaciones:', result);
     
     if (result.success) {
       mostrarResultadosCorrelaciones(result.correlation_analysis, result.plots);
+    } else {
+      throw new Error(result.error || 'Error desconocido en análisis');
     }
   } catch (error) {
     console.error('❌ Error analizando correlaciones:', error);
+    document.getElementById('resultados-correlaciones').innerHTML = `
+      <div class="resultado-box" style="background: rgba(255, 99, 132, 0.1); border-left: 4px solid #ff6384;">
+        <h4 style="color: #ff6384;">⚠️ Error en Análisis de Correlaciones</h4>
+        <p style="color: var(--text-secondary);">${error.message}</p>
+        <p style="color: var(--text-secondary); margin-top: 10px;">
+          Esto puede deberse a:
+          <ul style="margin-left: 20px; color: var(--text-secondary);">
+            <li>Datos insuficientes o incompletos</li>
+            <li>Problemas temporales del servidor</li>
+            <li>Formato de datos no válido</li>
+          </ul>
+        </p>
+        <button class="btn-secondary" onclick="cargarAnalisisAvanzado()" style="margin-top: 15px;">
+          🔄 Reintentar análisis
+        </button>
+      </div>
+    `;
   }
 }
 
@@ -1135,7 +1266,7 @@ function mostrarResultadosCorrelaciones(analysis, plots) {
   let html = '<h4 style="color: var(--accent); margin-bottom: 20px;">🔗 Correlaciones Significativas</h4>';
 
   // Mostrar correlaciones significativas
-  const significant = analysis.significant_correlations || [];
+  const significant = analysis?.significant_correlations || [];
   
   if (significant.length > 0) {
     html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;">';
@@ -1147,13 +1278,12 @@ function mostrarResultadosCorrelaciones(analysis, plots) {
             <strong style="color: var(--accent);">${corr.sd3_trait} ↔ ${corr.au}</strong>
             <span style="background: ${Math.abs(corr.correlation) > 0.5 ? '#ff6384' : '#36a2eb'}; 
                          color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.9em;">
-              r = ${corr.correlation.toFixed(3)}
+              r = ${corr.correlation?.toFixed(3) || '0.000'}
             </span>
           </div>
           <div style="color: var(--text-secondary); font-size: 0.9em;">
-            <div>Fuerza: <strong>${corr.strength}</strong></div>
-            <div>Dirección: <strong>${corr.direction}</strong></div>
-            <div>Interpretación: ${interpretarCorrelacion(corr.correlation, corr.sd3_trait, corr.au)}</div>
+            <div>Fuerza: <strong>${corr.strength || 'Desconocida'}</strong></div>
+            <div>Dirección: <strong>${corr.direction || 'Desconocida'}</strong></div>
           </div>
         </div>
       `;
@@ -1162,19 +1292,21 @@ function mostrarResultadosCorrelaciones(analysis, plots) {
     html += '</div>';
 
     // Mostrar gráficos
-    html += '<h4 style="color: var(--accent); margin: 30px 0 20px 0;">📊 Gráficos de Correlación</h4>';
-    html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px;">';
-    
-    Object.entries(plots).forEach(([key, plotBase64]) => {
-      html += `
-        <div class="resultado-box">
-          <img src="data:image/png;base64,${plotBase64}" 
-               style="width: 100%; border-radius: 10px; border: 1px solid var(--border);">
-        </div>
-      `;
-    });
-    
-    html += '</div>';
+    if (plots && Object.keys(plots).length > 0) {
+      html += '<h4 style="color: var(--accent); margin: 30px 0 20px 0;">📊 Gráficos de Correlación</h4>';
+      html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px;">';
+      
+      Object.entries(plots).forEach(([key, plotBase64]) => {
+        html += `
+          <div class="resultado-box">
+            <img src="data:image/png;base64,${plotBase64}" 
+                 style="width: 100%; border-radius: 10px; border: 1px solid var(--border);">
+          </div>
+        `;
+      });
+      
+      html += '</div>';
+    }
   } else {
     html += '<p style="color: var(--text-secondary); text-align: center;">No se encontraron correlaciones significativas (|r| > 0.3)</p>';
   }
@@ -1182,78 +1314,82 @@ function mostrarResultadosCorrelaciones(analysis, plots) {
   container.innerHTML = html;
 }
 
-function interpretarCorrelacion(r, sd3Trait, au) {
-  const traits = {
-    'mach': 'maquiavelismo',
-    'narc': 'narcisismo', 
-    'psych': 'psicopatía'
-  };
-  
-  const aus = {
-    'AU1': 'elevación de ceja interna',
-    'AU4': 'fruncimiento de cejas',
-    'AU12': 'sonrisa (estiramiento de labios)',
-    'AU15': 'comisuras labiales hacia abajo'
-  };
-  
-  const traitName = traits[sd3Trait] || sd3Trait;
-  const auName = aus[au] || au;
-  
-  if (r > 0.5) {
-    return `Personas con ${traitName} alto muestran más ${auName}`;
-  } else if (r > 0.3) {
-    return `Relación moderada entre ${traitName} y ${auName}`;
-  } else if (r < -0.3) {
-    return `Personas con ${traitName} alto muestran menos ${auName}`;
-  }
-  
-  return 'Correlación débil o no significativa';
-}
-
 async function analizarTiemposRespuesta(participantes) {
   try {
+    console.log('⏱️ Analizando tiempos de respuesta...');
+    
     // Extraer datos de tiempos (si están disponibles)
     const tiemposData = [];
     
     participantes.forEach(p => {
       if (p.tiempos_respuesta) {
-        const tiempos = typeof p.tiempos_respuesta === 'string' 
-          ? JSON.parse(p.tiempos_respuesta)
-          : p.tiempos_respuesta;
-        
-        Object.values(tiempos).forEach(tiempo => {
-          if (tiempo && typeof tiempo === 'object') {
-            tiemposData.push({
-              item_number: tiempo.item_number,
-              tiempo_ms: tiempo.tiempo_ms || 0,
-              pregunta: tiempo.pregunta
+        try {
+          const tiempos = typeof p.tiempos_respuesta === 'string' 
+            ? JSON.parse(p.tiempos_respuesta)
+            : p.tiempos_respuesta;
+          
+          if (tiempos && typeof tiempos === 'object') {
+            Object.values(tiempos).forEach(tiempo => {
+              if (tiempo && typeof tiempo === 'object' && tiempo.tiempo_ms) {
+                tiemposData.push({
+                  item_number: tiempo.item_number || 0,
+                  tiempo_ms: parseFloat(tiempo.tiempo_ms) || 0,
+                  pregunta: tiempo.pregunta || 'Sin texto'
+                });
+              }
             });
           }
-        });
+        } catch (e) {
+          console.warn('⚠️ Error parseando tiempos de respuesta:', e);
+        }
       }
     });
 
+    console.log(`⏱️ Datos de tiempo encontrados: ${tiemposData.length}`);
+
     if (tiemposData.length === 0) {
-      document.getElementById('resultados-tiempos').innerHTML = 
-        '<p style="color: var(--text-secondary); text-align: center;">No hay datos de tiempos de respuesta disponibles</p>';
+      document.getElementById('resultados-tiempos').innerHTML = `
+        <div class="resultado-box" style="text-align: center;">
+          <h4 style="color: var(--accent);">⏱️ Análisis de Tiempos de Respuesta</h4>
+          <p style="color: var(--text-secondary);">No hay datos de tiempos de respuesta disponibles</p>
+          <p style="color: var(--text-secondary); font-size: 0.9em; margin-top: 10px;">
+            Los tiempos de respuesta se registran cuando los participantes completan el test SD3.
+          </p>
+        </div>
+      `;
       return;
     }
 
     const response = await fetch(`${FASTAPI_URL}/analyze-response-times`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
       body: JSON.stringify({ tiempos_data: tiemposData })
     });
 
-    if (!response.ok) throw new Error('Error en análisis de tiempos');
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Error del servidor en análisis de tiempos:', errorText);
+      throw new Error(`Error en análisis de tiempos: ${response.status}`);
+    }
 
     const result = await response.json();
     
     if (result.success) {
       mostrarResultadosTiempos(result.response_time_analysis);
+    } else {
+      throw new Error(result.error || 'Error desconocido en análisis de tiempos');
     }
   } catch (error) {
     console.error('❌ Error analizando tiempos:', error);
+    document.getElementById('resultados-tiempos').innerHTML = `
+      <div class="resultado-box" style="background: rgba(255, 206, 86, 0.1); border-left: 4px solid #ffce56;">
+        <h4 style="color: #ffce56;">⚠️ Error en Análisis de Tiempos</h4>
+        <p style="color: var(--text-secondary);">${error.message}</p>
+      </div>
+    `;
   }
 }
 
@@ -1264,7 +1400,7 @@ function mostrarResultadosTiempos(analysis) {
   let html = '<h4 style="color: var(--accent); margin-bottom: 20px;">⏱️ Análisis de Tiempos de Respuesta</h4>';
 
   // Gráfico de tiempos
-  if (analysis.times_plot) {
+  if (analysis?.times_plot) {
     html += `
       <div style="text-align: center; margin-bottom: 30px;">
         <img src="data:image/png;base64,${analysis.times_plot}" 
@@ -1277,15 +1413,15 @@ function mostrarResultadosTiempos(analysis) {
   html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">';
   
   // Ítems más rápidos
-  if (analysis.fastest_items && analysis.fastest_items.length > 0) {
+  if (analysis?.fastest_items && analysis.fastest_items.length > 0) {
     html += `
       <div class="resultado-box">
         <h5 style="color: #4CAF50; margin-bottom: 15px;">🚀 Ítems Más Rápidos</h5>
         ${analysis.fastest_items.map(item => `
           <div style="margin-bottom: 10px; padding: 10px; background: rgba(76, 175, 80, 0.1); border-radius: 5px;">
-            <div style="font-weight: bold;">${item.question}</div>
+            <div style="font-weight: bold;">${item.question || 'Sin texto'}</div>
             <div style="color: var(--text-secondary); font-size: 0.9em;">
-              Tiempo promedio: <strong>${item.mean_time.toFixed(0)} ms</strong>
+              Tiempo promedio: <strong>${(item.mean_time || 0).toFixed(0)} ms</strong>
             </div>
           </div>
         `).join('')}
@@ -1294,15 +1430,15 @@ function mostrarResultadosTiempos(analysis) {
   }
 
   // Ítems más lentos
-  if (analysis.slowest_items && analysis.slowest_items.length > 0) {
+  if (analysis?.slowest_items && analysis.slowest_items.length > 0) {
     html += `
       <div class="resultado-box">
         <h5 style="color: #ff6384; margin-bottom: 15px;">🐌 Ítems Más Lentos</h5>
         ${analysis.slowest_items.map(item => `
           <div style="margin-bottom: 10px; padding: 10px; background: rgba(255, 99, 132, 0.1); border-radius: 5px;">
-            <div style="font-weight: bold;">${item.question}</div>
+            <div style="font-weight: bold;">${item.question || 'Sin texto'}</div>
             <div style="color: var(--text-secondary); font-size: 0.9em;">
-              Tiempo promedio: <strong>${item.mean_time.toFixed(0)} ms</strong>
+              Tiempo promedio: <strong>${(item.mean_time || 0).toFixed(0)} ms</strong>
             </div>
           </div>
         `).join('')}
@@ -1317,24 +1453,62 @@ function mostrarResultadosTiempos(analysis) {
 
 async function analizarRegresiones(participantes) {
   try {
+    console.log('📈 Preparando datos para análisis de regresión...');
+    
     // Preparar datos para regresión: Maquiavelismo vs Intensidad de AU4
-    const xData = participantes.map(p => p.mach || 0).filter(val => val > 0);
-    const yData = participantes.map(p => {
-      if (p.facs_promedio && typeof p.facs_promedio === 'object') {
-        return p.facs_promedio.AU4 || 0;
+    const xData = [];
+    const yData = [];
+    
+    participantes.forEach(p => {
+      const mach = parseFloat(p.mach);
+      
+      if (!isNaN(mach) && isFinite(mach) && mach > 0) {
+        let au4Intensity = 0;
+        
+        // Buscar intensidad de AU4 en facs_promedio
+        if (p.facs_promedio && typeof p.facs_promedio === 'object') {
+          // Intentar diferentes nombres de clave para AU4
+          au4Intensity = p.facs_promedio.AU4 || 
+                        p.facs_promedio.au4 || 
+                        p.facs_promedio['AU_4'] || 
+                        p.facs_promedio['au_4'] || 0;
+        }
+        
+        const au4Num = parseFloat(au4Intensity);
+        if (!isNaN(au4Num) && isFinite(au4Num) && au4Num > 0) {
+          xData.push(mach);
+          yData.push(au4Num);
+        }
       }
-      return 0;
-    }).filter(val => val > 0);
+    });
+
+    console.log(`📈 Datos para regresión: X=${xData.length}, Y=${yData.length}`);
 
     if (xData.length < 3 || yData.length < 3) {
-      document.getElementById('resultados-regresion').innerHTML = 
-        '<p style="color: var(--text-secondary); text-align: center;">Datos insuficientes para análisis de regresión</p>';
+      document.getElementById('resultados-regresion').innerHTML = `
+        <div class="resultado-box" style="text-align: center;">
+          <h4 style="color: var(--accent);">📊 Regresión Lineal: SD3 vs FACS</h4>
+          <p style="color: var(--text-secondary);">Datos insuficientes para análisis de regresión</p>
+          <p style="color: var(--text-secondary); font-size: 0.9em; margin-top: 10px;">
+            Se necesitan al menos 3 participantes con datos de Maquiavelismo y AU4 válidos.
+          </p>
+          <div style="margin-top: 15px;">
+            <p style="color: var(--text-secondary); font-size: 0.85em;">
+              <strong>Participantes con datos válidos:</strong> ${xData.length}<br>
+              <strong>AU4 detectado:</strong> ${yData.length}
+            </p>
+          </div>
+        </div>
+      `;
       return;
     }
 
     const response = await fetch(`${FASTAPI_URL}/regression-analysis`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
       body: JSON.stringify({
         x_data: xData,
         y_data: yData,
@@ -1343,15 +1517,30 @@ async function analizarRegresiones(participantes) {
       })
     });
 
-    if (!response.ok) throw new Error('Error en análisis de regresión');
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Error del servidor en regresión:', errorText);
+      throw new Error(`Error en análisis de regresión: ${response.status}`);
+    }
 
     const result = await response.json();
     
     if (result.success) {
       mostrarResultadosRegresion(result);
+    } else {
+      throw new Error(result.error || 'Error desconocido en análisis de regresión');
     }
   } catch (error) {
     console.error('❌ Error analizando regresiones:', error);
+    document.getElementById('resultados-regresion').innerHTML = `
+      <div class="resultado-box" style="background: rgba(54, 162, 235, 0.1); border-left: 4px solid #36a2eb;">
+        <h4 style="color: #36a2eb;">⚠️ Error en Análisis de Regresión</h4>
+        <p style="color: var(--text-secondary);">${error.message}</p>
+        <p style="color: var(--text-secondary); margin-top: 10px;">
+          El análisis de regresión requiere datos numéricos válidos de SD3 y FACS.
+        </p>
+      </div>
+    `;
   }
 }
 
@@ -1359,8 +1548,8 @@ function mostrarResultadosRegresion(result) {
   const container = document.getElementById('resultados-regresion');
   if (!container) return;
 
-  const regression = result.regression_results;
-  const correlation = result.correlation_stats;
+  const regression = result.regression_results || {};
+  const correlation = result.correlation_stats || {};
   
   let html = '<h4 style="color: var(--accent); margin-bottom: 20px;">📈 Análisis de Regresión Lineal</h4>';
 
@@ -1379,20 +1568,20 @@ function mostrarResultadosRegresion(result) {
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
       <div class="stat-mini">
         <div class="stat-mini-label">Ecuación de Regresión</div>
-        <div class="stat-mini-value" style="font-size: 1.2em;">${regression.equation}</div>
+        <div class="stat-mini-value" style="font-size: 1.2em;">${regression.equation || 'No disponible'}</div>
       </div>
       <div class="stat-mini">
         <div class="stat-mini-label">R² (Ajuste)</div>
-        <div class="stat-mini-value">${regression.r_squared.toFixed(3)}</div>
+        <div class="stat-mini-value">${(regression.r_squared || 0).toFixed(3)}</div>
       </div>
       <div class="stat-mini">
         <div class="stat-mini-label">Correlación (r)</div>
-        <div class="stat-mini-value">${correlation.pearson_r.toFixed(3)}</div>
+        <div class="stat-mini-value">${(correlation.pearson_r || 0).toFixed(3)}</div>
       </div>
       <div class="stat-mini">
         <div class="stat-mini-label">Significancia</div>
-        <div class="stat-mini-value" style="color: ${correlation.p_value < 0.05 ? '#4CAF50' : '#ff6384'};">
-          ${correlation.significance}
+        <div class="stat-mini-value" style="color: ${(correlation.p_value || 1) < 0.05 ? '#4CAF50' : '#ff6384'};">
+          ${correlation.significance || 'No significativa'}
         </div>
       </div>
     </div>
@@ -1403,10 +1592,10 @@ function mostrarResultadosRegresion(result) {
     <div class="resultado-box" style="background: rgba(127, 0, 255, 0.1); border-left: 4px solid var(--accent);">
       <h5 style="color: var(--accent); margin-bottom: 10px;">🧠 Interpretación</h5>
       <p style="color: var(--text-secondary); line-height: 1.6;">
-        ${result.interpretation}
+        ${result.interpretation || 'No hay interpretación disponible'}
       </p>
       <p style="color: var(--text-secondary); margin-top: 10px; font-size: 0.9em;">
-        <strong>Nota:</strong> p = ${correlation.p_value.toFixed(4)} | 
+        <strong>Nota:</strong> p = ${(correlation.p_value || 0).toFixed(4)} | 
         La regresión muestra cómo cambia la intensidad de AU4 por cada punto de maquiavelismo.
       </p>
     </div>
@@ -1583,6 +1772,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('seccion-analisis').classList.add('hidden');
     document.getElementById('seccion-investigador').classList.remove('hidden');
     window.scrollTo({ top:0, behavior:'smooth' });
+  });
+
+  document.getElementById('btn-refrescar-analisis')?.addEventListener('click', () => {
+    cargarAnalisisAvanzado();
   });
 });
 
