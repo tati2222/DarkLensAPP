@@ -318,7 +318,7 @@
     }
 
     #video,
-    #preview-video {
+    #preview-image {
       max-width: 100%;
       border-radius: 15px;
       border: 2px solid var(--border);
@@ -747,50 +747,55 @@
     }
 
     /* ===========================
-       NUEVOS ESTILOS PARA VIDEO
+       NUEVOS ESTILOS PARA CAPTURA DE IMAGEN
        =========================== */
-    #progress-container {
-      margin-top: 20px;
+    #canvas {
+      display: none;
     }
 
-    #progress-bar {
-      background: linear-gradient(90deg, var(--accent), var(--accent-hover));
-      height: 100%;
-      width: 0%;
-      transition: width 0.1s;
-      border-radius: 4px;
-    }
-
-    #audio-container {
-      margin-top: 20px;
-      text-align: left;
-    }
-
-    #texto-historia {
+    #contador-container {
       background: rgba(127, 0, 255, 0.1);
+      border-radius: 15px;
       padding: 20px;
-      border-radius: 10px;
-      margin-top: 15px;
-      text-align: left;
-      max-height: 300px;
-      overflow-y: auto;
-      font-size: 1.1em;
-      line-height: 1.6;
+      border: 2px solid var(--accent);
+      margin: 20px auto;
+      max-width: 300px;
+      text-align: center;
     }
 
-    #texto-historia strong {
+    #contador {
+      font-size: 3em;
+      font-weight: bold;
       color: var(--accent);
-      display: block;
-      margin-bottom: 10px;
-      font-size: 1.2em;
+      animation: pulse 1s infinite;
     }
 
-    #texto-historia p {
-      margin: 15px 0;
-      text-align: justify;
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.8; }
     }
 
-    #info-video {
+    #btn-capturar-imagen {
+      background: linear-gradient(135deg, #ff6384, #ff4757);
+      box-shadow: 0 5px 15px rgba(255, 99, 132, 0.4);
+    }
+
+    #btn-capturar-imagen:hover {
+      background: linear-gradient(135deg, #ff7394, #ff5767);
+      box-shadow: 0 8px 20px rgba(255, 99, 132, 0.6);
+    }
+
+    #btn-recapturar {
+      background: var(--bg-primary);
+      border: 2px solid var(--border);
+    }
+
+    #btn-recapturar:hover {
+      border-color: #ff6384;
+      background: rgba(255, 99, 132, 0.1);
+    }
+
+    #info-imagen {
       margin-top: 15px;
       color: var(--text-secondary);
     }
@@ -856,7 +861,7 @@
             </svg>
             Participar
           </h3>
-          <p>Respondé el test SD3 y grabá tu video para contribuír a la investigación académica.</p>
+          <p>Respondé el test SD3 y capturá tu imagen para contribuír a la investigación académica.</p>
           <button class="btn-primary">Ir a la Aplicación</button>
         </div>
 
@@ -891,8 +896,8 @@
         <h3>🔬 Metodología</h3>
         <ol>
           <li><strong>Test SD3:</strong> El participante responde el cuestionario de personalidad oscura.</li>
-          <li><strong>Grabación de Video:</strong> Se graba un video de 15 segundos mientras el participante procesa una historia.</li>
-          <li><strong>Análisis Automático:</strong> Un modelo de deep learning analiza las microexpresiones en cada frame del video.</li>
+          <li><strong>Captura de Imagen:</strong> Se captura una fotografía mientras el participante procesa una historia.</li>
+          <li><strong>Análisis Automático:</strong> Un modelo de deep learning analiza las microexpresiones en la imagen.</li>
           <li><strong>Correlaciones:</strong> Los resultados se correlacionan con los rasgos de personalidad SD3.</li>
         </ol>
       </section>
@@ -983,81 +988,81 @@
       <form id="form-sd3" class="form-box"></form>
     </section>
 
-   <!-- ===============================
-     SECCIÓN 3: CAPTURA DE IMAGEN
-     =============================== -->
-<section id="seccion-micro" class="content-box hidden">
-  <h2>Captura de Imagen Facial</h2>
-  <p class="subtitle" style="text-align:center; margin-bottom:20px;">
-    Capturarás una fotografía mientras procesás una historia
-  </p>
+    <!-- ===============================
+         SECCIÓN 3: CAPTURA DE IMAGEN
+         =============================== -->
+    <section id="seccion-micro" class="content-box hidden">
+      <h2>Captura de Imagen Facial</h2>
+      <p class="subtitle" style="text-align:center; margin-bottom:20px;">
+        Capturarás una fotografía mientras procesás una historia
+      </p>
 
-  <div class="instrucciones">
-    <h3>📌 Instrucciones IMPORTANTES</h3>
-    <ul>
-      <li><strong>Mira de frente a la cámara</strong> durante la captura</li>
-      <li><strong>Lee atentamente</strong> la historia que aparecerá en pantalla</li>
-      <li><strong>Piensa en la historia</strong> y cómo te haría sentir</li>
-      <li><strong>Mantén una expresión natural</strong> - queremos captar tu reacción facial espontánea</li>
-      <li><strong>Captura única:</strong> Se tomará una sola fotografía de alta calidad</li>
-      <li><strong>Buena iluminación:</strong> Asegurate de estar en un lugar bien iluminado</li>
-    </ul>
-  </div>
-
-  <div class="camera-container">
-    <!-- Vista previa de cámara -->
-    <video id="video" autoplay playsinline muted class="hidden"></video>
-    
-    <!-- Lienzo para captura -->
-    <canvas id="canvas" class="hidden"></canvas>
-    
-    <!-- Placeholder cuando no hay cámara -->
-    <div id="camera-placeholder">
-      <p style="color:var(--text-secondary);">La cámara está desactivada.</p>
-    </div>
-
-    <!-- Vista previa de la imagen capturada -->
-    <div id="preview-container" class="hidden" style="text-align:center;">
-      <h3>📸 Imagen capturada</h3>
-      <img id="preview-image" style="max-width:100%; border-radius:15px; border:2px solid var(--border); margin-top:20px;" />
-      <div id="info-imagen" style="margin-top: 15px; color: var(--text-secondary);"></div>
-    </div>
-
-    <!-- Controles de cámara -->
-    <div class="button-group">
-      <button id="btn-activar-camara" class="btn-primary">Activar cámara</button>
-      <button id="btn-capturar-imagen" class="btn-primary hidden">📸 Capturar Imagen</button>
-      <button id="btn-recapturar" class="btn-secondary hidden">🔄 Recapturar</button>
-    </div>
-
-    <!-- Historia para leer -->
-    <div id="audio-container" class="hidden" style="margin-top: 20px;">
-      <h4 style="text-align: center; color: var(--accent);">📖 Historia para Leer</h4>
-      <div id="texto-historia" style="background: rgba(127, 0, 255, 0.1); padding: 20px; border-radius: 10px; margin-top: 15px; text-align: left; max-height: 300px; overflow-y: auto;">
-        <p style="text-align: center; color: var(--text-secondary); font-style: italic;">
-          La historia se cargará según tus respuestas al test SD3...
-        </p>
+      <div class="instrucciones">
+        <h3>📌 Instrucciones IMPORTANTES</h3>
+        <ul>
+          <li><strong>Mira de frente a la cámara</strong> durante la captura</li>
+          <li><strong>Lee atentamente</strong> la historia que aparecerá en pantalla</li>
+          <li><strong>Piensa en la historia</strong> y cómo te haría sentir</li>
+          <li><strong>Mantén una expresión natural</strong> - queremos captar tu reacción facial espontánea</li>
+          <li><strong>Captura única:</strong> Se tomará una sola fotografía de alta calidad</li>
+          <li><strong>Buena iluminación:</strong> Asegurate de estar en un lugar bien iluminado</li>
+        </ul>
       </div>
-    </div>
 
-    <!-- Contador para preparación -->
-    <div id="contador-container" class="hidden" style="margin-top: 20px; text-align: center;">
-      <div style="font-size: 1.2em; color: var(--accent); margin-bottom: 10px;">
-        Prepárate para la captura en:
+      <div class="camera-container">
+        <!-- Vista previa de cámara -->
+        <video id="video" autoplay playsinline muted class="hidden"></video>
+        
+        <!-- Lienzo para captura (oculto) -->
+        <canvas id="canvas" class="hidden"></canvas>
+        
+        <!-- Placeholder cuando no hay cámara -->
+        <div id="camera-placeholder">
+          <p style="color:var(--text-secondary);">La cámara está desactivada.</p>
+        </div>
+
+        <!-- Vista previa de la imagen capturada -->
+        <div id="preview-container" class="hidden" style="text-align:center;">
+          <h3>📸 Imagen capturada</h3>
+          <img id="preview-image" style="max-width:100%; border-radius:15px; border:2px solid var(--border); margin-top:20px;" />
+          <div id="info-imagen" style="margin-top: 15px; color: var(--text-secondary);"></div>
+        </div>
+
+        <!-- Controles de cámara -->
+        <div class="button-group">
+          <button id="btn-activar-camara" class="btn-primary">Activar cámara</button>
+          <button id="btn-capturar-imagen" class="btn-primary hidden">📸 Capturar Imagen</button>
+          <button id="btn-recapturar" class="btn-secondary hidden">🔄 Recapturar</button>
+        </div>
+
+        <!-- Historia para leer -->
+        <div id="audio-container" class="hidden" style="margin-top: 20px;">
+          <h4 style="text-align: center; color: var(--accent);">📖 Historia para Leer</h4>
+          <div id="texto-historia" style="background: rgba(127, 0, 255, 0.1); padding: 20px; border-radius: 10px; margin-top: 15px; text-align: left; max-height: 300px; overflow-y: auto;">
+            <p style="text-align: center; color: var(--text-secondary); font-style: italic;">
+              La historia se cargará según tus respuestas al test SD3...
+            </p>
+          </div>
+        </div>
+
+        <!-- Contador para preparación -->
+        <div id="contador-container" class="hidden" style="margin-top: 20px; text-align: center;">
+          <div style="font-size: 1.2em; color: var(--accent); margin-bottom: 10px;">
+            Prepárate para la captura en:
+          </div>
+          <div id="contador" style="font-size: 3em; font-weight: bold; color: var(--accent);">5</div>
+          <div style="margin-top: 10px; color: var(--text-secondary); font-size: 0.9em;">
+            Mantén la mirada en la cámara y piensa en la historia
+          </div>
+        </div>
       </div>
-      <div id="contador" style="font-size: 3em; font-weight: bold; color: var(--accent);">5</div>
-      <div style="margin-top: 10px; color: var(--text-secondary); font-size: 0.9em;">
-        Mantén la mirada en la cámara y piensa en la historia
+
+      <div id="resultado-micro" class="hidden"></div>
+
+      <div style="text-align:center; margin-top:20px;">
+        <button id="btn-subir-imagen" class="btn-primary hidden">📤 Subir Imagen y Analizar</button>
       </div>
-    </div>
-  </div>
-
-  <div id="resultado-micro" class="hidden"></div>
-
-  <div style="text-align:center; margin-top:20px;">
-    <button id="btn-subir-imagen" class="btn-primary hidden">📤 Subir Imagen y Analizar</button>
-  </div>
-</section>
+    </section>
 
     <!-- ===============================
          SECCIÓN 4: LOGIN INVESTIGADOR
@@ -1125,8 +1130,10 @@
       <h3>🧠 Integración de Resultados</h3>
       <div id="analisis-final" class="resultado-box"></div>
 
-      <h3>📷 Video del Participante</h3>
-      <div id="imagen-participante" style="text-align:center; margin-top:30px;"></div>
+      <h3>📷 Imagen del Participante</h3>
+      <div id="imagen-participante" style="text-align:center; margin-top:30px;">
+        <p style="color:var(--text-secondary);">La imagen no está disponible en esta vista.</p>
+      </div>
 
       <div style="text-align:center; margin-top:30px;">
         <button id="btn-volver-panel" class="btn-secondary">Volver al panel</button>
