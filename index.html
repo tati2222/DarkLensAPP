@@ -49,7 +49,7 @@
        CONTAINER
        =========================== */
     .container {
-      max-width: 900px;
+      max-width: 1100px;
       margin: 0 auto;
     }
 
@@ -799,6 +799,126 @@
       margin-top: 15px;
       color: var(--text-secondary);
     }
+
+    /* ===========================
+       ESTILOS PARA PANEL DE ANÁLISIS AVANZADO
+       =========================== */
+    .analisis-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .analisis-section {
+      background: rgba(0,0,0,0.2);
+      padding: 25px;
+      border-radius: 15px;
+      margin-bottom: 30px;
+      border: 1px solid var(--border);
+    }
+
+    .analisis-section h3 {
+      color: var(--accent);
+      margin-bottom: 20px;
+      font-size: 1.4em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .correlation-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .correlation-card {
+      background: rgba(127, 0, 255, 0.05);
+      padding: 20px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      transition: all 0.3s;
+    }
+
+    .correlation-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .correlation-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .correlation-value {
+      font-size: 1.5em;
+      font-weight: bold;
+      color: var(--accent);
+    }
+
+    .correlation-strength {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8em;
+      font-weight: bold;
+    }
+
+    .strength-high {
+      background: rgba(255, 99, 132, 0.2);
+      color: #ff6384;
+      border: 1px solid #ff6384;
+    }
+
+    .strength-medium {
+      background: rgba(255, 206, 86, 0.2);
+      color: #ffce56;
+      border: 1px solid #ffce56;
+    }
+
+    .regression-equation {
+      background: rgba(54, 162, 235, 0.1);
+      padding: 15px;
+      border-radius: 10px;
+      font-family: monospace;
+      font-size: 1.2em;
+      text-align: center;
+      margin: 20px 0;
+      border: 1px solid #36a2eb;
+    }
+
+    .time-item {
+      padding: 15px;
+      margin-bottom: 10px;
+      background: rgba(0,0,0,0.1);
+      border-radius: 8px;
+      border-left: 4px solid var(--border);
+    }
+
+    .time-item-fast {
+      border-left-color: #4CAF50;
+    }
+
+    .time-item-slow {
+      border-left-color: #ff6384;
+    }
+
+    .plot-container {
+      text-align: center;
+      margin: 30px 0;
+    }
+
+    .plot-container img {
+      max-width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
   </style>
 </head>
 <body>
@@ -1137,6 +1257,81 @@
 
       <div style="text-align:center; margin-top:30px;">
         <button id="btn-volver-panel" class="btn-secondary">Volver al panel</button>
+      </div>
+    </section>
+
+    <!-- ===============================
+         SECCIÓN 7: ANÁLISIS ESTADÍSTICO AVANZADO
+         =============================== -->
+    <section id="seccion-analisis" class="content-box hidden">
+      <div class="analisis-header">
+        <h2>📈 Análisis Estadístico Avanzado</h2>
+        <button id="btn-volver-investigador" class="btn-secondary">
+          ← Volver al panel
+        </button>
+      </div>
+
+      <p class="subtitle" style="text-align:center; margin-bottom:30px;">
+        Análisis de correlaciones, regresiones y tiempos de respuesta entre todos los participantes
+      </p>
+
+      <!-- Correlaciones SD3-FACS -->
+      <div class="analisis-section">
+        <h3>🔗 Correlaciones entre Rasgos SD3 y Unidades FACS</h3>
+        <p style="color:var(--text-secondary); margin-bottom:20px;">
+          Análisis de correlaciones entre los rasgos de personalidad oscura y las unidades de acción facial detectadas.
+        </p>
+        <div id="resultados-correlaciones">
+          <div class="analisis-loading">
+            <p>📊 Calculando correlaciones...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tiempos de respuesta -->
+      <div class="analisis-section">
+        <h3>⏱️ Análisis de Tiempos de Respuesta SD3</h3>
+        <p style="color:var(--text-secondary); margin-bottom:20px;">
+          Análisis de qué ítems del test SD3 se responden más rápido o más lento.
+        </p>
+        <div id="resultados-tiempos">
+          <div class="analisis-loading">
+            <p>⏳ Analizando tiempos de respuesta...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Análisis de regresión -->
+      <div class="analisis-section">
+        <h3>📊 Regresión Lineal: SD3 vs FACS</h3>
+        <p style="color:var(--text-secondary); margin-bottom:20px;">
+          Análisis de regresión para predecir intensidades FACS basadas en puntajes SD3.
+        </p>
+        <div id="resultados-regresion">
+          <div class="analisis-loading">
+            <p>🧮 Calculando modelos de regresión...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resumen estadístico -->
+      <div class="analisis-section">
+        <h3>📋 Resumen Estadístico</h3>
+        <p style="color:var(--text-secondary); margin-bottom:20px;">
+          Resumen general de los análisis realizados.
+        </p>
+        <div id="resumen-estadistico" class="resultado-box">
+          <p style="text-align:center; color:var(--text-secondary);">
+            Los resultados del análisis aparecerán aquí...
+          </p>
+        </div>
+      </div>
+
+      <div style="text-align:center; margin-top:40px;">
+        <button id="btn-descargar-informe" class="btn-primary">📥 Descargar Informe Completo</button>
+        <button id="btn-volver-investigador2" class="btn-secondary" style="margin-left:15px;">
+          ← Volver al panel
+        </button>
       </div>
     </section>
 
