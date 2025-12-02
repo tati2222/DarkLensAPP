@@ -1,5 +1,5 @@
 /* ========================================
-   app.js - VERSIÓN COMPLETA CON PANEL DE INVESTIGADOR AVANZADO
+   app.js - VERSIÓN CORREGIDA COMPLETA
    ======================================== */
 
 /* ---------- CONFIG SUPABASE ---------- */
@@ -70,7 +70,7 @@ const itemsSD3 = [
   "Es sabio guardar información que puedas usar en contra de otras personas más adelante.",
   "Debes esperar el momento oportuno para vengarme de las personas.",
   "Hay cosas que deberías ocultar a los demás porque no necesitan saberlas.",
-  "Asegúrate de que tus planes te beneficien a ti, not a los demás.",
+  "Asegúrate de que tus planes te beneficien a ti, no a los demás.",
   "La mayoría de las personas puede ser manipulada.",
   "La gente me ve como un líder nato.",
   "(R) Odio ser el centro de atención.",
@@ -96,6 +96,38 @@ function generarItemsTest() {
   const form = document.getElementById('form-sd3');
   if (!form) return;
   form.innerHTML = '';
+  
+  // AGREGAR EXPLICACIÓN DE LA ESCALA
+  const instruccionesEscala = document.createElement('div');
+  instruccionesEscala.className = 'instrucciones';
+  instruccionesEscala.style.marginBottom = '30px';
+  instruccionesEscala.innerHTML = `
+    <h3>📊 Escala de Respuestas</h3>
+    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 15px; text-align: center;">
+      <div style="padding: 10px; background: rgba(255, 99, 132, 0.1); border-radius: 5px; border: 1px solid #ff6384;">
+        <strong style="font-size: 1.5em; color: #ff6384;">1</strong>
+        <p style="margin: 5px 0 0 0; font-size: 0.9em;">Totalmente en desacuerdo</p>
+      </div>
+      <div style="padding: 10px; background: rgba(255, 206, 86, 0.1); border-radius: 5px; border: 1px solid #ffce56;">
+        <strong style="font-size: 1.5em; color: #ffce56;">2</strong>
+        <p style="margin: 5px 0 0 0; font-size: 0.9em;">En desacuerdo</p>
+      </div>
+      <div style="padding: 10px; background: rgba(102, 126, 234, 0.1); border-radius: 5px; border: 1px solid #667eea;">
+        <strong style="font-size: 1.5em; color: #667eea;">3</strong>
+        <p style="margin: 5px 0 0 0; font-size: 0.9em;">Neutral</p>
+      </div>
+      <div style="padding: 10px; background: rgba(54, 162, 235, 0.1); border-radius: 5px; border: 1px solid #36a2eb;">
+        <strong style="font-size: 1.5em; color: #36a2eb;">4</strong>
+        <p style="margin: 5px 0 0 0; font-size: 0.9em;">De acuerdo</p>
+      </div>
+      <div style="padding: 10px; background: rgba(76, 175, 80, 0.1); border-radius: 5px; border: 1px solid #4CAF50;">
+        <strong style="font-size: 1.5em; color: #4CAF50;">5</strong>
+        <p style="margin: 5px 0 0 0; font-size: 0.9em;">Totalmente de acuerdo</p>
+      </div>
+    </div>
+  `;
+  form.appendChild(instruccionesEscala);
+  
   itemsSD3.forEach((texto, idx) => {
     const num = idx + 1;
     const div = document.createElement('div');
@@ -215,8 +247,13 @@ async function calcularSD3() {
   
   sessionStorage.setItem('resultadosSD3', JSON.stringify(resultadosSD3));
 
+  // MOSTRAR HISTORIA ANTES DE CONTINUAR
   document.getElementById('seccion-test')?.classList.add('hidden');
   document.getElementById('seccion-micro')?.classList.remove('hidden');
+  
+  // Reproducir historia ANTES de activar cámara
+  await reproducirHistoria();
+  
   if (!window._capturaInicializada) { 
     configurarCapturaImagen(); 
     window._capturaInicializada = true; 
@@ -224,301 +261,8 @@ async function calcularSD3() {
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
-/* ---------- CAPTURA DE IMAGEN ---------- */
-function configurarCapturaImagen() {
-  const video = document.getElementById('video');
-  const canvas = document.getElementById('canvas');
-  const btnActivarCamara = document.getElementById('btn-activar-camara');
-  const btnCapturarImagen = document.getElementById('btn-capturar-imagen');
-  const btnRecapturar = document.getElementById('btn-recapturar');
-  const btnSubirImagen = document.getElementById('btn-subir-imagen');
-  const previewContainer = document.getElementById('preview-container');
-  const previewImage = document.getElementById('preview-image');
-  const audioContainer = document.getElementById('audio-container');
-  const contadorContainer = document.getElementById('contador-container');
-  const contadorElement = document.getElementById('contador');
-  const infoImagen = document.getElementById('info-imagen');
-  
-  let localStream = null;
-  let ctx = null;
-  let capturaEnCurso = false;
-  let intervaloContador = null;
-  let tiempoRestante = 5;
-
-  // Inicializar canvas
-  if (canvas) {
-    ctx = canvas.getContext('2d');
-  }
-
-  // Activar cámara
-  btnActivarCamara.addEventListener('click', async function() {
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'user',
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          frameRate: { ideal: 30 }
-        },
-        audio: false
-      });
-      
-      stream = localStream;
-      
-      if (video) { 
-        video.srcObject = localStream; 
-        video.classList.remove('hidden'); 
-        video.play(); 
-      }
-      
-      btnActivarCamara.classList.add('hidden');
-      btnCapturarImagen.classList.remove('hidden');
-      audioContainer.classList.remove('hidden');
-      document.getElementById('camera-placeholder')?.classList?.add('hidden');
-      
-    } catch (err) {
-      console.error('Error accediendo a la cámara:', err);
-      alert('No se pudo acceder a la cámara. Podés continuar sin imagen.');
-    }
-  });
-
-  // Iniciar captura con contador
-  btnCapturarImagen.addEventListener('click', function() {
-    if (!localStream) {
-      alert('Primero activá la cámara');
-      return;
-    }
-
-    if (capturaEnCurso) return;
-    
-    capturaEnCurso = true;
-    tiempoRestante = 5;
-    contadorElement.textContent = tiempoRestante;
-    contadorContainer.classList.remove('hidden');
-    btnCapturarImagen.disabled = true;
-    
-    // Contador regresivo
-    intervaloContador = setInterval(() => {
-      tiempoRestante--;
-      contadorElement.textContent = tiempoRestante;
-      
-      if (tiempoRestante <= 0) {
-        clearInterval(intervaloContador);
-        capturarImagen();
-      }
-    }, 1000);
-  });
-
-  function capturarImagen() {
-    if (!video || !ctx) return;
-    
-    // Configurar canvas con las dimensiones del video
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    
-    // Dibujar el frame actual en el canvas
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    // Convertir a blob (imagen JPEG)
-    canvas.toBlob((blob) => {
-      imagenCapturada = blob;
-      
-      // Mostrar vista previa
-      const imageURL = URL.createObjectURL(blob);
-      previewImage.src = imageURL;
-      
-      contadorContainer.classList.add('hidden');
-      previewContainer.classList.remove('hidden');
-      btnRecapturar.classList.remove('hidden');
-      btnSubirImagen.classList.remove('hidden');
-      btnCapturarImagen.classList.add('hidden');
-      
-      // Mostrar información
-      const sizeKB = (blob.size / 1024).toFixed(2);
-      infoImagen.innerHTML = `
-        <p>Resolución: ${canvas.width} × ${canvas.height}</p>
-        <p>Tamaño: ${sizeKB} KB</p>
-        <p>Formato: JPEG</p>
-      `;
-      
-      capturaEnCurso = false;
-      btnCapturarImagen.disabled = false;
-      
-      // Detener la cámara para ahorrar recursos
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-        localStream = null;
-        stream = null;
-        video.classList.add('hidden');
-      }
-      
-    }, 'image/jpeg', 0.95);
-  }
-
-  // Recapturar imagen
-  btnRecapturar.addEventListener('click', function() {
-    imagenCapturada = null;
-    previewContainer.classList.add('hidden');
-    btnRecapturar.classList.add('hidden');
-    btnSubirImagen.classList.add('hidden');
-    
-    // Reactivar la cámara
-    document.getElementById('camera-placeholder')?.classList?.remove('hidden');
-    btnActivarCamara.classList.remove('hidden');
-    
-    if (intervaloContador) {
-      clearInterval(intervaloContador);
-      intervaloContador = null;
-    }
-    capturaEnCurso = false;
-  });
-
-  // SUBIR IMAGEN CON ANÁLISIS COMPLETO
-  btnSubirImagen.addEventListener('click', async function() {
-    if (!imagenCapturada) {
-      alert('No hay imagen para analizar');
-      return;
-    }
-
-    btnSubirImagen.disabled = true;
-    btnSubirImagen.textContent = '⏳ Analizando imagen...';
-
-    try {
-      // Convertir a base64
-      const base64Imagen = await blobToBase64(imagenCapturada);
-      
-      const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
-      const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
-
-      console.log('📸 Iniciando análisis de imagen...');
-
-      // ENVIAR IMAGEN A LA API PARA ANÁLISIS
-      const analisisImagen = await analizarImagenCompleta(base64Imagen, persona, sd3);
-      
-      if (analisisImagen.success) {
-        mostrarConfirmacionParticipante(analisisImagen);
-      } else {
-        throw new Error(analisisImagen.error || 'Error en el análisis de la imagen');
-      }
-
-    } catch (err) {
-      console.error("❌ Error procesando imagen:", err);
-      alert("Error: " + err.message);
-      btnSubirImagen.disabled = false;
-      btnSubirImagen.textContent = "📤 Subir Imagen y Analizar";
-    }
-  });
-}
-
-/* ---------- ANÁLISIS DE IMAGEN COMPLETA ---------- */
-async function analizarImagenCompleta(imagenBase64, datosPersonales, datosSD3) {
-  try {
-    console.log('📸 Enviando imagen para análisis...');
-    
-    const response = await fetch(`${FASTAPI_URL}/analyze-image`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        image_data: imagenBase64,
-        participant_data: datosPersonales,
-        sd3_data: datosSD3
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Error del servidor: ${response.status}`);
-    }
-
-    const resultado = await response.json();
-    console.log('✅ Análisis de imagen completado:', resultado);
-
-    // Guardar en Supabase
-    const guardado = await guardarAnalisisImagenEnSupabase(resultado, datosPersonales, datosSD3);
-    
-    return {
-      success: true,
-      analisis: resultado,
-      guardado: guardado,
-      mensaje: 'Imagen analizada y guardada correctamente'
-    };
-
-  } catch (error) {
-    console.error('❌ Error en análisis de imagen:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-
-/* ---------- GUARDAR ANÁLISIS DE IMAGEN EN SUPABASE ---------- */
-async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
-  console.log("📤 Guardando análisis de imagen en Supabase...");
-
-  try {
-    const rasgos = {
-      maquiavelismo: parseFloat(sd3.mach) || 0,
-      narcisismo: parseFloat(sd3.narc) || 0,
-      psicopatia: parseFloat(sd3.psych) || 0
-    };
-    
-    const rasgoPredominante = Object.keys(rasgos).reduce((a, b) => 
-      rasgos[a] > rasgos[b] ? a : b
-    );
-
-    const imagenData = {
-      nombre: persona.nombre || 'Anónimo',
-      edad: parseInt(persona.edad) || 0,
-      genero: persona.genero || '',
-      pais: persona.pais || '',
-      mach: parseFloat(sd3.mach) || 0,
-      narc: parseFloat(sd3.narc) || 0,
-      psych: parseFloat(sd3.psych) || 0,
-      tiempo_total_seg: parseFloat(sd3.tiempo_total_segundos) || 0,
-      emocion_princ: analisis.emocion_predominante || 'No analizada',
-      total_frames: 1, // Solo una imagen
-      duracion_video: 0, // No aplica para imagen
-      emociones_detectadas: analisis.emociones_detectadas || [],
-      correlaciones: analisis.correlaciones || {},
-      aus_frecuentes: analisis.aus_frecuentes || [],
-      facs_promedio: analisis.facs_promedio || {},
-      historia_utilizada: rasgoPredominante,
-      tipo_captura: 'imagen',
-      created_at: new Date().toISOString()
-    };
-
-    console.log('💾 Guardando datos de imagen:', imagenData);
-
-    const { data, error } = await supabase
-      .from('darklens_records')
-      .insert([imagenData])
-      .select();
-
-    if (error) {
-      throw new Error(`Error Supabase: ${error.message}`);
-    }
-
-    console.log('✅ Análisis de imagen guardado en Supabase!', data);
-
-    return {
-      success: true,
-      id: data[0]?.id,
-      message: 'Datos de imagen guardados correctamente'
-    };
-
-  } catch (error) {
-    console.error('❌ Error guardando análisis de imagen:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-
 /* ---------- REPRODUCIR HISTORIA ---------- */
-function reproducirHistoria() {
+async function reproducirHistoria() {
   const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
   
   const rasgos = {
@@ -568,25 +312,319 @@ function reproducirHistoria() {
   const historiaSeleccionada = historias[rasgoPredominante] || historias.maquiavelismo;
   
   const textoHistoriaDiv = document.getElementById('texto-historia');
-  if (textoHistoriaDiv) {
+  const audioContainer = document.getElementById('audio-container');
+  
+  if (textoHistoriaDiv && audioContainer) {
     textoHistoriaDiv.innerHTML = `
-      <strong>Historia: ${historiaSeleccionada.titulo}</strong>
-      <p style="margin: 10px 0; font-style: italic; color: var(--text-secondary); line-height: 1.6;">
+      <strong style="font-size: 1.3em; color: var(--accent);">Historia: ${historiaSeleccionada.titulo}</strong>
+      <p style="margin: 15px 0; font-style: italic; color: var(--text-primary); line-height: 1.8; font-size: 1.1em;">
         ${historiaSeleccionada.texto}
       </p>
-      <small style="color: var(--accent);">Rasgo analizado: ${rasgoPredominante}</small>
-      <p style="margin-top: 15px; color: var(--accent); font-weight: bold;">
-        📸 Prepárate para la captura de imagen en 5 segundos...
-      </p>
+      <div style="margin-top: 20px; padding: 15px; background: rgba(127, 0, 255, 0.1); border-radius: 10px; border-left: 4px solid var(--accent);">
+        <p style="color: var(--accent); font-weight: bold; margin: 0;">
+          📖 Lee atentamente esta historia y piensa cómo te hace sentir
+        </p>
+        <p style="color: var(--text-secondary); margin: 10px 0 0 0; font-size: 0.95em;">
+          Rasgo analizado: <strong>${rasgoPredominante}</strong>
+        </p>
+      </div>
     `;
+    
+    audioContainer.classList.remove('hidden');
   }
 
+  // Guardar historia utilizada
+  sessionStorage.setItem('historiaUtilizada', rasgoPredominante);
+  
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve();
-    }, 3000);
+    }, 2000);
   });
 }
+
+/* ---------- CAPTURA DE IMAGEN ---------- */
+function configurarCapturaImagen() {
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  const btnActivarCamara = document.getElementById('btn-activar-camara');
+  const btnCapturarImagen = document.getElementById('btn-capturar-imagen');
+  const btnRecapturar = document.getElementById('btn-recapturar');
+  const btnSubirImagen = document.getElementById('btn-subir-imagen');
+  const previewContainer = document.getElementById('preview-container');
+  const previewImage = document.getElementById('preview-image');
+  const contadorContainer = document.getElementById('contador-container');
+  const contadorElement = document.getElementById('contador');
+  const infoImagen = document.getElementById('info-imagen');
+  
+  let localStream = null;
+  let ctx = null;
+  let capturaEnCurso = false;
+  let intervaloContador = null;
+  let tiempoRestante = 5;
+
+  if (canvas) {
+    ctx = canvas.getContext('2d');
+  }
+
+  btnActivarCamara.addEventListener('click', async function() {
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'user',
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          frameRate: { ideal: 30 }
+        },
+        audio: false
+      });
+      
+      stream = localStream;
+      
+      if (video) { 
+        video.srcObject = localStream; 
+        video.classList.remove('hidden'); 
+        video.play(); 
+      }
+      
+      btnActivarCamara.classList.add('hidden');
+      btnCapturarImagen.classList.remove('hidden');
+      document.getElementById('camera-placeholder')?.classList?.add('hidden');
+      
+    } catch (err) {
+      console.error('Error accediendo a la cámara:', err);
+      alert('No se pudo acceder a la cámara. Podés continuar sin imagen.');
+    }
+  });
+
+  btnCapturarImagen.addEventListener('click', function() {
+    if (!localStream) {
+      alert('Primero activá la cámara');
+      return;
+    }
+
+    if (capturaEnCurso) return;
+    
+    capturaEnCurso = true;
+    tiempoRestante = 5;
+    contadorElement.textContent = tiempoRestante;
+    contadorContainer.classList.remove('hidden');
+    btnCapturarImagen.disabled = true;
+    
+    intervaloContador = setInterval(() => {
+      tiempoRestante--;
+      contadorElement.textContent = tiempoRestante;
+      
+      if (tiempoRestante <= 0) {
+        clearInterval(intervaloContador);
+        capturarImagen();
+      }
+    }, 1000);
+  });
+
+  function capturarImagen() {
+    if (!video || !ctx) return;
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    canvas.toBlob((blob) => {
+      imagenCapturada = blob;
+      
+      const imageURL = URL.createObjectURL(blob);
+      previewImage.src = imageURL;
+      
+      contadorContainer.classList.add('hidden');
+      previewContainer.classList.remove('hidden');
+      btnRecapturar.classList.remove('hidden');
+      btnSubirImagen.classList.remove('hidden');
+      btnCapturarImagen.classList.add('hidden');
+      
+      const sizeKB = (blob.size / 1024).toFixed(2);
+      infoImagen.innerHTML = `
+        <p>Resolución: ${canvas.width} × ${canvas.height}</p>
+        <p>Tamaño: ${sizeKB} KB</p>
+        <p>Formato: JPEG</p>
+      `;
+      
+      capturaEnCurso = false;
+      btnCapturarImagen.disabled = false;
+      
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+        stream = null;
+        video.classList.add('hidden');
+      }
+      
+    }, 'image/jpeg', 0.95);
+  }
+
+  btnRecapturar.addEventListener('click', function() {
+    imagenCapturada = null;
+    previewContainer.classList.add('hidden');
+    btnRecapturar.classList.add('hidden');
+    btnSubirImagen.classList.add('hidden');
+    
+    document.getElementById('camera-placeholder')?.classList?.remove('hidden');
+    btnActivarCamara.classList.remove('hidden');
+    
+    if (intervaloContador) {
+      clearInterval(intervaloContador);
+      intervaloContador = null;
+    }
+    capturaEnCurso = false;
+  });
+
+  btnSubirImagen.addEventListener('click', async function() {
+    if (!imagenCapturada) {
+      alert('No hay imagen para analizar');
+      return;
+    }
+
+    btnSubirImagen.disabled = true;
+    btnSubirImagen.textContent = '⏳ Analizando imagen...';
+
+    try {
+      const base64Imagen = await blobToBase64(imagenCapturada);
+      
+      const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
+      const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
+
+      console.log('📸 Iniciando análisis de imagen...');
+
+      const analisisImagen = await analizarImagenCompleta(base64Imagen, persona, sd3);
+      
+      if (analisisImagen.success) {
+        mostrarConfirmacionParticipante(analisisImagen);
+      } else {
+        throw new Error(analisisImagen.error || 'Error en el análisis de la imagen');
+      }
+
+    } catch (err) {
+      console.error("❌ Error procesando imagen:", err);
+      alert("Error: " + err.message);
+      btnSubirImagen.disabled = false;
+      btnSubirImagen.textContent = "📤 Subir Imagen y Analizar";
+    }
+  });
+}
+
+/* ---------- ANÁLISIS DE IMAGEN COMPLETA ---------- */
+async function analizarImagenCompleta(imagenBase64, datosPersonales, datosSD3) {
+  try {
+    console.log('📸 Enviando imagen para análisis a FastAPI...');
+    
+    const response = await fetch(`${FASTAPI_URL}/analyze-image`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        image_data: imagenBase64,
+        participant_data: datosPersonales,
+        sd3_data: datosSD3
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error del servidor: ${response.status}`);
+    }
+
+    const resultado = await response.json();
+    console.log('✅ Análisis de imagen completado:', resultado);
+
+    // Guardar en Supabase
+    const guardado = await guardarAnalisisImagenEnSupabase(resultado, datosPersonales, datosSD3);
+    
+    return {
+      success: true,
+      analisis: resultado,
+      guardado: guardado,
+      mensaje: 'Imagen analizada y guardada correctamente'
+    };
+
+  } catch (error) {
+    console.error('❌ Error en análisis de imagen:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/* ---------- GUARDAR ANÁLISIS DE IMAGEN EN SUPABASE ---------- */
+async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
+  console.log("📤 Guardando análisis de imagen en Supabase...");
+
+  try {
+    if (!supabase) {
+      throw new Error('Supabase no está inicializado');
+    }
+
+    const rasgos = {
+      maquiavelismo: parseFloat(sd3.mach) || 0,
+      narcisismo: parseFloat(sd3.narc) || 0,
+      psicopatia: parseFloat(sd3.psych) || 0
+    };
+    
+    const rasgoPredominante = Object.keys(rasgos).reduce((a, b) => 
+      rasgos[a] > rasgos[b] ? a : b
+    );
+
+    const historiaUtilizada = sessionStorage.getItem('historiaUtilizada') || rasgoPredominante;
+
+    const imagenData = {
+      nombre: persona.nombre || 'Anónimo',
+      edad: parseInt(persona.edad) || 0,
+      genero: persona.genero || '',
+      pais: persona.pais || '',
+      mach: parseFloat(sd3.mach) || 0,
+      narc: parseFloat(sd3.narc) || 0,
+      psych: parseFloat(sd3.psych) || 0,
+      tiempo_total_seg: parseFloat(sd3.tiempo_total_segundos) || 0,
+      emocion_princ: analisis.emocion_predominante || analisis.emocion_principal || 'No analizada',
+      total_frames: 1,
+      duracion_video: 0,
+      emociones_detectadas: analisis.emociones_detectadas || Object.keys(analisis.emociones || {}),
+      correlaciones: analisis.correlaciones || {},
+      aus_frecuentes: analisis.aus_frecuentes || analisis.aus_detectadas || [],
+      facs_promedio: analisis.facs_promedio || {},
+      historia_utilizada: historiaUtilizada,
+      tipo_captura: 'imagen',
+      created_at: new Date().toISOString()
+    };
+
+    console.log('💾 Guardando datos de imagen en Supabase:', imagenData);
+
+    const { data, error } = await supabase
+      .from('darklens_records')
+      .insert([imagenData])
+      .select();
+
+    if (error) {
+      throw new Error(`Error Supabase: ${error.message}`);
+    }
+
+    console.log('✅ Análisis de imagen guardado en Supabase!', data);
+
+    return {
+      success: true,
+      id: data[0]?.id,
+      message: 'Datos de imagen guardados correctamente'
+    };
+
+  } catch (error) {
+    console.error('❌ Error guardando análisis de imagen en Supabase:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
 
 /* ---------- CONFIRMACIÓN PARTICIPANTE ---------- */
 function mostrarConfirmacionParticipante(analisisImagen = null) {
