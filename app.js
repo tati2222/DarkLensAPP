@@ -1,5 +1,5 @@
 /* ========================================
-   app.js - VERSIÓN MEJORADA CON CAPTURA DE IMAGEN
+   app.js - VERSIÓN MEJORADA CON FLUJO CORRECTO
    ======================================== */
 
 /* ---------- CONFIG SUPABASE ---------- */
@@ -99,37 +99,6 @@ function generarItemsTest() {
   if (!form) return;
   form.innerHTML = '';
   
-  // AGREGAR EXPLICACIÓN DE LA ESCALA
-  const instruccionesEscala = document.createElement('div');
-  instruccionesEscala.className = 'instrucciones';
-  instruccionesEscala.style.marginBottom = '30px';
-  instruccionesEscala.innerHTML = `
-    <h3>📊 Escala de Respuestas</h3>
-    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 15px; text-align: center;">
-      <div style="padding: 10px; background: rgba(255, 99, 132, 0.1); border-radius: 5px; border: 1px solid #ff6384;">
-        <strong style="font-size: 1.5em; color: #ff6384;">1</strong>
-        <p style="margin: 5px 0 0 0; font-size: 0.9em;">Totalmente en desacuerdo</p>
-      </div>
-      <div style="padding: 10px; background: rgba(255, 206, 86, 0.1); border-radius: 5px; border: 1px solid #ffce56;">
-        <strong style="font-size: 1.5em; color: #ffce56;">2</strong>
-        <p style="margin: 5px 0 0 0; font-size: 0.9em;">En desacuerdo</p>
-      </div>
-      <div style="padding: 10px; background: rgba(102, 126, 234, 0.1); border-radius: 5px; border: 1px solid #667eea;">
-        <strong style="font-size: 1.5em; color: #667eea;">3</strong>
-        <p style="margin: 5px 0 0 0; font-size: 0.9em;">Neutral</p>
-      </div>
-      <div style="padding: 10px; background: rgba(54, 162, 235, 0.1); border-radius: 5px; border: 1px solid #36a2eb;">
-        <strong style="font-size: 1.5em; color: #36a2eb;">4</strong>
-        <p style="margin: 5px 0 0 0; font-size: 0.9em;">De acuerdo</p>
-      </div>
-      <div style="padding: 10px; background: rgba(76, 175, 80, 0.1); border-radius: 5px; border: 1px solid #4CAF50;">
-        <strong style="font-size: 1.5em; color: #4CAF50;">5</strong>
-        <p style="margin: 5px 0 0 0; font-size: 0.9em;">Totalmente de acuerdo</p>
-      </div>
-    </div>
-  `;
-  form.appendChild(instruccionesEscala);
-  
   itemsSD3.forEach((texto, idx) => {
     const num = idx + 1;
     const div = document.createElement('div');
@@ -146,12 +115,6 @@ function generarItemsTest() {
     `;
     form.appendChild(div);
   });
-
-  const btn = document.createElement('button');
-  btn.type = 'submit';
-  btn.className = 'btn-primary';
-  btn.textContent = 'Enviar respuestas del test';
-  form.appendChild(btn);
 }
 
 /* ---------- TRACKING TIEMPOS ---------- */
@@ -343,6 +306,18 @@ async function reproducirHistoria() {
       resolve();
     }, 2000);
   });
+}
+
+/* ---------- CONFIGURAR BOTÓN LISTO PARA CAPTURAR ---------- */
+function configurarBotonListoCapturar() {
+  const btnListoCapturar = document.getElementById('btn-listo-capturar');
+  if (btnListoCapturar) {
+    btnListoCapturar.addEventListener('click', function() {
+      document.getElementById('audio-container').classList.add('hidden');
+      document.getElementById('camera-section').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
 }
 
 /* ---------- CAPTURA DE IMAGEN MEJORADA ---------- */
@@ -1504,8 +1479,8 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('✅ Sesión limpiada al cargar');
 
   // Configurar botones principales
-  const btnParticipante = document.querySelector('#card-participante .btn-primary');
-  const btnInvestigador = document.querySelector('#card-investigador .btn-primary');
+  const btnParticipante = document.getElementById('btn-iniciar-participante');
+  const btnInvestigador = document.getElementById('btn-iniciar-investigador');
 
   btnParticipante?.addEventListener('click', () => {
     sessionStorage.clear();
@@ -1526,6 +1501,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('seccion-login')?.classList.remove('hidden');
     window.scrollTo({ top:0, behavior:'smooth' });
   });
+
+  // Configurar botón "Listo para capturar imagen"
+  configurarBotonListoCapturar();
 
   // Configurar formulario de datos básicos
   const formDatos = document.getElementById('form-datos-basicos');
@@ -1553,9 +1531,9 @@ document.addEventListener('DOMContentLoaded', () => {
     window.scrollTo({ top:0, behavior:'smooth' });
   });
 
-  // Configurar formulario SD3
-  const formSD3 = document.getElementById('form-sd3');
-  formSD3?.addEventListener('submit', (e) => {
+  // Configurar botón enviar test SD3
+  const btnEnviarTest = document.getElementById('btn-enviar-test');
+  btnEnviarTest?.addEventListener('click', (e) => {
     e.preventDefault();
     calcularSD3();
   });
@@ -1596,8 +1574,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('btn-volver-investigador')?.addEventListener('click', () => {
-    document.getElementById('seccion-analisis')?.classList.add('hidden');
-    document.getElementById('seccion-investigador')?.classList.remove('hidden');
+    document.getElementById('seccion-analisis').classList.add('hidden');
+    document.getElementById('seccion-investigador').classList.remove('hidden');
+    window.scrollTo({ top:0, behavior:'smooth' });
+  });
+
+  document.getElementById('btn-volver-investigador2')?.addEventListener('click', () => {
+    document.getElementById('seccion-analisis').classList.add('hidden');
+    document.getElementById('seccion-investigador').classList.remove('hidden');
     window.scrollTo({ top:0, behavior:'smooth' });
   });
 });
