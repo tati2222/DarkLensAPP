@@ -1,5 +1,5 @@
 /* ========================================
-   app.js - VERSIÓN COMPLETA CON ANÁLISIS DE VIDEO Y FACS
+   app.js - VERSIÓN COMPLETA CON CAPTURA DE IMAGEN Y FACS
    ======================================== */
 
 /* ---------- CONFIG SUPABASE ---------- */
@@ -21,6 +21,7 @@ let testInicioTimestamp = null;
 let stream = null;
 let participantesData = [];
 let participanteSeleccionado = null;
+let imagenCapturada = null;
 
 /* ---------- UTILIDADES ---------- */
 function blobToBase64(blob) {
@@ -202,34 +203,37 @@ async function calcularSD3() {
   document.getElementById('seccion-test')?.classList.add('hidden');
   document.getElementById('seccion-micro')?.classList.remove('hidden');
   if (!window._capturaInicializada) { 
-    configurarGrabacionVideo(); 
+    configurarCapturaImagen(); 
     window._capturaInicializada = true; 
   }
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
-/* ---------- GRABACIÓN DE VIDEO COMPLETA ---------- */
-function configurarGrabacionVideo() {
+/* ---------- CAPTURA DE IMAGEN ---------- */
+function configurarCapturaImagen() {
   const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
   const btnActivarCamara = document.getElementById('btn-activar-camara');
-  const btnIniciarGrabacion = document.getElementById('btn-iniciar-grabacion');
-  const btnDetenerGrabacion = document.getElementById('btn-detener-grabacion');
-  const btnSubirVideo = document.getElementById('btn-subir-video');
+  const btnCapturarImagen = document.getElementById('btn-capturar-imagen');
+  const btnRecapturar = document.getElementById('btn-recapturar');
+  const btnSubirImagen = document.getElementById('btn-subir-imagen');
   const previewContainer = document.getElementById('preview-container');
-  const previewVideo = document.getElementById('preview-video');
+  const previewImage = document.getElementById('preview-image');
   const audioContainer = document.getElementById('audio-container');
-  const progressContainer = document.getElementById('progress-container');
-  const progressBar = document.getElementById('progress-bar');
-  const tiempoGrabacion = document.getElementById('tiempo-grabacion');
-  const infoVideo = document.getElementById('info-video');
-
+  const contadorContainer = document.getElementById('contador-container');
+  const contadorElement = document.getElementById('contador');
+  const infoImagen = document.getElementById('info-imagen');
+  
   let localStream = null;
-  let mediaRecorder = null;
-  let recordedChunks = [];
-  let grabacionEnCurso = false;
-  let tiempoInicioGrabacion = null;
-  let intervaloProgress = null;
-  let duracionGrabacion = 15000; // 15 segundos
+  let ctx = null;
+  let capturaEnCurso = false;
+  let intervaloContador = null;
+  let tiempoRestante = 5;
+
+  // Inicializar canvas
+  if (canvas) {
+    ctx = canvas.getContext('2d');
+  }
 
   // Activar cámara
   btnActivarCamara.addEventListener('click', async function() {
@@ -239,12 +243,11 @@ function configurarGrabacionVideo() {
           facingMode: 'user',
           width: { ideal: 640 },
           height: { ideal: 480 },
-          frameRate: { ideal: 15 }
+          frameRate: { ideal: 30 }
         },
         audio: false
       });
       
-      // Actualizar variable global
       stream = localStream;
       
       if (video) { 
@@ -254,165 +257,156 @@ function configurarGrabacionVideo() {
       }
       
       btnActivarCamara.classList.add('hidden');
-      btnIniciarGrabacion.classList.remove('hidden');
+      btnCapturarImagen.classList.remove('hidden');
       audioContainer.classList.remove('hidden');
       document.getElementById('camera-placeholder')?.classList?.add('hidden');
       
     } catch (err) {
       console.error('Error accediendo a la cámara:', err);
-      alert('No se pudo acceder a la cámara. Podés continuar sin video.');
+      alert('No se pudo acceder a la cámara. Podés continuar sin imagen.');
     }
   });
 
-  // Iniciar grabación
-  btnIniciarGrabacion.addEventListener('click', function() {
+  // Iniciar captura con contador
+  btnCapturarImagen.addEventListener('click', function() {
     if (!localStream) {
       alert('Primero activá la cámara');
       return;
     }
 
-    recordedChunks = [];
+    if (capturaEnCurso) return;
     
-    try {
-      const options = { mimeType: 'video/webm; codecs=vp9,opus' };
-      mediaRecorder = new MediaRecorder(localStream, options);
-      
-      mediaRecorder.ondataavailable = function(event) {
-        if (event.data.size > 0) {
-          recordedChunks.push(event.data);
-        }
-      };
-      
-      mediaRecorder.onstop = function() {
-        const blob = new Blob(recordedChunks, { type: 'video/webm' });
-        const videoURL = URL.createObjectURL(blob);
-        previewVideo.src = videoURL;
-        previewContainer.classList.remove('hidden');
-        btnSubirVideo.classList.remove('hidden');
-        
-        const duracion = (Date.now() - tiempoInicioGrabacion) / 1000;
-        infoVideo.innerHTML = `
-          <p>Duración: ${duracion.toFixed(1)} segundos</p>
-          <p>Tamaño: ${(blob.size / 1024 / 1024).toFixed(2)} MB</p>
-          <p>Se analizarán ${Math.floor(duracion)} frames (1 por segundo)</p>
-        `;
-      };
-      
-      mediaRecorder.start(1000);
-      grabacionEnCurso = true;
-      tiempoInicioGrabacion = Date.now();
-      
-      btnIniciarGrabacion.classList.add('hidden');
-      btnDetenerGrabacion.classList.remove('hidden');
-      progressContainer.classList.remove('hidden');
-      
-      iniciarProgressBar();
-      
-    } catch (err) {
-      console.error('Error iniciando grabación:', err);
-      alert('Error al iniciar la grabación: ' + err.message);
-    }
-  });
-
-  function iniciarProgressBar() {
-    let tiempoTranscurrido = 0;
-    progressBar.style.width = '0%';
+    capturaEnCurso = true;
+    tiempoRestante = 5;
+    contadorElement.textContent = tiempoRestante;
+    contadorContainer.classList.remove('hidden');
+    btnCapturarImagen.disabled = true;
     
-    reproducirHistoria().then(() => {
-      console.log('🎬 Iniciando grabación...');
+    // Contador regresivo
+    intervaloContador = setInterval(() => {
+      tiempoRestante--;
+      contadorElement.textContent = tiempoRestante;
       
-      intervaloProgress = setInterval(() => {
-        tiempoTranscurrido += 100;
-        const porcentaje = (tiempoTranscurrido / duracionGrabacion) * 100;
-        
-        progressBar.style.width = `${Math.min(porcentaje, 100)}%`;
-        tiempoGrabacion.textContent = `${(tiempoTranscurrido / 1000).toFixed(1)}s`;
-        
-        if (tiempoTranscurrido >= duracionGrabacion) {
-          detenerGrabacion();
-        }
-      }, 100);
-    });
-  }
-
-  // Detener grabación manualmente
-  btnDetenerGrabacion.addEventListener('click', function() {
-    detenerGrabacion();
-  });
-
-  function detenerGrabacion() {
-    if (mediaRecorder && grabacionEnCurso) {
-      mediaRecorder.stop();
-      grabacionEnCurso = false;
-      
-      if (intervaloProgress) {
-        clearInterval(intervaloProgress);
-        intervaloProgress = null;
+      if (tiempoRestante <= 0) {
+        clearInterval(intervaloContador);
+        capturarImagen();
       }
+    }, 1000);
+  });
+
+  function capturarImagen() {
+    if (!video || !ctx) return;
+    
+    // Configurar canvas con las dimensiones del video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    // Dibujar el frame actual en el canvas
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Convertir a blob (imagen JPEG)
+    canvas.toBlob((blob) => {
+      imagenCapturada = blob;
       
-      btnDetenerGrabacion.classList.add('hidden');
-      progressContainer.classList.add('hidden');
+      // Mostrar vista previa
+      const imageURL = URL.createObjectURL(blob);
+      previewImage.src = imageURL;
       
+      contadorContainer.classList.add('hidden');
+      previewContainer.classList.remove('hidden');
+      btnRecapturar.classList.remove('hidden');
+      btnSubirImagen.classList.remove('hidden');
+      btnCapturarImagen.classList.add('hidden');
+      
+      // Mostrar información
+      const sizeKB = (blob.size / 1024).toFixed(2);
+      infoImagen.innerHTML = `
+        <p>Resolución: ${canvas.width} × ${canvas.height}</p>
+        <p>Tamaño: ${sizeKB} KB</p>
+        <p>Formato: JPEG</p>
+      `;
+      
+      capturaEnCurso = false;
+      btnCapturarImagen.disabled = false;
+      
+      // Detener la cámara para ahorrar recursos
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
         localStream = null;
         stream = null;
         video.classList.add('hidden');
       }
-    }
+      
+    }, 'image/jpeg', 0.95);
   }
 
-  // SUBIR VIDEO CON ANÁLISIS COMPLETO
-  btnSubirVideo.addEventListener('click', async function() {
-    if (recordedChunks.length === 0) {
-      alert('No hay video para analizar');
+  // Recapturar imagen
+  btnRecapturar.addEventListener('click', function() {
+    imagenCapturada = null;
+    previewContainer.classList.add('hidden');
+    btnRecapturar.classList.add('hidden');
+    btnSubirImagen.classList.add('hidden');
+    
+    // Reactivar la cámara
+    document.getElementById('camera-placeholder')?.classList?.remove('hidden');
+    btnActivarCamara.classList.remove('hidden');
+    
+    if (intervaloContador) {
+      clearInterval(intervaloContador);
+      intervaloContador = null;
+    }
+    capturaEnCurso = false;
+  });
+
+  // SUBIR IMAGEN CON ANÁLISIS COMPLETO
+  btnSubirImagen.addEventListener('click', async function() {
+    if (!imagenCapturada) {
+      alert('No hay imagen para analizar');
       return;
     }
 
-    btnSubirVideo.disabled = true;
-    btnSubirVideo.textContent = '⏳ Analizando video...';
+    btnSubirImagen.disabled = true;
+    btnSubirImagen.textContent = '⏳ Analizando imagen...';
 
     try {
-      const blob = new Blob(recordedChunks, { type: 'video/webm' });
-      
-      // Convertir a base64 para enviar
-      const base64Video = await blobToBase64(blob);
+      // Convertir a base64
+      const base64Imagen = await blobToBase64(imagenCapturada);
       
       const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
       const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
 
-      console.log('🎬 Iniciando análisis de video...');
+      console.log('📸 Iniciando análisis de imagen...');
 
-      // ENVIAR VIDEO A LA API PARA ANÁLISIS
-      const analisisVideo = await analizarVideoCompleto(base64Video, persona, sd3);
+      // ENVIAR IMAGEN A LA API PARA ANÁLISIS
+      const analisisImagen = await analizarImagenCompleta(base64Imagen, persona, sd3);
       
-      if (analisisVideo.success) {
-        mostrarConfirmacionParticipante(analisisVideo);
+      if (analisisImagen.success) {
+        mostrarConfirmacionParticipante(analisisImagen);
       } else {
-        throw new Error(analisisVideo.error || 'Error en el análisis del video');
+        throw new Error(analisisImagen.error || 'Error en el análisis de la imagen');
       }
 
     } catch (err) {
-      console.error("❌ Error procesando video:", err);
+      console.error("❌ Error procesando imagen:", err);
       alert("Error: " + err.message);
-      btnSubirVideo.disabled = false;
-      btnSubirVideo.textContent = "📤 Subir Video y Analizar";
+      btnSubirImagen.disabled = false;
+      btnSubirImagen.textContent = "📤 Subir Imagen y Analizar";
     }
   });
 }
 
-/* ---------- ANÁLISIS DE VIDEO COMPLETO ---------- */
-async function analizarVideoCompleto(videoBase64, datosPersonales, datosSD3) {
+/* ---------- ANÁLISIS DE IMAGEN COMPLETA ---------- */
+async function analizarImagenCompleta(imagenBase64, datosPersonales, datosSD3) {
   try {
-    console.log('🎬 Enviando video para análisis...');
+    console.log('📸 Enviando imagen para análisis...');
     
-    const response = await fetch(`${FASTAPI_URL}/analyze-video`, {
+    const response = await fetch(`${FASTAPI_URL}/analyze-image`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        video_data: videoBase64,
+        image_data: imagenBase64,
         participant_data: datosPersonales,
         sd3_data: datosSD3
       })
@@ -423,20 +417,20 @@ async function analizarVideoCompleto(videoBase64, datosPersonales, datosSD3) {
     }
 
     const resultado = await response.json();
-    console.log('✅ Análisis de video completado:', resultado);
+    console.log('✅ Análisis de imagen completado:', resultado);
 
     // Guardar en Supabase
-    const guardado = await guardarAnalisisVideoEnSupabase(resultado, datosPersonales, datosSD3);
+    const guardado = await guardarAnalisisImagenEnSupabase(resultado, datosPersonales, datosSD3);
     
     return {
       success: true,
       analisis: resultado,
       guardado: guardado,
-      mensaje: 'Video analizado y guardado correctamente'
+      mensaje: 'Imagen analizada y guardada correctamente'
     };
 
   } catch (error) {
-    console.error('❌ Error en análisis de video:', error);
+    console.error('❌ Error en análisis de imagen:', error);
     return {
       success: false,
       error: error.message
@@ -444,9 +438,9 @@ async function analizarVideoCompleto(videoBase64, datosPersonales, datosSD3) {
   }
 }
 
-/* ---------- GUARDAR ANÁLISIS DE VIDEO EN SUPABASE ---------- */
-async function guardarAnalisisVideoEnSupabase(analisis, persona, sd3) {
-  console.log("📤 Guardando análisis de video en Supabase...");
+/* ---------- GUARDAR ANÁLISIS DE IMAGEN EN SUPABASE ---------- */
+async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
+  console.log("📤 Guardando análisis de imagen en Supabase...");
 
   try {
     const rasgos = {
@@ -459,7 +453,7 @@ async function guardarAnalisisVideoEnSupabase(analisis, persona, sd3) {
       rasgos[a] > rasgos[b] ? a : b
     );
 
-    const videoData = {
+    const imagenData = {
       nombre: persona.nombre || 'Anónimo',
       edad: parseInt(persona.edad) || 0,
       genero: persona.genero || '',
@@ -469,38 +463,38 @@ async function guardarAnalisisVideoEnSupabase(analisis, persona, sd3) {
       psych: parseFloat(sd3.psych) || 0,
       tiempo_total_seg: parseFloat(sd3.tiempo_total_segundos) || 0,
       emocion_princ: analisis.emocion_predominante || 'No analizada',
-      image_url: '',
-      total_frames: analisis.total_frames || 0,
-      duracion_video: analisis.duracion_video || 0,
+      total_frames: 1, // Solo una imagen
+      duracion_video: 0, // No aplica para imagen
       emociones_detectadas: analisis.emociones_detectadas || [],
       correlaciones: analisis.correlaciones || {},
       aus_frecuentes: analisis.aus_frecuentes || [],
       facs_promedio: analisis.facs_promedio || {},
       historia_utilizada: rasgoPredominante,
+      tipo_captura: 'imagen',
       created_at: new Date().toISOString()
     };
 
-    console.log('💾 Guardando datos de video:', videoData);
+    console.log('💾 Guardando datos de imagen:', imagenData);
 
     const { data, error } = await supabase
       .from('darklens_records')
-      .insert([videoData])
+      .insert([imagenData])
       .select();
 
     if (error) {
       throw new Error(`Error Supabase: ${error.message}`);
     }
 
-    console.log('✅ Análisis de video guardado en Supabase!', data);
+    console.log('✅ Análisis de imagen guardado en Supabase!', data);
 
     return {
       success: true,
       id: data[0]?.id,
-      message: 'Datos de video guardados correctamente'
+      message: 'Datos de imagen guardados correctamente'
     };
 
   } catch (error) {
-    console.error('❌ Error guardando análisis de video:', error);
+    console.error('❌ Error guardando análisis de imagen:', error);
     return {
       success: false,
       error: error.message
@@ -566,6 +560,9 @@ function reproducirHistoria() {
         ${historiaSeleccionada.texto}
       </p>
       <small style="color: var(--accent);">Rasgo analizado: ${rasgoPredominante}</small>
+      <p style="margin-top: 15px; color: var(--accent); font-weight: bold;">
+        📸 Prepárate para la captura de imagen en 5 segundos...
+      </p>
     `;
   }
 
@@ -577,31 +574,26 @@ function reproducirHistoria() {
 }
 
 /* ---------- CONFIRMACIÓN PARTICIPANTE ---------- */
-function mostrarConfirmacionParticipante(analisisVideo = null) {
+function mostrarConfirmacionParticipante(analisisImagen = null) {
   const resultadoDiv = document.getElementById('resultado-micro');
   if (!resultadoDiv) return;
   
   let analisisHTML = '';
-  if (analisisVideo && analisisVideo.success) {
-    const analisis = analisisVideo.analisis;
+  if (analisisImagen && analisisImagen.success) {
+    const analisis = analisisImagen.analisis;
     analisisHTML = `
       <div style="background: rgba(127, 0, 255, 0.1); padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center;">
-        <h4 style="color: var(--accent);">🎬 Análisis de Video Completado</h4>
+        <h4 style="color: var(--accent);">📸 Análisis de Imagen Completado</h4>
         <p style="font-size: 1.3em; font-weight: bold; color: #7f00ff;">
           Emoción predominante: ${analisis.emocion_predominante || 'No detectada'}
         </p>
-        ${analisis.total_frames ? `
-          <p style="color: var(--text-secondary);">
-            <strong>Frames analizados:</strong> ${analisis.total_frames}
-          </p>
-        ` : ''}
         ${analisis.aus_frecuentes && analisis.aus_frecuentes.length > 0 ? `
           <p style="color: var(--text-secondary);">
             <strong>AUs detectadas:</strong> ${analisis.aus_frecuentes.join(', ')}
           </p>
         ` : ''}
         <p style="color: var(--text-secondary); margin-top: 10px;">
-          El video y análisis han sido guardados en la base de datos
+          La imagen y análisis han sido guardados en la base de datos
         </p>
       </div>
     `;
@@ -610,7 +602,7 @@ function mostrarConfirmacionParticipante(analisisVideo = null) {
       <div style="background: rgba(255, 99, 132, 0.1); padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center;">
         <h4 style="color: #ff6384;">⚠️ Análisis No Disponible</h4>
         <p style="color: var(--text-secondary);">
-          El análisis de video no pudo completarse, pero tus datos fueron guardados.
+          El análisis de imagen no pudo completarse, pero tus datos fueron guardados.
         </p>
       </div>
     `;
@@ -620,7 +612,7 @@ function mostrarConfirmacionParticipante(analisisVideo = null) {
   resultadoDiv.innerHTML = `
     <div class="confirmacion-final" style="text-align:center; padding:30px;">
       <h3 style="color: var(--accent);">¡Gracias por participar!</h3>
-      <p style="margin:15px 0;">Tu video, respuestas y análisis han sido registrados correctamente.</p>
+      <p style="margin:15px 0;">Tu imagen, respuestas y análisis han sido registrados correctamente.</p>
       
       ${analisisHTML}
       
@@ -690,6 +682,7 @@ function poblarListaInvestigador() {
   participantesData.forEach((p, idx) => {
     const fecha = new Date(p.created_at).toLocaleString('es-AR');
     const emocion = p.emocion_princ || 'No analizado';
+    const tipo = p.tipo_captura === 'imagen' ? '📸' : '🎬';
     
     const item = document.createElement('div');
     item.className = 'content-box';
@@ -697,7 +690,7 @@ function poblarListaInvestigador() {
     item.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
         <div style="flex: 1;">
-          <strong>${p.nombre || 'Sin nombre'}</strong>
+          <strong>${tipo} ${p.nombre || 'Sin nombre'}</strong>
           <div style="color:var(--text-secondary); font-size:0.9em;">${fecha}</div>
           <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 0.85em;">
             <span style="color: #667eea;">🎭 ${p.mach || 'N/A'}</span>
@@ -705,6 +698,7 @@ function poblarListaInvestigador() {
             <span style="color: #ffce56;">⚡ ${p.psych || 'N/A'}</span>
             <span style="color: #7f00ff;">😊 ${emocion}</span>
             ${p.historia_utilizada ? `<span style="color: #4CAF50;">📖 ${p.historia_utilizada}</span>` : ''}
+            ${p.tipo_captura ? `<span style="color: #48bb78;">${tipo} ${p.tipo_captura}</span>` : ''}
           </div>
         </div>
         <div style="display:flex; gap:10px;">
@@ -762,9 +756,8 @@ async function generarYDescargarCSV() {
       'ID', 'Fecha', 'Nombre', 'Edad', 'Género', 'País',
       'Maquiavelismo', 'Narcisismo', 'Psicopatia',
       'Tiempo_Total_Seg', 'Emoción_Principal', 'Historia_Utilizada',
-      'Total_Frames', 'Duración_Video', 'Correlación_Maquiavelismo', 
-      'Correlación_Narcisismo', 'Correlación_Psicopatia',
-      'AUs_Frecuentes'
+      'Tipo_Captura', 'AUs_Frecuentes', 'Correlación_Maquiavelismo', 
+      'Correlación_Narcisismo', 'Correlación_Psicopatia'
     ];
     
     const csvRows = [headers.join(',')];
@@ -783,12 +776,11 @@ async function generarYDescargarCSV() {
         p.tiempo_total_seg || '',
         p.emocion_princ || '',
         p.historia_utilizada || '',
-        p.total_frames || 0,
-        p.duracion_video || 0,
+        p.tipo_captura || 'imagen',
+        `"${(p.aus_frecuentes || []).join('; ')}"`,
         p.correlaciones?.maquiavelismo || 0,
         p.correlaciones?.narcisismo || 0,
-        p.correlaciones?.psicopatia || 0,
-        `"${(p.aus_frecuentes || []).join('; ')}"`
+        p.correlaciones?.psicopatia || 0
       ];
       
       csvRows.push(row.join(','));
@@ -846,6 +838,9 @@ function mostrarParticipanteEnPanel(index) {
         <div class="info-item">
           <strong>Historia utilizada</strong> ${p.historia_utilizada || 'No disponible'}
         </div>
+        <div class="info-item">
+          <strong>Tipo de captura</strong> ${p.tipo_captura || 'imagen'}
+        </div>
       </div>
     `;
   }
@@ -892,10 +887,9 @@ function mostrarParticipanteEnPanel(index) {
         <p style="font-size: 2em; font-weight: bold; color: #7f00ff;">
           ${p.emocion_princ}
         </p>
-        ${p.total_frames ? `<p><strong>Frames analizados:</strong> ${p.total_frames}</p>` : ''}
-        ${p.duracion_video ? `<p><strong>Duración del video:</strong> ${p.duracion_video} segundos</p>` : ''}
         ${p.aus_frecuentes && p.aus_frecuentes.length > 0 ? 
           `<p><strong>AUs detectadas:</strong> ${p.aus_frecuentes.join(', ')}</p>` : ''}
+        ${p.tipo_captura ? `<p><strong>Tipo de captura:</strong> ${p.tipo_captura}</p>` : ''}
       </div>
     `;
   }
@@ -944,6 +938,7 @@ function volverAlInicio() {
   tiempoInicioItem = {};
   testInicioTimestamp = null;
   participanteSeleccionado = null;
+  imagenCapturada = null;
   if (stream) { 
     stream.getTracks().forEach(t=>t.stop()); 
     stream = null; 
@@ -975,6 +970,7 @@ document.addEventListener('DOMContentLoaded', () => {
   tiemposRespuesta = {};
   tiempoInicioItem = {};
   testInicioTimestamp = null;
+  imagenCapturada = null;
   window._capturaInicializada = false;
   console.log('✅ Sesión limpiada al cargar');
 
@@ -987,6 +983,7 @@ document.addEventListener('DOMContentLoaded', () => {
     tiemposRespuesta = {};
     tiempoInicioItem = {};
     testInicioTimestamp = null;
+    imagenCapturada = null;
     document.getElementById('pagina-inicio')?.classList.add('hidden');
     document.getElementById('seccion-bienvenida')?.classList.remove('hidden');
     const fd = document.getElementById('form-datos-basicos');
