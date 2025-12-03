@@ -639,27 +639,51 @@ async function subirImagenSupabaseStorage(imageBlob, datosPersonales) {
 /* ---------- ANÁLISIS DE IMAGEN COMPLETA ---------- */
 async function analizarImagenCompleta(imagenBase64, datosPersonales, datosSD3) {
   try {
-    console.log('📸 Enviando imagen para análisis a FastAPI...');
+    console.log('📸 Enviando datos a FastAPI en formato FormData...');
     
-    const response = await fetch(`${FASTAPI_URL}/analyze-image`, {
+    // Convertir base64 a Blob
+    const base64Data = imagenBase64.split(',')[1];
+    const byteCharacters = atob(base64Data);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const imageBlob = new Blob([byteArray], { type: 'image/jpeg' });
+    
+    // Crear FormData
+    const formData = new FormData();
+    formData.append('file', imageBlob, 'captura.jpg');
+    formData.append('nombre', datosPersonales.nombre || '');
+    formData.append('edad', datosPersonales.edad || '');
+    formData.append('genero', datosPersonales.genero || '');
+    formData.append('pais', datosPersonales.pais || '');
+    formData.append('mach', datosSD3.mach || 0);
+    formData.append('narc', datosSD3.narc || 0);
+    formData.append('psych', datosSD3.psych || 0);
+    formData.append('tiempo_total_seg', datosSD3.tiempo_total_segundos || 0);
+    
+    // Obtener historia utilizada
+    const historiaUtilizada = sessionStorage.getItem('historiaUtilizada') || '';
+    formData.append('historia_utilizada', historiaUtilizada);
+    formData.append('tipo_captura', 'imagen');
+    
+    console.log('📤 Enviando FormData a:', `${FASTAPI_URL}/analyze`);
+    
+    const response = await fetch(`${FASTAPI_URL}/analyze`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        image_data: imagenBase64,
-        participant_data: datosPersonales,
-        sd3_data: datosSD3
-      })
+      body: formData
     });
 
     if (!response.ok) {
-      throw new Error(`Error del servidor: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`Error del servidor: ${response.status} - ${errorText}`);
     }
 
     const resultado = await response.json();
-    console.log('✅ Análisis de imagen completado:', resultado);
+    console.log('✅ Respuesta de la API:', resultado);
 
+    // Guardar en Supabase con los datos de la API
     const guardado = await guardarAnalisisImagenEnSupabase(resultado, datosPersonales, datosSD3);
     
     return {
@@ -677,7 +701,6 @@ async function analizarImagenCompleta(imagenBase64, datosPersonales, datosSD3) {
     };
   }
 }
-
 /* ---------- GUARDAR ANÁLISIS DE IMAGEN EN SUPABASE ---------- */
 async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
   console.log("📤 Guardando análisis de imagen en Supabase...");
@@ -687,19 +710,13 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
       throw new Error('Supabase no está inicializado');
     }
 
-    const rasgos = {
-      maquiavelismo: parseFloat(sd3.mach) || 0,
-      narcisismo: parseFloat(sd3.narc) || 0,
-      psicopatia: parseFloat(sd3.psych) || 0
-    };
+    const historiaUtilizada = sessionStorage.getItem('historiaUtilizada') || '';
     
-    const rasgoPredominante = Object.keys(rasgos).reduce((a, b) => 
-      rasgos[a] > rasgos[b] ? a : b
-    );
-
-    const historiaUtilizada = sessionStorage.getItem('historiaUtilizada') || rasgoPredominante;
+    // Usar datos directamente de la respuesta de la API
+    const emocionPrincipal = analisis.emocion_detectada || analisis.emocion_principal || 'No analizada';
+    const imagenURL = analisis.imagen_url || '';
     
-    const emocionPrincipal = analisis.emocion_predominante || analisis.emocion_principal || 'No analizada';
+    // Calcular correlación
     const correlacionEmocionSD3 = calcularCorrelacionEmocionSD3(
       emocionPrincipal,
       parseFloat(sd3.mach) || 0,
@@ -717,10 +734,9 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
       psych: parseFloat(sd3.psych) || 0,
       tiempo_total_seg: parseFloat(sd3.tiempo_total_segundos) || 0,
       emocion_principal: emocionPrincipal,
+      imagen_url: imagenURL,
       total_frames: 1,
-      emociones_detectadas: Array.isArray(analisis.emociones_detectadas) 
-        ? analisis.emociones_detectadas 
-        : Object.keys(analisis.emociones || {}),
+      emociones_detectadas: analisis.emociones_detectadas || [],
       correlaciones: analisis.correlaciones || {},
       correlacion_emocion_sd3: correlacionEmocionSD3.correlacion,
       interpretacion_correlacion: correlacionEmocionSD3.interpretacion,
@@ -728,10 +744,11 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
       historia_utilizada: historiaUtilizada,
       imagen_analizada: true,
       tipo_captura: 'imagen',
+      informe_completo: analisis.informe || '',
       analisis_completo: JSON.stringify(analisis || {})
     };
 
-    console.log('📤 Datos a insertar:', imagenData);
+    console.log('📤 Datos a insertar en Supabase:', imagenData);
 
     const { data, error } = await supabase
       .from('darklens_records')
@@ -740,20 +757,20 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
 
     if (error) {
       console.error('❌ Error detallado de Supabase:', error);
-      throw new Error(`Error Supabase: ${error.message} (Código: ${error.code})`);
+      throw new Error(`Error Supabase: ${error.message}`);
     }
 
-    console.log('✅ Análisis de imagen guardado en Supabase! ID:', data[0]?.id);
+    console.log('✅ Datos guardados en Supabase! ID:', data[0]?.id);
 
     return {
       success: true,
       id: data[0]?.id,
-      message: 'Datos de imagen guardados correctamente',
+      message: 'Datos guardados correctamente',
       correlacion: correlacionEmocionSD3
     };
 
   } catch (error) {
-    console.error('❌ Error guardando análisis de imagen en Supabase:', error);
+    console.error('❌ Error guardando en Supabase:', error);
     return {
       success: false,
       error: error.message
@@ -769,23 +786,41 @@ function mostrarConfirmacionParticipante(analisisImagen = null) {
   let analisisHTML = '';
   if (analisisImagen && analisisImagen.success) {
     const analisis = analisisImagen.analisis;
+    const emocion = analisis.emocion_detectada || analisis.emocion_principal || 'No detectada';
+    const imagenURL = analisis.imagen_url || '';
+    const informe = analisis.informe || '';
+    
     analisisHTML = `
       <div style="background: rgba(127, 0, 255, 0.1); padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center;">
-        <h4 style="color: var(--accent);">📸 Análisis de Imagen Completado</h4>
+        <h4 style="color: var(--accent);">📸 Análisis Completado</h4>
         <p style="font-size: 1.3em; font-weight: bold; color: #7f00ff;">
-          Emoción predominante: ${analisis.emocion_predominante || 'No detectada'}
+          Emoción detectada: ${emocion}
         </p>
-        <p style="color: var(--text-secondary); margin-top: 10px;">
-          La imagen y análisis han sido guardados en la base de datos
+        
+        ${imagenURL ? `
+          <div style="margin: 20px 0;">
+            <img src="${imagenURL}" alt="Imagen analizada" style="max-width: 400px; border-radius: 10px; border: 2px solid var(--accent);">
+          </div>
+        ` : ''}
+        
+        ${informe ? `
+          <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-top: 15px; text-align: left;">
+            <h5 style="color: var(--accent); text-align: center;">📋 Informe del Análisis</h5>
+            <pre style="white-space: pre-wrap; word-wrap: break-word; color: var(--text-secondary); font-size: 0.9em;">${informe}</pre>
+          </div>
+        ` : ''}
+        
+        <p style="color: var(--text-secondary); margin-top: 15px;">
+          ✅ La imagen y el análisis han sido guardados exitosamente
         </p>
       </div>
     `;
   } else {
     analisisHTML = `
       <div style="background: rgba(255, 99, 132, 0.1); padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center;">
-        <h4 style="color: #ff6384;">⚠️ Análisis No Disponible</h4>
+        <h4 style="color: #ff6384;">⚠️ Error en el Análisis</h4>
         <p style="color: var(--text-secondary);">
-          El análisis de imagen no pudo completarse, pero tus datos fueron guardados.
+          ${analisisImagen?.error || 'No se pudo completar el análisis'}
         </p>
       </div>
     `;
@@ -795,7 +830,7 @@ function mostrarConfirmacionParticipante(analisisImagen = null) {
   resultadoDiv.innerHTML = `
     <div class="confirmacion-final" style="text-align:center; padding:30px;">
       <h3 style="color: var(--accent);">¡Gracias por participar!</h3>
-      <p style="margin:15px 0;">Tu imagen, respuestas y análisis han sido registrados correctamente.</p>
+      <p style="margin:15px 0;">Tu participación ha sido registrada correctamente.</p>
       
       ${analisisHTML}
       
