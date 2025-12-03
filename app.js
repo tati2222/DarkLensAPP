@@ -623,12 +623,12 @@ async function subirImagenSupabaseStorage(imageBlob, datosPersonales) {
       return null;
     }
 
-    const { publicURL } = supabase.storage
+    const { data: { publicUrl } } = supabase.storage
       .from('images')
       .getPublicUrl(fileName);
 
-    console.log('✅ Imagen subida a Storage:', publicURL);
-    return publicURL;
+    console.log('✅ Imagen subida a Storage:', publicUrl);
+    return publicUrl;
     
   } catch (error) {
     console.error('Error en subirImagenSupabaseStorage:', error);
@@ -699,7 +699,6 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
 
     const historiaUtilizada = sessionStorage.getItem('historiaUtilizada') || rasgoPredominante;
     
-    // Calcular correlación entre emoción y SD3
     const emocionPrincipal = analisis.emocion_predominante || analisis.emocion_principal || 'No analizada';
     const correlacionEmocionSD3 = calcularCorrelacionEmocionSD3(
       emocionPrincipal,
@@ -709,7 +708,7 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
     );
 
     const imagenData = {
-      nombre: persona.nombre || 'Anónimo',  
+      nombre: persona.nombre || 'Anónimo',
       edad: parseInt(persona.edad) || 0,
       genero: persona.genero || '',
       pais: persona.pais || '',
@@ -728,7 +727,7 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
       perfil_esperado_emocion: correlacionEmocionSD3.perfilEsperado,
       historia_utilizada: historiaUtilizada,
       imagen_analizada: true,
-      imagen_URL: 'TEXT',
+      tipo_captura: 'imagen',
       analisis_completo: JSON.stringify(analisis || {})
     };
 
@@ -776,11 +775,6 @@ function mostrarConfirmacionParticipante(analisisImagen = null) {
         <p style="font-size: 1.3em; font-weight: bold; color: #7f00ff;">
           Emoción predominante: ${analisis.emocion_predominante || 'No detectada'}
         </p>
-        ${analisis.aus_frecuentes && analisis.aus_frecuentes.length > 0 ? `
-          <p style="color: var(--text-secondary);">
-            <strong>AUs detectadas:</strong> ${analisis.aus_frecuentes.join(', ')}
-          </p>
-        ` : ''}
         <p style="color: var(--text-secondary); margin-top: 10px;">
           La imagen y análisis han sido guardados en la base de datos
         </p>
@@ -836,7 +830,7 @@ async function cargarDatosParticipantes() {
       .from('darklens_records')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(100); // Limitar a 100 registros para mejor performance
+      .limit(100);
 
     if (error) {
       console.error('❌ Error de Supabase:', error);
@@ -918,7 +912,7 @@ function poblarListaInvestigador() {
   
   participantesData.forEach((p, idx) => {
     const fecha = new Date(p.created_at).toLocaleString('es-AR');
-    const emocion = p.emocion_principal || p.emocion_princ || 'No analizado';
+    const emocion = p.emocion_principal || 'No analizado';
     const tipo = p.tipo_captura === 'imagen' ? '📸' : '🎬';
     const correlacion = p.correlacion_emocion_sd3 ? `📊 ${parseFloat(p.correlacion_emocion_sd3).toFixed(2)}` : '';
     
@@ -937,7 +931,6 @@ function poblarListaInvestigador() {
             <span style="color: #7f00ff;">😊 ${emocion}</span>
             ${correlacion ? `<span style="color: #4CAF50;">${correlacion}</span>` : ''}
             ${p.historia_utilizada ? `<span style="color: #4CAF50;">📖 ${p.historia_utilizada}</span>` : ''}
-            ${p.tipo_captura ? `<span style="color: #48bb78;">${tipo} ${p.tipo_captura}</span>` : ''}
           </div>
         </div>
         <div style="display:flex; gap:10px;">
@@ -995,16 +988,15 @@ async function generarYDescargarCSV() {
 
     if (!participantes || participantes.length === 0) {
       alert('No hay datos para exportar');
-      return;
+      return { success: false, error: 'No hay datos' };
     }
 
     const headers = [
       'ID', 'Fecha', 'Nombre', 'Edad', 'Género', 'País',
       'Maquiavelismo', 'Narcisismo', 'Psicopatia',
       'Tiempo_Total_Seg', 'Emoción_Principal', 'Correlación_Emoción_SD3',
-      'Interpretación_Correlación', 'Historia_Utilizada', 'Tipo_Captura', 
-      'AUs_Frecuentes', 'Perfil_Esperado_Maquiavelismo', 
-      'Perfil_Esperado_Narcisismo', 'Perfil_Esperado_Psicopatia'
+      'Interpretación_Correlación', 'Historia_Utilizada', 'Tipo_Captura',
+      'Perfil_Esperado_Maquiavelismo', 'Perfil_Esperado_Narcisismo', 'Perfil_Esperado_Psicopatia'
     ];
     
     const csvRows = [headers.join(',')];
@@ -1023,12 +1015,11 @@ async function generarYDescargarCSV() {
         p.narc || 0,
         p.psych || 0,
         p.tiempo_total_seg || '',
-        p.emocion_principal || p.emocion_princ || '',
+        p.emocion_principal || '',
         p.correlacion_emocion_sd3 || 0,
         `"${(p.interpretacion_correlacion || '').replace(/"/g, '""')}"`,
         p.historia_utilizada || '',
         p.tipo_captura || 'imagen',
-        `"${(p.aus_frecuentes || []).join('; ')}"`,
         perfilEsperado.mach || 0,
         perfilEsperado.narc || 0,
         perfilEsperado.psych || 0
@@ -1059,14 +1050,13 @@ async function generarYDescargarCSV() {
   }
 }
 
-/* ---------- FUNCIÓN PARA MOSTRAR PARTICIPANTE EN PANEL ---------- */
+/* ---------- MOSTRAR PARTICIPANTE EN PANEL ---------- */
 function mostrarParticipanteEnPanel(index) {
   if (!participantesData || !participantesData[index]) return;
   
   const p = participantesData[index];
   participanteSeleccionado = p;
   
-  // Llenar información del participante
   const infoDiv = document.getElementById('info-participante');
   if (infoDiv) {
     infoDiv.innerHTML = `
@@ -1096,7 +1086,6 @@ function mostrarParticipanteEnPanel(index) {
     `;
   }
   
-  // Mostrar resultados SD3
   const resultadosDiv = document.getElementById('resultados-sd3-detalle');
   if (resultadosDiv) {
     resultadosDiv.innerHTML = `
@@ -1129,10 +1118,9 @@ function mostrarParticipanteEnPanel(index) {
     `;
   }
   
-  // Mostrar microexpresiones y correlación
   const microDiv = document.getElementById('microexpresiones-detalle');
-  if (microDiv && (p.emocion_principal || p.emocion_princ)) {
-    const emocion = p.emocion_principal || p.emocion_princ;
+  if (microDiv && p.emocion_principal) {
+    const emocion = p.emocion_principal;
     const correlacion = p.correlacion_emocion_sd3 || 0;
     const interpretacion = p.interpretacion_correlacion || '';
     const perfilEsperado = p.perfil_esperado_emocion || {};
@@ -1152,8 +1140,6 @@ function mostrarParticipanteEnPanel(index) {
           <p style="color: var(--text-secondary); margin-top: 10px;">${interpretacion}</p>
         </div>
         
-        ${p.aus_frecuentes && p.aus_frecuentes.length > 0 ? 
-          `<p><strong>AUs detectadas:</strong> ${p.aus_frecuentes.join(', ')}</p>` : ''}
         ${p.tipo_captura ? `<p><strong>Tipo de captura:</strong> ${p.tipo_captura}</p>` : ''}
         
         <div style="margin-top: 20px; padding: 15px; background: rgba(30, 30, 50, 0.7); border-radius: 10px;">
@@ -1177,18 +1163,15 @@ function mostrarParticipanteEnPanel(index) {
     `;
   }
   
-  // Mostrar sección de resultados
   document.getElementById('seccion-investigador')?.classList.add('hidden');
   document.getElementById('seccion-resultados')?.classList.remove('hidden');
   window.scrollTo({ top:0, behavior:'smooth' });
   
-  // Generar gráficos
   generarGraficosParticipante(p);
 }
 
 /* ---------- GENERAR GRÁFICOS PARA PARTICIPANTE ---------- */
 function generarGraficosParticipante(participante) {
-  // Gráfico de resultados SD3
   const ctxSD3 = document.getElementById('grafico-sd3-resultados');
   if (ctxSD3) {
     new Chart(ctxSD3, {
@@ -1212,74 +1195,6 @@ function generarGraficosParticipante(participante) {
       }
     });
   }
-
-  // Nuevo gráfico: comparación con perfil emocional
-  const emocion = participante.emocion_principal || participante.emocion_princ;
-  if (emocion) {
-    // Calcular correlación
-    const resultadoCorrelacion = calcularCorrelacionEmocionSD3(
-      emocion,
-      participante.mach || 0,
-      participante.narc || 0,
-      participante.psych || 0
-    );
-    
-    // Datos reales (normalizados a 0-1)
-    const real = [
-      (participante.mach || 0) / 5,
-      (participante.narc || 0) / 5,
-      (participante.psych || 0) / 5
-    ];
-    
-    // Datos esperados (normalizados)
-    const perfilEsperado = resultadoCorrelacion.perfilEsperado;
-    const esperado = [
-      perfilEsperado.mach / 5,
-      perfilEsperado.narc / 5,
-      perfilEsperado.psych / 5
-    ];
-
-    const ctxCorr = document.getElementById('grafico-correlacion-emocion');
-    if (ctxCorr) {
-      new Chart(ctxCorr, {
-        type: 'bar',
-        data: {
-          labels: ['Maquiavelismo', 'Narcisismo', 'Psicopatía'],
-          datasets: [
-            {
-              label: 'Puntaje Real (normalizado)',
-              data: real,
-              backgroundColor: 'rgba(54, 162, 235, 0.5)',
-              borderColor: 'rgba(54, 162, 235, 1)',
-              borderWidth: 1
-            },
-            {
-              label: 'Perfil Esperado para ' + emocion,
-              data: esperado,
-              backgroundColor: 'rgba(255, 99, 132, 0.5)',
-              borderColor: 'rgba(255, 99, 132, 1)',
-              borderWidth: 1
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            y: {
-              beginAtZero: true,
-              max: 1
-            }
-          },
-          plugins: {
-            title: {
-              display: true,
-              text: `Correlación entre Perfil SD3 y Emoción Detectada (r = ${resultadoCorrelacion.correlacion.toFixed(2)})`
-            }
-          }
-        }
-      });
-    }
-  }
 }
 
 /* ---------- ANÁLISIS ESTADÍSTICO AVANZADO ---------- */
@@ -1287,7 +1202,6 @@ async function cargarAnalisisAvanzado() {
   try {
     console.log('📈 Cargando análisis avanzado...');
     
-    // Obtener datos de participantes
     const { data: participantes, error } = await supabase
       .from('darklens_records')
       .select('*')
@@ -1302,27 +1216,18 @@ async function cargarAnalisisAvanzado() {
 
     console.log(`📊 Total de participantes para análisis: ${participantes.length}`);
 
-    // Preparar datos para análisis - FILTRANDO Y LIMPIANDO DATOS
     const sd3Scores = [];
     const emocionesData = [];
     
     participantes.forEach(p => {
-      // Solo incluir participantes con datos SD3 válidos
       if (p.mach !== null && p.narc !== null && p.psych !== null) {
         const mach = parseFloat(p.mach);
         const narc = parseFloat(p.narc);
         const psych = parseFloat(p.psych);
         
-        // Verificar que sean números válidos (no NaN)
         if (!isNaN(mach) && !isNaN(narc) && !isNaN(psych)) {
-          sd3Scores.push({
-            mach: mach,
-            narc: narc,
-            psych: psych
-          });
-
-          // Preparar datos de emociones
-          const emocion = p.emocion_principal || p.emocion_princ || 'neutral';
+          sd3Scores.push({ mach, narc, psych });
+          const emocion = p.emocion_principal || 'neutral';
           emocionesData.push(emocion.toLowerCase());
         }
       }
@@ -1346,13 +1251,8 @@ async function cargarAnalisisAvanzado() {
       return;
     }
 
-    // 1. Análisis de correlaciones SD3-Emociones
     await analizarCorrelacionesSD3Emociones(sd3Scores, emocionesData);
-
-    // 2. Análisis de tiempos de respuesta
     await analizarTiemposRespuesta(participantes);
-
-    // 3. Análisis de regresión por rasgo predominante
     await analizarRegresiones(participantes);
 
   } catch (error) {
@@ -1365,29 +1265,16 @@ async function analizarCorrelacionesSD3Emociones(sd3Scores, emocionesData) {
   try {
     console.log('🔗 Analizando correlaciones SD3-Emociones...');
     
-    // Calcular correlaciones para cada dimensión
-    const resultados = {
-      mach_correlaciones: {},
-      narc_correlaciones: {},
-      psych_correlaciones: {}
-    };
-    
-    // Agrupar puntajes por emoción
     const gruposEmociones = {};
     emocionesData.forEach((emocion, index) => {
       if (!gruposEmociones[emocion]) {
-        gruposEmociones[emocion] = {
-          mach: [],
-          narc: [],
-          psych: []
-        };
+        gruposEmociones[emocion] = { mach: [], narc: [], psych: [] };
       }
       gruposEmociones[emocion].mach.push(sd3Scores[index].mach);
       gruposEmociones[emocion].narc.push(sd3Scores[index].narc);
       gruposEmociones[emocion].psych.push(sd3Scores[index].psych);
     });
     
-    // Calcular promedios por emoción
     const promediosEmociones = {};
     Object.keys(gruposEmociones).forEach(emocion => {
       promediosEmociones[emocion] = {
@@ -1398,12 +1285,10 @@ async function analizarCorrelacionesSD3Emociones(sd3Scores, emocionesData) {
     });
     
     console.log('📊 Promedios por emoción:', promediosEmociones);
-    
-    // Mostrar resultados
     mostrarResultadosCorrelacionesSD3Emociones(promediosEmociones, gruposEmociones);
     
   } catch (error) {
-    console.error('❌ Error analizando correlaciones SD3-Emociones:', error);
+    console.error('❌ Error analizando correlaciones:', error);
     document.getElementById('resultados-correlaciones').innerHTML = `
       <div class="resultado-box" style="background: rgba(255, 99, 132, 0.1); border-left: 4px solid #ff6384;">
         <h4 style="color: #ff6384;">⚠️ Error en Análisis de Correlaciones</h4>
@@ -1413,13 +1298,12 @@ async function analizarCorrelacionesSD3Emociones(sd3Scores, emocionesData) {
   }
 }
 
-function mostrarResultadosCorrelacionesSD3Emociones(promediosEmociones, gruposEmociones) {
+function mostrarResultadosCorrelacionesSD3Emociones(promedios, grupos) {
   const container = document.getElementById('resultados-correlaciones');
   if (!container) return;
 
   let html = '<h4 style="color: var(--accent); margin-bottom: 20px;">🔗 Correlaciones entre Emociones Detectadas y Rasgos SD3</h4>';
 
-  // Crear tabla de promedios
   html += `
     <div class="resultado-box" style="overflow-x: auto;">
       <h5 style="color: var(--accent);">📊 Promedios de Puntajes SD3 por Emoción</h5>
@@ -1436,34 +1320,30 @@ function mostrarResultadosCorrelacionesSD3Emociones(promediosEmociones, gruposEm
         <tbody>
   `;
 
-  Object.keys(promediosEmociones).forEach(emocion => {
-    const muestraM = gruposEmociones[emocion]?.mach?.length || 0;
-    const muestraN = gruposEmociones[emocion]?.narc?.length || 0;
-    const muestraP = gruposEmociones[emocion]?.psych?.length || 0;
-    const muestraTotal = Math.max(muestraM, muestraN, muestraP);
+  Object.keys(promedios).forEach(emocion => {
+    const muestras = Math.max(
+      grupos[emocion]?.mach?.length || 0,
+      grupos[emocion]?.narc?.length || 0,
+      grupos[emocion]?.psych?.length || 0
+    );
     
     html += `
       <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
         <td style="padding: 10px;"><strong>${emocion.charAt(0).toUpperCase() + emocion.slice(1)}</strong></td>
-        <td style="padding: 10px;">${promediosEmociones[emocion].mach.toFixed(2)}</td>
-        <td style="padding: 10px;">${promediosEmociones[emocion].narc.toFixed(2)}</td>
-        <td style="padding: 10px;">${promediosEmociones[emocion].psych.toFixed(2)}</td>
-        <td style="padding: 10px;">${muestraTotal}</td>
+        <td style="padding: 10px;">${promedios[emocion].mach.toFixed(2)}</td>
+        <td style="padding: 10px;">${promedios[emocion].narc.toFixed(2)}</td>
+        <td style="padding: 10px;">${promedios[emocion].psych.toFixed(2)}</td>
+        <td style="padding: 10px;">${muestras}</td>
       </tr>
     `;
   });
 
-  html += `
-        </tbody>
-      </table>
-    </div>
-  `;
+  html += `</tbody></table></div>`;
 
-  // Crear gráfico de promedios
-  const emocionesLabels = Object.keys(promediosEmociones);
-  const machData = emocionesLabels.map(e => promediosEmociones[e].mach);
-  const narcData = emocionesLabels.map(e => promediosEmociones[e].narc);
-  const psychData = emocionesLabels.map(e => promediosEmociones[e].psych);
+  const emocionesLabels = Object.keys(promedios);
+  const machData = emocionesLabels.map(e => promedios[e].mach);
+  const narcData = emocionesLabels.map(e => promedios[e].narc);
+  const psychData = emocionesLabels.map(e => promedios[e].psych);
 
   html += `
     <div class="resultado-box" style="margin-top: 20px;">
@@ -1472,19 +1352,17 @@ function mostrarResultadosCorrelacionesSD3Emociones(promediosEmociones, gruposEm
     </div>
   `;
 
-  // Análisis de patrones
   html += `
     <div class="resultado-box" style="margin-top: 20px; background: rgba(127, 0, 255, 0.1);">
       <h5 style="color: var(--accent);">🧠 Análisis de Patrones Detectados</h5>
       <div style="color: var(--text-secondary); line-height: 1.6;">
-        ${generarAnalisisPatrones(promediosEmociones)}
+        ${generarAnalisisPatrones(promedios)}
       </div>
     </div>
   `;
 
   container.innerHTML = html;
 
-  // Generar gráfico
   setTimeout(() => {
     const ctx = document.getElementById('grafico-promedios-emociones');
     if (ctx) {
@@ -1530,12 +1408,11 @@ function mostrarResultadosCorrelacionesSD3Emociones(promediosEmociones, gruposEm
   }, 100);
 }
 
-function generarAnalisisPatrones(promediosEmociones) {
+function generarAnalisisPatrones(promedios) {
   let analisis = '';
   
-  // Analizar cada emoción
-  Object.keys(promediosEmociones).forEach(emocion => {
-    const datos = promediosEmociones[emocion];
+  Object.keys(promedios).forEach(emocion => {
+    const datos = promedios[emocion];
     analisis += `<p><strong>${emocion.charAt(0).toUpperCase() + emocion.slice(1)}:</strong> `;
     
     const caracteristicas = [];
@@ -1559,7 +1436,6 @@ async function analizarTiemposRespuesta(participantes) {
   try {
     console.log('⏱️ Analizando tiempos de respuesta...');
     
-    // Extraer datos de tiempos (si están disponibles)
     const tiemposData = [];
     
     participantes.forEach(p => {
@@ -1601,28 +1477,18 @@ async function analizarTiemposRespuesta(participantes) {
       return;
     }
 
-    const response = await fetch(`${FASTAPI_URL}/analyze-response-times`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({ tiempos_data: tiemposData })
-    });
+    document.getElementById('resultados-tiempos').innerHTML = `
+      <div class="resultado-box" style="text-align: center;">
+        <h4 style="color: var(--accent);">⏱️ Análisis de Tiempos de Respuesta</h4>
+        <p style="color: var(--text-secondary);">
+          Se encontraron ${tiemposData.length} registros de tiempo de respuesta
+        </p>
+        <p style="color: var(--text-secondary); font-size: 0.9em; margin-top: 10px;">
+          Análisis detallado disponible próximamente
+        </p>
+      </div>
+    `;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Error del servidor en análisis de tiempos:', errorText);
-      throw new Error(`Error en análisis de tiempos: ${response.status}`);
-    }
-
-    const result = await response.json();
-    
-    if (result.success) {
-      mostrarResultadosTiempos(result.response_time_analysis);
-    } else {
-      throw new Error(result.error || 'Error desconocido en análisis de tiempos');
-    }
   } catch (error) {
     console.error('❌ Error analizando tiempos:', error);
     document.getElementById('resultados-tiempos').innerHTML = `
@@ -1634,69 +1500,10 @@ async function analizarTiemposRespuesta(participantes) {
   }
 }
 
-function mostrarResultadosTiempos(analysis) {
-  const container = document.getElementById('resultados-tiempos');
-  if (!container) return;
-
-  let html = '<h4 style="color: var(--accent); margin-bottom: 20px;">⏱️ Análisis de Tiempos de Respuesta</h4>';
-
-  // Gráfico de tiempos
-  if (analysis?.times_plot) {
-    html += `
-      <div style="text-align: center; margin-bottom: 30px;">
-        <img src="data:image/png;base64,${analysis.times_plot}" 
-             style="max-width: 100%; border-radius: 10px; border: 1px solid var(--border);">
-      </div>
-    `;
-  }
-
-  // Ítems más rápidos y más lentos
-  html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">';
-  
-  // Ítems más rápidos
-  if (analysis?.fastest_items && analysis.fastest_items.length > 0) {
-    html += `
-      <div class="resultado-box">
-        <h5 style="color: #4CAF50; margin-bottom: 15px;">🚀 Ítems Más Rápidos</h5>
-        ${analysis.fastest_items.map(item => `
-          <div style="margin-bottom: 10px; padding: 10px; background: rgba(76, 175, 80, 0.1); border-radius: 5px;">
-            <div style="font-weight: bold;">${item.question || 'Sin texto'}</div>
-            <div style="color: var(--text-secondary); font-size: 0.9em;">
-              Tiempo promedio: <strong>${(item.mean_time || 0).toFixed(0)} ms</strong>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    `;
-  }
-
-  // Ítems más lentos
-  if (analysis?.slowest_items && analysis.slowest_items.length > 0) {
-    html += `
-      <div class="resultado-box">
-        <h5 style="color: #ff6384; margin-bottom: 15px;">🐌 Ítems Más Lentos</h5>
-        ${analysis.slowest_items.map(item => `
-          <div style="margin-bottom: 10px; padding: 10px; background: rgba(255, 99, 132, 0.1); border-radius: 5px;">
-            <div style="font-weight: bold;">${item.question || 'Sin texto'}</div>
-            <div style="color: var(--text-secondary); font-size: 0.9em;">
-              Tiempo promedio: <strong>${(item.mean_time || 0).toFixed(0)} ms</strong>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    `;
-  }
-
-  html += '</div>';
-
-  container.innerHTML = html;
-}
-
 async function analizarRegresiones(participantes) {
   try {
     console.log('📈 Preparando datos para análisis de regresión...');
     
-    // Preparar datos para regresión: Maquiavelismo vs Correlación Emoción
     const xData = [];
     const yData = [];
     
@@ -1723,7 +1530,7 @@ async function analizarRegresiones(participantes) {
           </p>
           <div style="margin-top: 15px;">
             <p style="color: var(--text-secondary); font-size: 0.85em;">
-              <strong>Participantes con datos válidos:</strong> ${xData.length}<br>
+              <strong>Participantes con datos válidos:</strong> ${xData.length}
             </p>
           </div>
         </div>
@@ -1731,128 +1538,41 @@ async function analizarRegresiones(participantes) {
       return;
     }
 
-    const response = await fetch(`${FASTAPI_URL}/regression-analysis`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        x_data: xData,
-        y_data: yData,
-        x_label: 'Maquiavelismo (SD3)',
-        y_label: 'Correlación con Emoción Detectada'
-      })
-    });
+    document.getElementById('resultados-regresion').innerHTML = `
+      <div class="resultado-box" style="text-align: center;">
+        <h4 style="color: var(--accent);">📊 Regresión Lineal</h4>
+        <p style="color: var(--text-secondary);">
+          Análisis de regresión entre Maquiavelismo y Correlación Emoción-SD3
+        </p>
+        <p style="color: var(--text-secondary); margin-top: 10px;">
+          <strong>Datos disponibles:</strong> ${xData.length} participantes
+        </p>
+      </div>
+    `;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Error del servidor en regresión:', errorText);
-      throw new Error(`Error en análisis de regresión: ${response.status}`);
-    }
-
-    const result = await response.json();
-    
-    if (result.success) {
-      mostrarResultadosRegresion(result);
-    } else {
-      throw new Error(result.error || 'Error desconocido en análisis de regresión');
-    }
   } catch (error) {
     console.error('❌ Error analizando regresiones:', error);
     document.getElementById('resultados-regresion').innerHTML = `
       <div class="resultado-box" style="background: rgba(54, 162, 235, 0.1); border-left: 4px solid #36a2eb;">
         <h4 style="color: #36a2eb;">⚠️ Error en Análisis de Regresión</h4>
         <p style="color: var(--text-secondary);">${error.message}</p>
-        <p style="color: var(--text-secondary); margin-top: 10px;">
-          El análisis de regresión requiere datos numéricos válidos de SD3 y correlación.
-        </p>
       </div>
     `;
   }
-}
-
-function mostrarResultadosRegresion(result) {
-  const container = document.getElementById('resultados-regresion');
-  if (!container) return;
-
-  const regression = result.regression_results || {};
-  const correlation = result.correlation_stats || {};
-  
-  let html = '<h4 style="color: var(--accent); margin-bottom: 20px;">📈 Análisis de Regresión Lineal</h4>';
-
-  // Gráfico de dispersión con línea de regresión
-  if (result.scatter_plot) {
-    html += `
-      <div style="text-align: center; margin-bottom: 30px;">
-        <img src="data:image/png;base64,${result.scatter_plot}" 
-             style="max-width: 100%; border-radius: 10px; border: 1px solid var(--border);">
-      </div>
-    `;
-  }
-
-  // Estadísticas
-  html += `
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
-      <div class="stat-mini">
-        <div class="stat-mini-label">Ecuación de Regresión</div>
-        <div class="stat-mini-value" style="font-size: 1.2em;">${regression.equation || 'No disponible'}</div>
-      </div>
-      <div class="stat-mini">
-        <div class="stat-mini-label">R² (Ajuste)</div>
-        <div class="stat-mini-value">${(regression.r_squared || 0).toFixed(3)}</div>
-      </div>
-      <div class="stat-mini">
-        <div class="stat-mini-label">Correlación (r)</div>
-        <div class="stat-mini-value">${(correlation.pearson_r || 0).toFixed(3)}</div>
-      </div>
-      <div class="stat-mini">
-        <div class="stat-mini-label">Significancia</div>
-        <div class="stat-mini-value" style="color: ${(correlation.p_value || 1) < 0.05 ? '#4CAF50' : '#ff6384'};">
-          ${correlation.significance || 'No significativa'}
-        </div>
-      </div>
-    </div>
-  `;
-
-  // Interpretación
-  html += `
-    <div class="resultado-box" style="background: rgba(127, 0, 255, 0.1); border-left: 4px solid var(--accent);">
-      <h5 style="color: var(--accent); margin-bottom: 10px;">🧠 Interpretación</h5>
-      <p style="color: var(--text-secondary); line-height: 1.6;">
-        ${result.interpretation || 'No hay interpretación disponible'}
-      </p>
-      <p style="color: var(--text-secondary); margin-top: 10px; font-size: 0.9em;">
-        <strong>Nota:</strong> p = ${(correlation.p_value || 0).toFixed(4)} | 
-        La regresión muestra cómo cambia la correlación con la emoción por cada punto de maquiavelismo.
-      </p>
-    </div>
-  `;
-
-  container.innerHTML = html;
 }
 
 function mostrarMensajeAnalisis(mensaje) {
-  const container = document.getElementById('seccion-analisis');
-  if (container) {
-    container.innerHTML = `
-      <div class="content-box">
-        <h2 style="color: var(--accent);">Análisis Estadístico Avanzado</h2>
-        <div style="text-align: center; padding: 40px;">
-          <p style="color: var(--text-secondary); font-size: 1.2em;">${mensaje}</p>
-          <button id="btn-volver-investigador2" class="btn-secondary" style="margin-top: 20px;">
-            Volver al panel
-          </button>
+  const containers = ['resultados-correlaciones', 'resultados-tiempos', 'resultados-regresion'];
+  containers.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.innerHTML = `
+        <div class="resultado-box" style="text-align: center;">
+          <p style="color: var(--text-secondary);">${mensaje}</p>
         </div>
-      </div>
-    `;
-    
-    document.getElementById('btn-volver-investigador2')?.addEventListener('click', () => {
-      document.getElementById('seccion-analisis').classList.add('hidden');
-      document.getElementById('seccion-investigador').classList.remove('hidden');
-      window.scrollTo({ top:0, behavior:'smooth' });
-    });
-  }
+      `;
+    }
+  });
 }
 
 /* ---------- FUNCIONES GLOBALES ---------- */
@@ -1869,12 +1589,10 @@ function volverAlInicio() {
     stream = null; 
   }
   
-  // Ocultar todas las secciones
   document.querySelectorAll('section').forEach(section => {
     section.classList.add('hidden');
   });
   
-  // Mostrar solo la página de inicio
   document.getElementById('pagina-inicio')?.classList.remove('hidden');
   window._capturaInicializada = false;
   window.scrollTo({ top:0, behavior:'smooth' });
@@ -1882,10 +1600,8 @@ function volverAlInicio() {
 
 /* ---------- INICIALIZACIÓN ---------- */
 document.addEventListener('DOMContentLoaded', () => {
-  // Verificar inicialización de Supabase
-  console.log('✅ Supabase inicializado correctamente:', supabase ? 'Sí' : 'No');
+  console.log('✅ Supabase inicializado:', supabase ? 'Sí' : 'No');
   
-  // Limpiar sesión
   sessionStorage.clear();
   tiemposRespuesta = {};
   tiempoInicioItem = {};
@@ -1895,7 +1611,6 @@ document.addEventListener('DOMContentLoaded', () => {
   window._capturaInicializada = false;
   console.log('✅ Sesión limpiada al cargar');
 
-  // Configurar botones principales
   const btnParticipante = document.getElementById('btn-iniciar-participante');
   const btnInvestigador = document.getElementById('btn-iniciar-investigador');
 
@@ -1919,10 +1634,8 @@ document.addEventListener('DOMContentLoaded', () => {
     window.scrollTo({ top:0, behavior:'smooth' });
   });
 
-  // Configurar botón "Listo para capturar imagen"
   configurarBotonListoCapturar();
 
-  // Configurar formulario de datos básicos
   const formDatos = document.getElementById('form-datos-basicos');
   formDatos?.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -1948,14 +1661,12 @@ document.addEventListener('DOMContentLoaded', () => {
     window.scrollTo({ top:0, behavior:'smooth' });
   });
 
-  // Configurar botón enviar test SD3
   const btnEnviarTest = document.getElementById('btn-enviar-test');
   btnEnviarTest?.addEventListener('click', (e) => {
     e.preventDefault();
     calcularSD3();
   });
 
-  // Configurar login investigador
   const btnLoginInv = document.getElementById('btn-login-investigador');
   const inputPasswordInv = document.getElementById('password-investigador');
   btnLoginInv?.addEventListener('click', () => {
@@ -1971,7 +1682,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Configurar botones de navegación
   document.getElementById('btn-volver-inicio-2')?.addEventListener('click', () => {
     document.getElementById('seccion-login')?.classList.add('hidden');
     document.getElementById('pagina-inicio')?.classList.remove('hidden');
