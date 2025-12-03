@@ -1,5 +1,5 @@
 /* ========================================
-   app.js - VERSIÓN MEJORADA CON FLUJO CORRECTO
+   app.js - VERSIÓN COMPLETA CON CORRELACIÓN MEJORADA
    ======================================== */
 
 /* ---------- CONFIG SUPABASE ---------- */
@@ -13,6 +13,20 @@ const supabase = window.supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONF
 
 const FASTAPI_URL = "https://darklnesapp-api-1.onrender.com";
 const PASSWORD_INVESTIGADOR = "investigador2025";
+
+/* ---------- PERFILES EMOCIONALES PARA CORRELACIÓN ---------- */
+const perfilesEmocionales = {
+  'alegría': { mach: 2.5, narc: 4.0, psych: 1.5 },
+  'tristeza': { mach: 2.5, narc: 1.5, psych: 1.5 },
+  'enojo': { mach: 4.0, narc: 3.0, psych: 4.0 },
+  'miedo': { mach: 2.5, narc: 1.5, psych: 1.5 },
+  'sorpresa': { mach: 2.0, narc: 4.0, psych: 2.0 },
+  'asco': { mach: 4.0, narc: 1.5, psych: 3.0 },
+  'neutral': { mach: 3.0, narc: 3.0, psych: 3.0 },
+  'felicidad': { mach: 2.0, narc: 3.5, psych: 1.5 },
+  'ira': { mach: 4.0, narc: 3.5, psych: 4.0 },
+  'calma': { mach: 2.0, narc: 2.0, psych: 1.5 }
+};
 
 /* ---------- ESTADO GLOBAL ---------- */
 const invertidos = [11, 15, 17, 20, 25];
@@ -60,6 +74,59 @@ function calcularEstadisticasTiempo(tiemposArray) {
     desviacion_estandar_ms: Math.round(desviacionEstandar),
     desviacion_estandar_segundos: (desviacionEstandar/1000).toFixed(2),
     total_items: tiemposArray.length
+  };
+}
+
+/* ---------- CÁLCULO DE CORRELACIÓN DE PEARSON ---------- */
+function calcularCorrelacionPearson(arr1, arr2) {
+  if (arr1.length !== arr2.length) return 0;
+  const n = arr1.length;
+  let sum1 = 0, sum2 = 0, sum1sq = 0, sum2sq = 0, psum = 0;
+  for (let i = 0; i < n; i++) {
+    sum1 += arr1[i];
+    sum2 += arr2[i];
+    sum1sq += arr1[i] * arr1[i];
+    sum2sq += arr2[i] * arr2[i];
+    psum += arr1[i] * arr2[i];
+  }
+  const num = psum - (sum1 * sum2 / n);
+  const den = Math.sqrt((sum1sq - sum1 * sum1 / n) * (sum2sq - sum2 * sum2 / n));
+  if (den === 0) return 0;
+  return num / den;
+}
+
+/* ---------- FUNCIÓN PARA CALCULAR CORRELACIÓN ENTRE EMOCIÓN Y SD3 ---------- */
+function calcularCorrelacionEmocionSD3(emocion, mach, narc, psych) {
+  // Obtener perfil esperado para la emoción detectada
+  const emocionLower = emocion.toLowerCase();
+  const perfilEsperado = perfilesEmocionales[emocionLower] || perfilesEmocionales.neutral;
+  
+  // Normalizar puntajes a 0-1 (dividiendo entre 5)
+  const real = [mach / 5, narc / 5, psych / 5];
+  const esperado = [perfilEsperado.mach / 5, perfilEsperado.narc / 5, perfilEsperado.psych / 5];
+  
+  // Calcular correlación
+  const correlacion = calcularCorrelacionPearson(real, esperado);
+  
+  // Generar interpretación
+  let interpretacion = '';
+  if (correlacion > 0.7) {
+    interpretacion = `Alta correlación (r = ${correlacion.toFixed(2)}). La emoción "${emocion}" es coherente con el perfil SD3 del participante.`;
+  } else if (correlacion > 0.3) {
+    interpretacion = `Correlación moderada (r = ${correlacion.toFixed(2)}). Existe cierta relación entre la emoción y el perfil SD3.`;
+  } else if (correlacion > -0.3) {
+    interpretacion = `Correlación baja (r = ${correlacion.toFixed(2)}). No hay una relación clara entre la emoción y el perfil SD3.`;
+  } else if (correlacion > -0.7) {
+    interpretacion = `Correlación negativa moderada (r = ${correlacion.toFixed(2)}). La emoción y el perfil SD3 tienden a oponerse.`;
+  } else {
+    interpretacion = `Alta correlación negativa (r = ${correlacion.toFixed(2)}). La emoción y el perfil SD3 son opuestos.`;
+  }
+  
+  return {
+    correlacion: correlacion,
+    interpretacion: interpretacion,
+    perfilEsperado: perfilEsperado,
+    perfilReal: { mach, narc, psych }
   };
 }
 
@@ -631,6 +698,15 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
     );
 
     const historiaUtilizada = sessionStorage.getItem('historiaUtilizada') || rasgoPredominante;
+    
+    // Calcular correlación entre emoción y SD3
+    const emocionPrincipal = analisis.emocion_predominante || analisis.emocion_principal || 'No analizada';
+    const correlacionEmocionSD3 = calcularCorrelacionEmocionSD3(
+      emocionPrincipal,
+      parseFloat(sd3.mach) || 0,
+      parseFloat(sd3.narc) || 0,
+      parseFloat(sd3.psych) || 0
+    );
 
     const imagenData = {
       nombre: persona.nombre || 'Anónimo',  
@@ -641,13 +717,16 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
       narc: parseFloat(sd3.narc) || 0,
       psych: parseFloat(sd3.psych) || 0,
       tiempo_total_seg: parseFloat(sd3.tiempo_total_segundos) || 0,
-      emocion_principal: analisis.emocion_predominante || analisis.emocion_principal || 'No analizada',
+      emocion_principal: emocionPrincipal,
       total_frames: 1,
       duracion_video: 0,
       emociones_detectadas: Array.isArray(analisis.emociones_detectadas) 
         ? analisis.emociones_detectadas 
         : Object.keys(analisis.emociones || {}),
       correlaciones: analisis.correlaciones || {},
+      correlacion_emocion_sd3: correlacionEmocionSD3.correlacion,
+      interpretacion_correlacion: correlacionEmocionSD3.interpretacion,
+      perfil_esperado_emocion: correlacionEmocionSD3.perfilEsperado,
       aus_frecuentes: analisis.aus_frecuentes || analisis.aus_detectadas || [],
       facs_promedio: analisis.facs_promedio || {},
       historia_utilizada: historiaUtilizada,
@@ -673,7 +752,8 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
     return {
       success: true,
       id: data[0]?.id,
-      message: 'Datos de imagen guardados correctamente'
+      message: 'Datos de imagen guardados correctamente',
+      correlacion: correlacionEmocionSD3
     };
 
   } catch (error) {
@@ -843,6 +923,7 @@ function poblarListaInvestigador() {
     const fecha = new Date(p.created_at).toLocaleString('es-AR');
     const emocion = p.emocion_principal || p.emocion_princ || 'No analizado';
     const tipo = p.tipo_captura === 'imagen' ? '📸' : '🎬';
+    const correlacion = p.correlacion_emocion_sd3 ? `📊 ${parseFloat(p.correlacion_emocion_sd3).toFixed(2)}` : '';
     
     const item = document.createElement('div');
     item.className = 'content-box';
@@ -857,6 +938,7 @@ function poblarListaInvestigador() {
             <span style="color: #764ba2;">👑 ${p.narc || 'N/A'}</span>
             <span style="color: #ffce56;">⚡ ${p.psych || 'N/A'}</span>
             <span style="color: #7f00ff;">😊 ${emocion}</span>
+            ${correlacion ? `<span style="color: #4CAF50;">${correlacion}</span>` : ''}
             ${p.historia_utilizada ? `<span style="color: #4CAF50;">📖 ${p.historia_utilizada}</span>` : ''}
             ${p.tipo_captura ? `<span style="color: #48bb78;">${tipo} ${p.tipo_captura}</span>` : ''}
           </div>
@@ -922,14 +1004,17 @@ async function generarYDescargarCSV() {
     const headers = [
       'ID', 'Fecha', 'Nombre', 'Edad', 'Género', 'País',
       'Maquiavelismo', 'Narcisismo', 'Psicopatia',
-      'Tiempo_Total_Seg', 'Emoción_Principal', 'Historia_Utilizada',
-      'Tipo_Captura', 'AUs_Frecuentes', 'Correlación_Maquiavelismo', 
-      'Correlación_Narcisismo', 'Correlación_Psicopatia'
+      'Tiempo_Total_Seg', 'Emoción_Principal', 'Correlación_Emoción_SD3',
+      'Interpretación_Correlación', 'Historia_Utilizada', 'Tipo_Captura', 
+      'AUs_Frecuentes', 'Perfil_Esperado_Maquiavelismo', 
+      'Perfil_Esperado_Narcisismo', 'Perfil_Esperado_Psicopatia'
     ];
     
     const csvRows = [headers.join(',')];
     
     participantes.forEach(p => {
+      const perfilEsperado = p.perfil_esperado_emocion || {};
+      
       const row = [
         p.id || '',
         p.created_at || '',
@@ -942,12 +1027,14 @@ async function generarYDescargarCSV() {
         p.psych || 0,
         p.tiempo_total_seg || '',
         p.emocion_principal || p.emocion_princ || '',
+        p.correlacion_emocion_sd3 || 0,
+        `"${(p.interpretacion_correlacion || '').replace(/"/g, '""')}"`,
         p.historia_utilizada || '',
         p.tipo_captura || 'imagen',
         `"${(p.aus_frecuentes || []).join('; ')}"`,
-        p.correlaciones?.maquiavelismo || 0,
-        p.correlaciones?.narcisismo || 0,
-        p.correlaciones?.psicopatia || 0
+        perfilEsperado.mach || 0,
+        perfilEsperado.narc || 0,
+        perfilEsperado.psych || 0
       ];
       
       csvRows.push(row.join(','));
@@ -1045,18 +1132,50 @@ function mostrarParticipanteEnPanel(index) {
     `;
   }
   
-  // Mostrar microexpresiones
+  // Mostrar microexpresiones y correlación
   const microDiv = document.getElementById('microexpresiones-detalle');
   if (microDiv && (p.emocion_principal || p.emocion_princ)) {
+    const emocion = p.emocion_principal || p.emocion_princ;
+    const correlacion = p.correlacion_emocion_sd3 || 0;
+    const interpretacion = p.interpretacion_correlacion || '';
+    const perfilEsperado = p.perfil_esperado_emocion || {};
+    
     microDiv.innerHTML = `
       <div style="text-align: center; padding: 20px;">
         <h4 style="color: var(--accent);">Emoción predominante detectada</h4>
         <p style="font-size: 2em; font-weight: bold; color: #7f00ff;">
-          ${p.emocion_principal || p.emocion_princ}
+          ${emocion}
         </p>
+        
+        <div style="background: rgba(127, 0, 255, 0.1); padding: 20px; border-radius: 10px; margin: 20px 0;">
+          <h5 style="color: var(--accent);">📊 Correlación entre Emoción y Perfil SD3</h5>
+          <div style="font-size: 3em; font-weight: bold; color: ${correlacion > 0.7 ? '#4CAF50' : correlacion > 0.3 ? '#FFC107' : '#FF5252'};">
+            r = ${parseFloat(correlacion).toFixed(2)}
+          </div>
+          <p style="color: var(--text-secondary); margin-top: 10px;">${interpretacion}</p>
+        </div>
+        
         ${p.aus_frecuentes && p.aus_frecuentes.length > 0 ? 
           `<p><strong>AUs detectadas:</strong> ${p.aus_frecuentes.join(', ')}</p>` : ''}
         ${p.tipo_captura ? `<p><strong>Tipo de captura:</strong> ${p.tipo_captura}</p>` : ''}
+        
+        <div style="margin-top: 20px; padding: 15px; background: rgba(30, 30, 50, 0.7); border-radius: 10px;">
+          <h5 style="color: var(--accent);">Perfil Esperado para la Emoción "${emocion}"</h5>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px;">
+            <div style="text-align: center;">
+              <div style="font-size: 0.9em; color: var(--text-secondary);">Maquiavelismo</div>
+              <div style="font-size: 1.5em; font-weight: bold; color: #667eea;">${perfilEsperado.mach || 0}</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 0.9em; color: var(--text-secondary);">Narcisismo</div>
+              <div style="font-size: 1.5em; font-weight: bold; color: #764ba2;">${perfilEsperado.narc || 0}</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 0.9em; color: var(--text-secondary);">Psicopatía</div>
+              <div style="font-size: 1.5em; font-weight: bold; color: #ff6384;">${perfilEsperado.psych || 0}</div>
+            </div>
+          </div>
+        </div>
       </div>
     `;
   }
@@ -1096,6 +1215,74 @@ function generarGraficosParticipante(participante) {
       }
     });
   }
+
+  // Nuevo gráfico: comparación con perfil emocional
+  const emocion = participante.emocion_principal || participante.emocion_princ;
+  if (emocion) {
+    // Calcular correlación
+    const resultadoCorrelacion = calcularCorrelacionEmocionSD3(
+      emocion,
+      participante.mach || 0,
+      participante.narc || 0,
+      participante.psych || 0
+    );
+    
+    // Datos reales (normalizados a 0-1)
+    const real = [
+      (participante.mach || 0) / 5,
+      (participante.narc || 0) / 5,
+      (participante.psych || 0) / 5
+    ];
+    
+    // Datos esperados (normalizados)
+    const perfilEsperado = resultadoCorrelacion.perfilEsperado;
+    const esperado = [
+      perfilEsperado.mach / 5,
+      perfilEsperado.narc / 5,
+      perfilEsperado.psych / 5
+    ];
+
+    const ctxCorr = document.getElementById('grafico-correlacion-emocion');
+    if (ctxCorr) {
+      new Chart(ctxCorr, {
+        type: 'bar',
+        data: {
+          labels: ['Maquiavelismo', 'Narcisismo', 'Psicopatía'],
+          datasets: [
+            {
+              label: 'Puntaje Real (normalizado)',
+              data: real,
+              backgroundColor: 'rgba(54, 162, 235, 0.5)',
+              borderColor: 'rgba(54, 162, 235, 1)',
+              borderWidth: 1
+            },
+            {
+              label: 'Perfil Esperado para ' + emocion,
+              data: esperado,
+              backgroundColor: 'rgba(255, 99, 132, 0.5)',
+              borderColor: 'rgba(255, 99, 132, 1)',
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 1
+            }
+          },
+          plugins: {
+            title: {
+              display: true,
+              text: `Correlación entre Perfil SD3 y Emoción Detectada (r = ${resultadoCorrelacion.correlacion.toFixed(2)})`
+            }
+          }
+        }
+      });
+    }
+  }
 }
 
 /* ---------- ANÁLISIS ESTADÍSTICO AVANZADO ---------- */
@@ -1120,7 +1307,7 @@ async function cargarAnalisisAvanzado() {
 
     // Preparar datos para análisis - FILTRANDO Y LIMPIANDO DATOS
     const sd3Scores = [];
-    const facsScores = [];
+    const emocionesData = [];
     
     participantes.forEach(p => {
       // Solo incluir participantes con datos SD3 válidos
@@ -1137,28 +1324,20 @@ async function cargarAnalisisAvanzado() {
             psych: psych
           });
 
-          // Preparar datos FACS - asegurarse de que sean números válidos
-          const facs = {};
-          if (p.facs_promedio && typeof p.facs_promedio === 'object') {
-            Object.entries(p.facs_promedio).forEach(([au, intensity]) => {
-              const numIntensity = parseFloat(intensity);
-              if (!isNaN(numIntensity) && isFinite(numIntensity)) {
-                facs[au] = numIntensity;
-              }
-            });
-          }
-          facsScores.push(facs);
+          // Preparar datos de emociones
+          const emocion = p.emocion_principal || p.emocion_princ || 'neutral';
+          emocionesData.push(emocion.toLowerCase());
         }
       }
     });
 
     console.log(`📊 Datos SD3 válidos: ${sd3Scores.length}`);
-    console.log(`📊 Datos FACS válidos: ${facsScores.length}`);
+    console.log(`📊 Datos emociones válidos: ${emocionesData.length}`);
 
     if (sd3Scores.length < 3) {
       document.getElementById('resultados-correlaciones').innerHTML = `
         <div class="resultado-box" style="text-align: center;">
-          <h4 style="color: var(--accent);">🔗 Correlaciones entre Rasgos SD3 y Unidades FACS</h4>
+          <h4 style="color: var(--accent);">🔗 Correlaciones entre Rasgos SD3 y Emociones Detectadas</h4>
           <p style="color: var(--text-secondary);">
             Se necesitan al menos 3 participantes con datos SD3 válidos para análisis de correlaciones.
           </p>
@@ -1170,8 +1349,8 @@ async function cargarAnalisisAvanzado() {
       return;
     }
 
-    // 1. Análisis de correlaciones SD3-FACS
-    await analizarCorrelaciones(sd3Scores, facsScores);
+    // 1. Análisis de correlaciones SD3-Emociones
+    await analizarCorrelacionesSD3Emociones(sd3Scores, emocionesData);
 
     // 2. Análisis de tiempos de respuesta
     await analizarTiemposRespuesta(participantes);
@@ -1185,133 +1364,198 @@ async function cargarAnalisisAvanzado() {
   }
 }
 
-async function analizarCorrelaciones(sd3Scores, facsScores) {
+async function analizarCorrelacionesSD3Emociones(sd3Scores, emocionesData) {
   try {
-    console.log('🔗 Enviando datos para análisis de correlaciones...');
+    console.log('🔗 Analizando correlaciones SD3-Emociones...');
     
-    // LIMPIAR DATOS ANTES DE ENVIAR - eliminar NaN, undefined, null, valores no finitos
-    const cleanedSd3Scores = sd3Scores.map(score => ({
-      mach: isFinite(score.mach) ? score.mach : 0,
-      narc: isFinite(score.narc) ? score.narc : 0,
-      psych: isFinite(score.psych) ? score.psych : 0
-    }));
-
-    const cleanedFacsScores = facsScores.map(facs => {
-      const cleanFacs = {};
-      if (facs && typeof facs === 'object') {
-        Object.entries(facs).forEach(([key, value]) => {
-          const numValue = parseFloat(value);
-          if (isFinite(numValue)) {
-            cleanFacs[key] = numValue;
-          }
-        });
+    // Calcular correlaciones para cada dimensión
+    const resultados = {
+      mach_correlaciones: {},
+      narc_correlaciones: {},
+      psych_correlaciones: {}
+    };
+    
+    // Agrupar puntajes por emoción
+    const gruposEmociones = {};
+    emocionesData.forEach((emocion, index) => {
+      if (!gruposEmociones[emocion]) {
+        gruposEmociones[emocion] = {
+          mach: [],
+          narc: [],
+          psych: []
+        };
       }
-      return cleanFacs;
+      gruposEmociones[emocion].mach.push(sd3Scores[index].mach);
+      gruposEmociones[emocion].narc.push(sd3Scores[index].narc);
+      gruposEmociones[emocion].psych.push(sd3Scores[index].psych);
     });
-
-    console.log('🧹 Datos limpiados para análisis de correlaciones');
-
-    const response = await fetch(`${FASTAPI_URL}/analyze-correlations`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        sd3_scores: cleanedSd3Scores,
-        facs_scores: cleanedFacsScores
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Error del servidor:', errorText);
-      throw new Error(`Error en análisis de correlaciones: ${response.status} ${response.statusText}`);
-    }
-
-    const result = await response.json();
-    console.log('✅ Resultado de correlaciones:', result);
     
-    if (result.success) {
-      mostrarResultadosCorrelaciones(result.correlation_analysis, result.plots);
-    } else {
-      throw new Error(result.error || 'Error desconocido en análisis');
-    }
+    // Calcular promedios por emoción
+    const promediosEmociones = {};
+    Object.keys(gruposEmociones).forEach(emocion => {
+      promediosEmociones[emocion] = {
+        mach: gruposEmociones[emocion].mach.reduce((a, b) => a + b, 0) / gruposEmociones[emocion].mach.length,
+        narc: gruposEmociones[emocion].narc.reduce((a, b) => a + b, 0) / gruposEmociones[emocion].narc.length,
+        psych: gruposEmociones[emocion].psych.reduce((a, b) => a + b, 0) / gruposEmociones[emocion].psych.length
+      };
+    });
+    
+    console.log('📊 Promedios por emoción:', promediosEmociones);
+    
+    // Mostrar resultados
+    mostrarResultadosCorrelacionesSD3Emociones(promediosEmociones, gruposEmociones);
+    
   } catch (error) {
-    console.error('❌ Error analizando correlaciones:', error);
+    console.error('❌ Error analizando correlaciones SD3-Emociones:', error);
     document.getElementById('resultados-correlaciones').innerHTML = `
       <div class="resultado-box" style="background: rgba(255, 99, 132, 0.1); border-left: 4px solid #ff6384;">
         <h4 style="color: #ff6384;">⚠️ Error en Análisis de Correlaciones</h4>
         <p style="color: var(--text-secondary);">${error.message}</p>
-        <p style="color: var(--text-secondary); margin-top: 10px;">
-          Esto puede deberse a:
-          <ul style="margin-left: 20px; color: var(--text-secondary);">
-            <li>Datos insuficientes o incompletos</li>
-            <li>Problemas temporales del servidor</li>
-            <li>Formato de datos no válido</li>
-          </ul>
-        </p>
-        <button class="btn-secondary" onclick="cargarAnalisisAvanzado()" style="margin-top: 15px;">
-          🔄 Reintentar análisis
-        </button>
       </div>
     `;
   }
 }
 
-function mostrarResultadosCorrelaciones(analysis, plots) {
+function mostrarResultadosCorrelacionesSD3Emociones(promediosEmociones, gruposEmociones) {
   const container = document.getElementById('resultados-correlaciones');
   if (!container) return;
 
-  let html = '<h4 style="color: var(--accent); margin-bottom: 20px;">🔗 Correlaciones Significativas</h4>';
+  let html = '<h4 style="color: var(--accent); margin-bottom: 20px;">🔗 Correlaciones entre Emociones Detectadas y Rasgos SD3</h4>';
 
-  // Mostrar correlaciones significativas
-  const significant = analysis?.significant_correlations || [];
-  
-  if (significant.length > 0) {
-    html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;">';
-    
-    significant.forEach(corr => {
-      html += `
-        <div class="resultado-box" style="background: rgba(127, 0, 255, 0.1); border-left: 4px solid var(--accent);">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <strong style="color: var(--accent);">${corr.sd3_trait} ↔ ${corr.au}</strong>
-            <span style="background: ${Math.abs(corr.correlation) > 0.5 ? '#ff6384' : '#36a2eb'}; 
-                         color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.9em;">
-              r = ${corr.correlation?.toFixed(3) || '0.000'}
-            </span>
-          </div>
-          <div style="color: var(--text-secondary); font-size: 0.9em;">
-            <div>Fuerza: <strong>${corr.strength || 'Desconocida'}</strong></div>
-            <div>Dirección: <strong>${corr.direction || 'Desconocida'}</strong></div>
-          </div>
-        </div>
-      `;
-    });
-    
-    html += '</div>';
+  // Crear tabla de promedios
+  html += `
+    <div class="resultado-box" style="overflow-x: auto;">
+      <h5 style="color: var(--accent);">📊 Promedios de Puntajes SD3 por Emoción</h5>
+      <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+        <thead>
+          <tr style="background: rgba(127, 0, 255, 0.1);">
+            <th style="padding: 10px; text-align: left; border-bottom: 2px solid var(--accent);">Emoción</th>
+            <th style="padding: 10px; text-align: left; border-bottom: 2px solid var(--accent);">Maquiavelismo</th>
+            <th style="padding: 10px; text-align: left; border-bottom: 2px solid var(--accent);">Narcisismo</th>
+            <th style="padding: 10px; text-align: left; border-bottom: 2px solid var(--accent);">Psicopatía</th>
+            <th style="padding: 10px; text-align: left; border-bottom: 2px solid var(--accent);">Muestras</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
 
-    // Mostrar gráficos
-    if (plots && Object.keys(plots).length > 0) {
-      html += '<h4 style="color: var(--accent); margin: 30px 0 20px 0;">📊 Gráficos de Correlación</h4>';
-      html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px;">';
-      
-      Object.entries(plots).forEach(([key, plotBase64]) => {
-        html += `
-          <div class="resultado-box">
-            <img src="data:image/png;base64,${plotBase64}" 
-                 style="width: 100%; border-radius: 10px; border: 1px solid var(--border);">
-          </div>
-        `;
-      });
-      
-      html += '</div>';
-    }
-  } else {
-    html += '<p style="color: var(--text-secondary); text-align: center;">No se encontraron correlaciones significativas (|r| > 0.3)</p>';
-  }
+  Object.keys(promediosEmociones).forEach(emocion => {
+    const muestraM = gruposEmociones[emocion]?.mach?.length || 0;
+    const muestraN = gruposEmociones[emocion]?.narc?.length || 0;
+    const muestraP = gruposEmociones[emocion]?.psych?.length || 0;
+    const muestraTotal = Math.max(muestraM, muestraN, muestraP);
+    
+    html += `
+      <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <td style="padding: 10px;"><strong>${emocion.charAt(0).toUpperCase() + emocion.slice(1)}</strong></td>
+        <td style="padding: 10px;">${promediosEmociones[emocion].mach.toFixed(2)}</td>
+        <td style="padding: 10px;">${promediosEmociones[emocion].narc.toFixed(2)}</td>
+        <td style="padding: 10px;">${promediosEmociones[emocion].psych.toFixed(2)}</td>
+        <td style="padding: 10px;">${muestraTotal}</td>
+      </tr>
+    `;
+  });
+
+  html += `
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  // Crear gráfico de promedios
+  const emocionesLabels = Object.keys(promediosEmociones);
+  const machData = emocionesLabels.map(e => promediosEmociones[e].mach);
+  const narcData = emocionesLabels.map(e => promediosEmociones[e].narc);
+  const psychData = emocionesLabels.map(e => promediosEmociones[e].psych);
+
+  html += `
+    <div class="resultado-box" style="margin-top: 20px;">
+      <h5 style="color: var(--accent);">📈 Gráfico de Promedios SD3 por Emoción</h5>
+      <canvas id="grafico-promedios-emociones" height="300"></canvas>
+    </div>
+  `;
+
+  // Análisis de patrones
+  html += `
+    <div class="resultado-box" style="margin-top: 20px; background: rgba(127, 0, 255, 0.1);">
+      <h5 style="color: var(--accent);">🧠 Análisis de Patrones Detectados</h5>
+      <div style="color: var(--text-secondary); line-height: 1.6;">
+        ${generarAnalisisPatrones(promediosEmociones)}
+      </div>
+    </div>
+  `;
 
   container.innerHTML = html;
+
+  // Generar gráfico
+  setTimeout(() => {
+    const ctx = document.getElementById('grafico-promedios-emociones');
+    if (ctx) {
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: emocionesLabels.map(e => e.charAt(0).toUpperCase() + e.slice(1)),
+          datasets: [
+            {
+              label: 'Maquiavelismo',
+              data: machData,
+              backgroundColor: 'rgba(102, 126, 234, 0.7)',
+              borderColor: 'rgba(102, 126, 234, 1)',
+              borderWidth: 1
+            },
+            {
+              label: 'Narcisismo',
+              data: narcData,
+              backgroundColor: 'rgba(118, 75, 162, 0.7)',
+              borderColor: 'rgba(118, 75, 162, 1)',
+              borderWidth: 1
+            },
+            {
+              label: 'Psicopatía',
+              data: psychData,
+              backgroundColor: 'rgba(255, 99, 132, 0.7)',
+              borderColor: 'rgba(255, 99, 132, 1)',
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 5
+            }
+          }
+        }
+      });
+    }
+  }, 100);
+}
+
+function generarAnalisisPatrones(promediosEmociones) {
+  let analisis = '';
+  
+  // Analizar cada emoción
+  Object.keys(promediosEmociones).forEach(emocion => {
+    const datos = promediosEmociones[emocion];
+    analisis += `<p><strong>${emocion.charAt(0).toUpperCase() + emocion.slice(1)}:</strong> `;
+    
+    const caracteristicas = [];
+    if (datos.mach > 3.5) caracteristicas.push('alto maquiavelismo');
+    if (datos.narc > 3.5) caracteristicas.push('alto narcisismo');
+    if (datos.psych > 3.5) caracteristicas.push('alta psicopatía');
+    
+    if (caracteristicas.length > 0) {
+      analisis += `Asociada con ${caracteristicas.join(', ')}.`;
+    } else {
+      analisis += 'Perfil SD3 dentro de rangos normales.';
+    }
+    
+    analisis += ` (M: ${datos.mach.toFixed(2)}, N: ${datos.narc.toFixed(2)}, P: ${datos.psych.toFixed(2)})</p>`;
+  });
+  
+  return analisis;
 }
 
 async function analizarTiemposRespuesta(participantes) {
@@ -1455,30 +1699,18 @@ async function analizarRegresiones(participantes) {
   try {
     console.log('📈 Preparando datos para análisis de regresión...');
     
-    // Preparar datos para regresión: Maquiavelismo vs Intensidad de AU4
+    // Preparar datos para regresión: Maquiavelismo vs Correlación Emoción
     const xData = [];
     const yData = [];
     
     participantes.forEach(p => {
       const mach = parseFloat(p.mach);
+      const correlacion = parseFloat(p.correlacion_emocion_sd3);
       
-      if (!isNaN(mach) && isFinite(mach) && mach > 0) {
-        let au4Intensity = 0;
-        
-        // Buscar intensidad de AU4 en facs_promedio
-        if (p.facs_promedio && typeof p.facs_promedio === 'object') {
-          // Intentar diferentes nombres de clave para AU4
-          au4Intensity = p.facs_promedio.AU4 || 
-                        p.facs_promedio.au4 || 
-                        p.facs_promedio['AU_4'] || 
-                        p.facs_promedio['au_4'] || 0;
-        }
-        
-        const au4Num = parseFloat(au4Intensity);
-        if (!isNaN(au4Num) && isFinite(au4Num) && au4Num > 0) {
-          xData.push(mach);
-          yData.push(au4Num);
-        }
+      if (!isNaN(mach) && isFinite(mach) && mach > 0 && 
+          !isNaN(correlacion) && isFinite(correlacion)) {
+        xData.push(mach);
+        yData.push(correlacion);
       }
     });
 
@@ -1487,15 +1719,14 @@ async function analizarRegresiones(participantes) {
     if (xData.length < 3 || yData.length < 3) {
       document.getElementById('resultados-regresion').innerHTML = `
         <div class="resultado-box" style="text-align: center;">
-          <h4 style="color: var(--accent);">📊 Regresión Lineal: SD3 vs FACS</h4>
+          <h4 style="color: var(--accent);">📊 Regresión Lineal: SD3 vs Correlación con Emoción</h4>
           <p style="color: var(--text-secondary);">Datos insuficientes para análisis de regresión</p>
           <p style="color: var(--text-secondary); font-size: 0.9em; margin-top: 10px;">
-            Se necesitan al menos 3 participantes con datos de Maquiavelismo y AU4 válidos.
+            Se necesitan al menos 3 participantes con datos de SD3 y correlación válidos.
           </p>
           <div style="margin-top: 15px;">
             <p style="color: var(--text-secondary); font-size: 0.85em;">
               <strong>Participantes con datos válidos:</strong> ${xData.length}<br>
-              <strong>AU4 detectado:</strong> ${yData.length}
             </p>
           </div>
         </div>
@@ -1513,7 +1744,7 @@ async function analizarRegresiones(participantes) {
         x_data: xData,
         y_data: yData,
         x_label: 'Maquiavelismo (SD3)',
-        y_label: 'Intensidad AU4 (FACS)'
+        y_label: 'Correlación con Emoción Detectada'
       })
     });
 
@@ -1537,7 +1768,7 @@ async function analizarRegresiones(participantes) {
         <h4 style="color: #36a2eb;">⚠️ Error en Análisis de Regresión</h4>
         <p style="color: var(--text-secondary);">${error.message}</p>
         <p style="color: var(--text-secondary); margin-top: 10px;">
-          El análisis de regresión requiere datos numéricos válidos de SD3 y FACS.
+          El análisis de regresión requiere datos numéricos válidos de SD3 y correlación.
         </p>
       </div>
     `;
@@ -1596,7 +1827,7 @@ function mostrarResultadosRegresion(result) {
       </p>
       <p style="color: var(--text-secondary); margin-top: 10px; font-size: 0.9em;">
         <strong>Nota:</strong> p = ${(correlation.p_value || 0).toFixed(4)} | 
-        La regresión muestra cómo cambia la intensidad de AU4 por cada punto de maquiavelismo.
+        La regresión muestra cómo cambia la correlación con la emoción por cada punto de maquiavelismo.
       </p>
     </div>
   `;
