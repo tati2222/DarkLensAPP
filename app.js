@@ -719,7 +719,6 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
       tiempo_total_seg: parseFloat(sd3.tiempo_total_segundos) || 0,
       emocion_principal: emocionPrincipal,
       total_frames: 1,
-      duracion_video: 0,
       emociones_detectadas: Array.isArray(analisis.emociones_detectadas) 
         ? analisis.emociones_detectadas 
         : Object.keys(analisis.emociones || {}),
@@ -727,11 +726,9 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
       correlacion_emocion_sd3: correlacionEmocionSD3.correlacion,
       interpretacion_correlacion: correlacionEmocionSD3.interpretacion,
       perfil_esperado_emocion: correlacionEmocionSD3.perfilEsperado,
-      aus_frecuentes: analisis.aus_frecuentes || analisis.aus_detectadas || [],
-      facs_promedio: analisis.facs_promedio || {},
       historia_utilizada: historiaUtilizada,
-      tipo_captura: 'imagen',
       imagen_analizada: true,
+      imagen_URL: 'TEXT',
       analisis_completo: JSON.stringify(analisis || {})
     };
 
