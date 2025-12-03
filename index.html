@@ -1,873 +1,1392 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analizador de Imágenes Estáticas con IA</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+  <!-- ===============================
+       META y ASSETS
+       =============================== -->
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>DarkLnes - Participante</title>
 
-        body {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            color: #f1f1f1;
-            min-height: 100vh;
-            padding: 20px;
-        }
+  <!-- Chart.js (necesario para los gráficos) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
+  <style>
+    /* ===========================
+       VARIABLES CSS
+       =========================== */
+    :root {
+      --bg-primary: #0a0e27;
+      --bg-secondary: #1a1f3a;
+      --accent: #667eea;
+      --accent-hover: #764ba2;
+      --text-primary: #ffffff;
+      --text-secondary: #a0aec0;
+      --border: #2d3748;
+      --success: #48bb78;
+      --error: #f56565;
+      --primary: #7f00ff;
+    }
 
-        header {
-            text-align: center;
-            padding: 30px 0;
-            margin-bottom: 30px;
-        }
+    /* ===========================
+       RESET Y BASE
+       =========================== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-        h1 {
-            font-size: 2.8rem;
-            margin-bottom: 10px;
-            background: linear-gradient(90deg, #00dbde, #fc00ff);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-        }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, var(--bg-primary) 0%, #1a1f3a 100%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 20px;
+    }
 
-        .subtitle {
-            color: #a0a0c0;
-            font-size: 1.2rem;
-            max-width: 700px;
-            margin: 0 auto;
-            line-height: 1.6;
-        }
+    /* ===========================
+       CONTAINER
+       =========================== */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
 
-        .warning {
-            background: rgba(255, 193, 7, 0.1);
-            border: 1px solid rgba(255, 193, 7, 0.3);
-            border-radius: 10px;
-            padding: 15px;
-            margin: 20px auto;
-            max-width: 700px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
+    /* ===========================
+       HEADER
+       =========================== */
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding: 30px;
+      background: var(--bg-secondary);
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
 
-        .warning i {
-            color: #ffc107;
-            font-size: 1.5rem;
-        }
+    .header h1 {
+      font-size: 2.5em;
+      background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 10px;
+    }
 
-        .main-content {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 30px;
-            margin-bottom: 40px;
-        }
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 1.1em;
+    }
 
-        .panel {
-            background: rgba(25, 25, 45, 0.8);
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            flex: 1;
-            min-width: 300px;
-        }
+    /* ===========================
+       CONTENT BOX
+       =========================== */
+    .content-box {
+      background: var(--bg-secondary);
+      border-radius: 20px;
+      padding: 40px;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      border: 1px solid var(--border);
+    }
 
-        .panel-title {
-            font-size: 1.5rem;
-            margin-bottom: 20px;
-            color: #6c63ff;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+    .content-box h2 {
+      color: var(--accent);
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 2em;
+    }
 
-        .panel-title i {
-            font-size: 1.3rem;
-        }
+    .content-box h3 {
+      color: var(--accent);
+      margin-bottom: 15px;
+      margin-top: 30px;
+      font-size: 1.3em;
+    }
 
-        .upload-area {
-            border: 3px dashed #6c63ff;
-            border-radius: 10px;
-            padding: 40px 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 20px;
-        }
+    .content-box h4 {
+      color: var(--accent);
+      margin-bottom: 15px;
+      font-size: 1.2em;
+    }
 
-        .upload-area:hover {
-            background: rgba(108, 99, 255, 0.1);
-            border-color: #8a84ff;
-        }
+    /* ===========================
+       FORM ELEMENTS
+       =========================== */
+    .form-box {
+      background: rgba(0,0,0,0.2);
+      padding: 30px;
+      border-radius: 15px;
+      border: 1px solid var(--border);
+    }
 
-        .upload-area i {
-            font-size: 3.5rem;
-            color: #6c63ff;
-            margin-bottom: 15px;
-        }
+    .form-group {
+      margin-bottom: 25px;
+    }
 
-        .upload-text {
-            font-size: 1.2rem;
-            margin-bottom: 10px;
-        }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
 
-        .upload-hint {
-            color: #a0a0c0;
-            font-size: 0.9rem;
-        }
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 12px 15px;
+      background: var(--bg-primary);
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-primary);
+      font-size: 1em;
+      transition: all 0.3s ease;
+    }
 
-        #imageInput {
-            display: none;
-        }
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
 
-        .image-requirements {
-            background: rgba(40, 40, 60, 0.7);
-            border-radius: 10px;
-            padding: 15px;
-            margin-top: 20px;
-        }
+    .form-group input::placeholder {
+      color: var(--text-secondary);
+    }
 
-        .image-requirements h3 {
-            color: #8a84ff;
-            margin-bottom: 10px;
-            font-size: 1.1rem;
-        }
+    /* ===========================
+       TEST ITEMS
+       =========================== */
+    .test-item {
+      background: rgba(0,0,0,0.2);
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+      transition: all 0.3s ease;
+    }
 
-        .requirements-list {
-            list-style-type: none;
-            padding-left: 10px;
-        }
+    .test-item:hover {
+      border-color: var(--accent);
+      background: rgba(102, 126, 234, 0.05);
+    }
 
-        .requirements-list li {
-            margin-bottom: 8px;
-            padding-left: 25px;
-            position: relative;
-        }
+    .test-item p {
+      margin-bottom: 15px;
+      line-height: 1.6;
+    }
 
-        .requirements-list li:before {
-            content: "✓";
-            color: #6c63ff;
-            position: absolute;
-            left: 0;
-            font-weight: bold;
-        }
+    .opciones {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
 
-        .preview-container {
-            width: 100%;
-            margin-top: 20px;
-            text-align: center;
-        }
+    .opciones input[type="radio"] {
+      display: none;
+    }
 
-        #imagePreview {
-            max-width: 100%;
-            max-height: 300px;
-            border-radius: 10px;
-            display: none;
-            margin: 0 auto;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-        }
+    .opciones label {
+      padding: 10px 20px;
+      background: var(--bg-primary);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 600;
+      min-width: 50px;
+      text-align: center;
+    }
 
-        .image-info {
-            background: rgba(40, 40, 60, 0.7);
-            border-radius: 10px;
-            padding: 15px;
-            margin-top: 15px;
-            display: none;
-        }
+    .opciones label:hover {
+      border-color: var(--accent);
+      background: rgba(102, 126, 234, 0.1);
+    }
 
-        .image-info-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
+    .opciones input[type="radio"]:checked + label {
+      background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+      border-color: var(--accent);
+      color: white;
+    }
 
-        .image-info-row:last-child {
-            margin-bottom: 0;
-            padding-bottom: 0;
-            border-bottom: none;
-        }
+    /* ===========================
+       CONSENT BOX
+       =========================== */
+    .consent-box {
+      background: rgba(102, 126, 234, 0.1);
+      padding: 20px;
+      border-radius: 10px;
+      border-left: 4px solid var(--accent);
+      margin: 25px 0;
+    }
 
-        .controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-top: 25px;
-        }
+    .consent-box h3 {
+      color: var(--accent);
+      margin-bottom: 10px;
+      margin-top: 0;
+    }
 
-        .btn {
-            padding: 12px 25px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            flex: 1;
-            min-width: 150px;
-        }
+    .checkbox-group {
+      display: flex;
+      align-items: flex-start;
+      gap: 15px;
+      cursor: pointer;
+      margin-top: 15px;
+    }
 
-        .btn-primary {
-            background: linear-gradient(90deg, #6c63ff, #8a84ff);
-            color: white;
-        }
+    .checkbox-group input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      margin-top: 3px;
+      accent-color: var(--accent);
+    }
 
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(108, 99, 255, 0.4);
-        }
+    /* ===========================
+       BUTTONS
+       =========================== */
+    .btn-primary,
+    .btn-secondary {
+      padding: 15px 30px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-block;
+    }
 
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.1);
-            color: #f1f1f1;
-            border: 1px solid #444;
-        }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+      color: white;
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
 
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.15);
-        }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.6);
+    }
 
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none !important;
-            box-shadow: none !important;
-        }
+    .btn-secondary {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border: 2px solid var(--border);
+    }
 
-        .results-container {
-            margin-top: 25px;
-        }
+    .btn-secondary:hover {
+      border-color: var(--accent);
+      background: rgba(102, 126, 234, 0.1);
+    }
 
-        .loading {
-            text-align: center;
-            padding: 20px;
-            display: none;
-        }
+    .btn-primary:disabled,
+    .btn-secondary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
 
-        .loading i {
-            font-size: 2rem;
-            color: #6c63ff;
-            margin-bottom: 10px;
-        }
+    /* ===========================
+       INSTRUCCIONES
+       =========================== */
+    .instrucciones {
+      background: rgba(102, 126, 234, 0.1);
+      padding: 20px;
+      border-radius: 10px;
+      border-left: 4px solid var(--accent);
+      margin-bottom: 25px;
+    }
 
-        .spinner {
-            animation: spin 1.5s linear infinite;
-        }
+    .instrucciones h3 {
+      margin-top: 0;
+    }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+    .instrucciones ul {
+      margin-left: 20px;
+      margin-top: 10px;
+      line-height: 1.8;
+    }
 
-        .results {
-            display: none;
-            margin-top: 20px;
-        }
+    /* ===========================
+       CAMERA CONTAINER
+       =========================== */
+    .camera-container {
+      text-align: center;
+      margin: 30px 0;
+    }
 
-        .result-item {
-            background: rgba(40, 40, 60, 0.7);
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 15px;
-            border-left: 4px solid #6c63ff;
-        }
+    #video,
+    #preview-image {
+      max-width: 100%;
+      border-radius: 15px;
+      border: 2px solid var(--border);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      margin: 20px auto;
+      display: block;
+    }
 
-        .result-title {
-            font-size: 1.2rem;
-            margin-bottom: 10px;
-            color: #8a84ff;
-        }
+    #camera-placeholder {
+      padding: 100px;
+      background: var(--bg-primary);
+      border-radius: 15px;
+      border: 2px dashed var(--border);
+      margin: 20px 0;
+    }
 
-        .result-content {
-            line-height: 1.6;
-        }
+    .button-group {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
 
-        .confidence-meter {
-            height: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 5px;
-            margin-top: 10px;
-            overflow: hidden;
-        }
+    /* ===========================
+       RESULTADO BOX
+       =========================== */
+    .resultado-box {
+      background: rgba(0,0,0,0.2);
+      padding: 25px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
 
-        .confidence-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #00dbde, #fc00ff);
-            border-radius: 5px;
-            width: 0%;
-            transition: width 1s ease;
-        }
+    /* ===========================
+       LOADING
+       =========================== */
+    .analisis-loading {
+      text-align: center;
+      padding: 40px;
+      font-size: 1.2em;
+      color: var(--accent);
+    }
 
-        .tags-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 15px;
-        }
+    /* ===========================
+       STATS & INFO GRIDS
+       =========================== */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
 
-        .tag {
-            background: rgba(108, 99, 255, 0.2);
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            border: 1px solid rgba(108, 99, 255, 0.5);
-        }
+    .info-item {
+      background: rgba(0,0,0,0.2);
+      padding: 15px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
 
-        .api-status {
-            background: rgba(40, 40, 60, 0.7);
-            border-radius: 10px;
-            padding: 15px;
-            margin-top: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+    .info-item strong {
+      color: var(--accent);
+      display: block;
+      margin-bottom: 8px;
+    }
 
-        .status-indicator {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+    .stats-mini {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
 
-        .status-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background-color: #4CAF50;
-            animation: pulse 2s infinite;
-        }
+    .stat-mini {
+      background: rgba(0,0,0,0.3);
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
 
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
+    .stat-mini-label {
+      color: var(--text-secondary);
+      font-size: 0.9em;
+      margin-bottom: 8px;
+    }
 
-        .error-message {
-            background: rgba(255, 87, 87, 0.1);
-            border: 1px solid #ff5757;
-            border-radius: 10px;
-            padding: 15px;
-            margin-top: 20px;
-            color: #ff8a8a;
-            display: none;
-        }
+    .stat-mini-value {
+      font-size: 1.8em;
+      font-weight: bold;
+      color: var(--accent);
+    }
 
-        footer {
-            text-align: center;
-            padding: 20px;
-            color: #a0a0c0;
-            font-size: 0.9rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            margin-top: 30px;
-        }
+    /* ===========================
+       EMOTION BARS
+       =========================== */
+    .emotion-bar {
+      margin-bottom: 20px;
+    }
 
-        @media (max-width: 768px) {
-            .main-content {
-                flex-direction: column;
-            }
-            
-            .btn {
-                min-width: 100%;
-            }
-            
-            h1 {
-                font-size: 2.2rem;
-            }
-        }
-    </style>
+    .emotion-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+    }
+
+    .bar-container {
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      height: 30px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .bar-fill {
+      background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      transition: width 0.5s ease;
+    }
+
+    /* ===========================
+       SCORES GRID (para resultados)
+       =========================== */
+    .scores-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 25px;
+      margin-top: 30px;
+    }
+
+    .score-card {
+      background: rgba(0,0,0,0.3);
+      padding: 30px;
+      border-radius: 15px;
+      border: 2px solid var(--border);
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .score-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-5px);
+    }
+
+    .score-icon {
+      font-size: 3em;
+      display: block;
+      margin-bottom: 15px;
+    }
+
+    .score-label {
+      color: var(--text-secondary);
+      font-size: 1.1em;
+      margin-bottom: 10px;
+    }
+
+    .score-value {
+      font-size: 3em;
+      font-weight: bold;
+      color: var(--accent);
+      margin: 15px 0;
+    }
+
+    .progress-bar {
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      height: 8px;
+      overflow: hidden;
+      margin: 15px 0;
+    }
+
+    .progress-fill {
+      background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+      height: 100%;
+      transition: width 0.5s ease;
+    }
+
+    .score-level {
+      display: inline-block;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.9em;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    .nivel-bajo {
+      background: rgba(76, 175, 80, 0.2);
+      color: #4CAF50;
+      border: 1px solid #4CAF50;
+    }
+
+    .nivel-medio {
+      background: rgba(255, 206, 86, 0.2);
+      color: #ffce56;
+      border: 1px solid #ffce56;
+    }
+
+    .nivel-alto {
+      background: rgba(255, 99, 132, 0.2);
+      color: #ff6384;
+      border: 1px solid #ff6384;
+    }
+
+    /* ===========================
+       HIDDEN CLASS
+       =========================== */
+    .hidden {
+      display: none !important;
+    }
+
+    /* ===========================
+       ESTILOS PÁGINA INICIAL
+       =========================== */
+    .page-inicio {
+      text-align: center;
+    }
+
+    .page-inicio h1 {
+      font-size: 3em;
+      margin-bottom: 0.1em;
+      background: linear-gradient(135deg, #c080ff 0%, #7f00ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 800;
+    }
+
+    .page-inicio h2 {
+      font-weight: 400;
+      color: #c080ff;
+      margin-top: 0;
+      margin-bottom: 1em;
+      font-size: 1.3em;
+    }
+
+    .page-inicio p {
+      font-size: 1.05em;
+      line-height: 1.8;
+      margin-bottom: 20px;
+      color: #d0d0ff;
+    }
+
+    .page-inicio h3 {
+      color: #c080ff;
+      font-size: 1.5em;
+      margin-top: 30px;
+      margin-bottom: 15px;
+    }
+
+    .page-inicio ol, .page-inicio ul {
+      margin-left: 25px;
+      text-align: left;
+      color: #d0d0ff;
+      line-height: 1.8;
+      margin-bottom: 30px;
+    }
+
+    .page-inicio ol li, .page-inicio ul li {
+      margin-bottom: 12px;
+    }
+
+    /* BOTONES EN CUADRADOS */
+    .buttons-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 30px;
+      margin: 40px 0;
+    }
+
+    .btn-card {
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+      border: 2px solid rgba(192, 128, 255, 0.4);
+      border-radius: 15px;
+      padding: 40px 30px;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(127, 0, 255, 0.5);
+      border-color: #7f00ff;
+    }
+
+    .btn-card h3 {
+      margin: 0 0 15px 0;
+      font-size: 1.8em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      color: #c080ff;
+    }
+
+    .btn-card p {
+      margin: 0 0 20px 0;
+      font-size: 1em;
+      color: #b0a0ff;
+    }
+
+    /* SVG ICONS ANIMADOS */
+    .icon-svg {
+      width: 60px;
+      height: 60px;
+      animation: iconFloat 3s ease-in-out infinite;
+    }
+
+    @keyframes iconFloat {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .btn-card:hover .icon-svg {
+      animation: iconBounce 0.6s ease-in-out;
+    }
+
+    @keyframes iconBounce {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      25% { transform: translateY(-15px) rotate(-5deg); }
+      75% { transform: translateY(-15px) rotate(5deg); }
+    }
+
+    /* Animación del líquido del tubo de ensayo */
+    .liquid {
+      animation: liquidBubble 2s ease-in-out infinite;
+    }
+
+    @keyframes liquidBubble {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-2px); }
+    }
+
+    .btn-card .btn-primary {
+      padding: 15px 40px;
+      font-size: 1.1em;
+      border-radius: 30px;
+      cursor: pointer;
+      font-weight: 600;
+      border: none;
+      color: white;
+      background: linear-gradient(135deg, #7f00ff 0%, #6c63ff 100%);
+      box-shadow: 0 4px 15px rgba(127, 0, 255, 0.4);
+      transition: all 0.3s;
+      display: inline-block;
+      text-decoration: none;
+      margin: 0;
+    }
+
+    .btn-card .btn-primary:hover {
+      background: linear-gradient(135deg, #9000ff 0%, #7c73ff 100%);
+      box-shadow: 0 6px 20px rgba(127, 0, 255, 0.6);
+      transform: translateY(-3px);
+    }
+
+    .btn-investigador {
+      background: linear-gradient(135deg, #ff6384 0%, #ff4757 100%) !important;
+      box-shadow: 0 4px 15px rgba(255, 99, 132, 0.4) !important;
+    }
+
+    .btn-investigador:hover {
+      background: linear-gradient(135deg, #ff7394 0%, #ff5767 100%) !important;
+      box-shadow: 0 6px 20px rgba(255, 99, 132, 0.6) !important;
+    }
+
+    /* ===========================
+       RESPONSIVE
+       =========================== */
+    @media (max-width: 768px) {
+      .header h1 {
+        font-size: 1.8em;
+      }
+
+      .content-box {
+        padding: 25px;
+      }
+
+      .form-box {
+        padding: 20px;
+      }
+
+      .button-group {
+        flex-direction: column;
+      }
+
+      .btn-primary,
+      .btn-secondary {
+        width: 100%;
+      }
+
+      .opciones {
+        flex-direction: column;
+      }
+
+      .opciones label {
+        width: 100%;
+      }
+
+      #camera-placeholder {
+        padding: 50px 20px;
+      }
+    }
+
+    /* ===========================
+       CANVAS CHARTS
+       =========================== */
+    canvas {
+      display: block;
+      margin: 20px auto;
+    }
+
+    #grafico-container {
+      text-align: center;
+      padding: 20px;
+    }
+
+    /* ===========================
+       NUEVOS ESTILOS PARA CAPTURA DE IMAGEN
+       =========================== */
+    #canvas {
+      display: none;
+    }
+
+    #contador-container {
+      background: rgba(127, 0, 255, 0.1);
+      border-radius: 15px;
+      padding: 20px;
+      border: 2px solid var(--accent);
+      margin: 20px auto;
+      max-width: 300px;
+      text-align: center;
+    }
+
+    #contador {
+      font-size: 3em;
+      font-weight: bold;
+      color: var(--accent);
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.8; }
+    }
+
+    #btn-capturar-imagen {
+      background: linear-gradient(135deg, #ff6384, #ff4757);
+      box-shadow: 0 5px 15px rgba(255, 99, 132, 0.4);
+    }
+
+    #btn-capturar-imagen:hover {
+      background: linear-gradient(135deg, #ff7394, #ff5767);
+      box-shadow: 0 8px 20px rgba(255, 99, 132, 0.6);
+    }
+
+    #btn-recapturar {
+      background: var(--bg-primary);
+      border: 2px solid var(--border);
+    }
+
+    #btn-recapturar:hover {
+      border-color: #ff6384;
+      background: rgba(255, 99, 132, 0.1);
+    }
+
+    #info-imagen {
+      margin-top: 15px;
+      color: var(--text-secondary);
+    }
+
+    /* ===========================
+       ESTILOS PARA PANEL DE ANÁLISIS AVANZADO
+       =========================== */
+    .analisis-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .analisis-section {
+      background: rgba(0,0,0,0.2);
+      padding: 25px;
+      border-radius: 15px;
+      margin-bottom: 30px;
+      border: 1px solid var(--border);
+    }
+
+    .analisis-section h3 {
+      color: var(--accent);
+      margin-bottom: 20px;
+      font-size: 1.4em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .correlation-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .correlation-card {
+      background: rgba(127, 0, 255, 0.05);
+      padding: 20px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      transition: all 0.3s;
+    }
+
+    .correlation-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .correlation-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .correlation-value {
+      font-size: 1.5em;
+      font-weight: bold;
+      color: var(--accent);
+    }
+
+    .correlation-strength {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8em;
+      font-weight: bold;
+    }
+
+    .strength-high {
+      background: rgba(255, 99, 132, 0.2);
+      color: #ff6384;
+      border: 1px solid #ff6384;
+    }
+
+    .strength-medium {
+      background: rgba(255, 206, 86, 0.2);
+      color: #ffce56;
+      border: 1px solid #ffce56;
+    }
+
+    .regression-equation {
+      background: rgba(54, 162, 235, 0.1);
+      padding: 15px;
+      border-radius: 10px;
+      font-family: monospace;
+      font-size: 1.2em;
+      text-align: center;
+      margin: 20px 0;
+      border: 1px solid #36a2eb;
+    }
+
+    .time-item {
+      padding: 15px;
+      margin-bottom: 10px;
+      background: rgba(0,0,0,0.1);
+      border-radius: 8px;
+      border-left: 4px solid var(--border);
+    }
+
+    .time-item-fast {
+      border-left-color: #4CAF50;
+    }
+
+    .time-item-slow {
+      border-left-color: #ff6384;
+    }
+
+    .plot-container {
+      text-align: center;
+      margin: 30px 0;
+    }
+
+    .plot-container img {
+      max-width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+
+    /* ===========================
+       ESTILOS NUEVOS PARA ESCALA DEL TEST SD3
+       =========================== */
+    .escala-container {
+      margin: 25px auto;
+      max-width: 800px;
+      background: rgba(127, 0, 255, 0.1);
+      padding: 20px;
+      border-radius: 15px;
+      border: 2px solid var(--accent);
+    }
+
+    .escala-tabla {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: center;
+    }
+
+    .escala-tabla td {
+      padding: 15px 10px;
+      border: 1px solid rgba(102, 126, 234, 0.3);
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .escala-tabla td strong {
+      display: block;
+      font-size: 1.4em;
+      margin-bottom: 5px;
+      color: var(--accent);
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1><i class="fas fa-camera"></i> Analizador de Imágenes Estáticas</h1>
-            <p class="subtitle">Sube una imagen estática (JPG, PNG, WebP, etc.) para analizar su contenido, detectar objetos, reconocer texto y obtener descripciones detalladas generadas por inteligencia artificial.</p>
-            
-            <div class="warning">
-                <i class="fas fa-exclamation-triangle"></i>
-                <div>
-                    <strong>Importante:</strong> Este sistema solo acepta imágenes estáticas. No se admiten archivos de video (MP4, AVI, MOV, etc.). El tamaño máximo permitido es de 10 MB.
-                </div>
-            </div>
-        </header>
+  <div class="container">
 
-        <div class="main-content">
-            <div class="panel">
-                <div class="panel-title">
-                    <i class="fas fa-upload"></i> Subir Imagen
-                </div>
-                
-                <div class="upload-area" id="uploadArea">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                    <div class="upload-text">Haz clic o arrastra una imagen aquí</div>
-                    <div class="upload-hint">Formatos soportados: JPG, PNG, GIF, WebP, BMP</div>
-                </div>
-                
-                <input type="file" id="imageInput" accept="image/jpeg,image/png,image/gif,image/webp,image/bmp">
-                
-                <div class="image-requirements">
-                    <h3>Requisitos de la imagen:</h3>
-                    <ul class="requirements-list">
-                        <li>Solo imágenes estáticas (no video)</li>
-                        <li>Tamaño máximo: 10 MB</li>
-                        <li>Formatos aceptados: JPG, PNG, GIF, WebP, BMP</li>
-                        <li>Resolución recomendada: hasta 4K</li>
-                    </ul>
-                </div>
-                
-                <div class="preview-container">
-                    <img id="imagePreview" alt="Vista previa de la imagen">
-                    
-                    <div class="image-info" id="imageInfo">
-                        <div class="image-info-row">
-                            <span>Nombre:</span>
-                            <span id="fileName">-</span>
-                        </div>
-                        <div class="image-info-row">
-                            <span>Tamaño:</span>
-                            <span id="fileSize">-</span>
-                        </div>
-                        <div class="image-info-row">
-                            <span>Dimensiones:</span>
-                            <span id="imageDimensions">-</span>
-                        </div>
-                        <div class="image-info-row">
-                            <span>Tipo:</span>
-                            <span id="fileType">-</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="controls">
-                    <button class="btn btn-primary" id="analyzeBtn" disabled>
-                        <i class="fas fa-search"></i> Analizar Imagen
-                    </button>
-                    <button class="btn btn-secondary" id="clearBtn" disabled>
-                        <i class="fas fa-trash-alt"></i> Limpiar
-                    </button>
-                </div>
-                
-                <div class="loading" id="loading">
-                    <i class="fas fa-spinner spinner"></i>
-                    <p>Analizando imagen con IA. Esto puede tardar unos segundos...</p>
-                </div>
-                
-                <div class="error-message" id="errorMessage">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span id="errorText">Ha ocurrido un error. Intenta nuevamente.</span>
-                </div>
-            </div>
-            
-            <div class="panel">
-                <div class="panel-title">
-                    <i class="fas fa-chart-bar"></i> Resultados del Análisis
-                </div>
-                
-                <div class="api-status">
-                    <div class="status-indicator">
-                        <div class="status-dot"></div>
-                        <span>API de análisis de imágenes conectada</span>
-                    </div>
-                    <div id="apiEndpoint">Endpoint: /api/analyze</div>
-                </div>
-                
-                <div class="results" id="results">
-                    <!-- Los resultados se insertarán aquí -->
-                </div>
-                
-                <div class="results-container" id="defaultMessage">
-                    <div class="result-item">
-                        <div class="result-title">Instrucciones</div>
-                        <div class="result-content">
-                            <p>Sube una imagen usando el panel izquierdo para comenzar el análisis.</p>
-                            <p>La IA analizará la imagen y proporcionará:</p>
-                            <ul style="padding-left: 20px; margin-top: 10px;">
-                                <li>Descripción detallada de la imagen</li>
-                                <li>Etiquetas y categorías detectadas</li>
-                                <li>Objetos identificados con nivel de confianza</li>
-                                <li>Colores predominantes</li>
-                                <li>Texto detectado (si existe)</li>
-                            </ul>
-                        </div>
-                    </div>
-                    
-                    <div class="result-item">
-                        <div class="result-title">Ejemplos de análisis</div>
-                        <div class="result-content">
-                            <p>Prueba con estos tipos de imágenes:</p>
-                            <div class="tags-container">
-                                <span class="tag">Paisajes naturales</span>
-                                <span class="tag">Retratos de personas</span>
-                                <span class="tag">Imágenes de arquitectura</span>
-                                <span class="tag">Objetos cotidianos</span>
-                                <span class="tag">Documentos con texto</span>
-                                <span class="tag">Animales</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <!-- ===============================
+         HEADER
+         =============================== -->
+    <header class="header">
+      <h1>DarkLens APP</h1>
+      <p class="subtitle">Investigación en microexpresiones y rasgos de personalidad</p>
+    </header>
+
+    <!-- ===============================
+         PÁGINA DE INICIO
+         =============================== -->
+    <section id="pagina-inicio" class="content-box page-inicio">
+      <h1>DARKLENS</h1>
+      <h2>Explorador de rasgos de personalidad oscura mediante análisis de microexpresiones</h2>
+
+      <p><strong>Proyecto de investigación académica - Universidad del Gran Rosario (UGR)</strong></p>
+
+      <section>
+        <h3>📚 Sobre el Proyecto</h3>
+        <p>
+          DARKLENS es una herramienta experimental diseñada para explorar rasgos de personalidad oscura mediante el análisis automatizado de microexpresiones faciales. Esta investigación forma parte de la <strong>Licenciatura en Ciencia de Datos</strong> de la <strong>Universidad del Gran Rosario (UGR)</strong>.
+        </p>
+        <p>
+          El sistema utiliza modelos de inteligencia artificial entrenados para detectar emociones sutiles en expresiones faciales y relacionarlas con dimensiones de la tríada oscura de la personalidad (maquiavelismo, narcisismo y psicopatía subclínica).
+        </p>
+      </section>
+
+      <!-- BOTONES EN CUADRADOS -->
+      <div class="buttons-grid">
+        <!-- PARTICIPANTE -->
+        <div class="btn-card" id="card-participante">
+          <h3>
+            <!-- TUBO DE ENSAYO SVG -->
+            <svg class="icon-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+              <path d="M20 8 L20 50 Q20 56 26 56 L38 56 Q44 56 44 50 L44 8 Z" 
+                    fill="none" stroke="#c080ff" stroke-width="2.5" opacity="0.8"/>
+              <path class="liquid" d="M21 35 L21 50 Q21 55 26 55 L38 55 Q43 55 43 50 L43 35 Z" 
+                    fill="url(#liquidGradient)" opacity="0.7"/>
+              <circle cx="28" cy="45" r="2" fill="#ffffff" opacity="0.4">
+                <animate attributeName="cy" values="45;30;45" dur="3s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.4;0;0.4" dur="3s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="36" cy="48" r="1.5" fill="#ffffff" opacity="0.3">
+                <animate attributeName="cy" values="48;33;48" dur="4s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.3;0;0.3" dur="4s" repeatCount="indefinite"/>
+              </circle>
+              <rect x="18" y="5" width="28" height="4" rx="2" fill="#7f00ff" opacity="0.9"/>
+              <path d="M23 10 L23 50" stroke="#ffffff" stroke-width="1.5" opacity="0.2"/>
+              <defs>
+                <linearGradient id="liquidGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" style="stop-color:#a040ff;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#7f00ff;stop-opacity:1" />
+                </linearGradient>
+              </defs>
+            </svg>
+            Participar
+          </h3>
+          <p>Respondé el test SD3 y capturá tu imagen para contribuír a la investigación académica.</p>
+          <button class="btn-primary" id="btn-iniciar-participante">Ir a la Aplicación</button>
         </div>
-        
-        <footer>
-            <p>Sistema de Análisis de Imágenes Estáticas con IA &copy; 2023</p>
-            <p>Usa imágenes propias o con derechos de uso para evitar problemas de privacidad.</p>
-        </footer>
-    </div>
 
-    <script>
-        // Archivo JavaScript integrado
-        document.addEventListener('DOMContentLoaded', function() {
-            // Referencias a elementos DOM
-            const imageInput = document.getElementById('imageInput');
-            const uploadArea = document.getElementById('uploadArea');
-            const imagePreview = document.getElementById('imagePreview');
-            const analyzeBtn = document.getElementById('analyzeBtn');
-            const clearBtn = document.getElementById('clearBtn');
-            const loading = document.getElementById('loading');
-            const results = document.getElementById('results');
-            const defaultMessage = document.getElementById('defaultMessage');
-            const errorMessage = document.getElementById('errorMessage');
-            const errorText = document.getElementById('errorText');
-            const imageInfo = document.getElementById('imageInfo');
-            
-            // Elementos de información de la imagen
-            const fileName = document.getElementById('fileName');
-            const fileSize = document.getElementById('fileSize');
-            const imageDimensions = document.getElementById('imageDimensions');
-            const fileType = document.getElementById('fileType');
-            
-            // Variables para almacenar la imagen actual
-            let currentImageFile = null;
-            let currentImageDataUrl = null;
-            
-            // Configurar eventos para el área de carga
-            uploadArea.addEventListener('click', () => imageInput.click());
-            
-            // Soporte para arrastrar y soltar
-            uploadArea.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                uploadArea.style.borderColor = '#8a84ff';
-                uploadArea.style.background = 'rgba(108, 99, 255, 0.15)';
-            });
-            
-            uploadArea.addEventListener('dragleave', () => {
-                uploadArea.style.borderColor = '#6c63ff';
-                uploadArea.style.background = '';
-            });
-            
-            uploadArea.addEventListener('drop', (e) => {
-                e.preventDefault();
-                uploadArea.style.borderColor = '#6c63ff';
-                uploadArea.style.background = '';
-                
-                if (e.dataTransfer.files.length) {
-                    handleImageFile(e.dataTransfer.files[0]);
-                }
-            });
-            
-            // Evento para seleccionar archivo
-            imageInput.addEventListener('change', (e) => {
-                if (e.target.files.length) {
-                    handleImageFile(e.target.files[0]);
-                }
-            });
-            
-            // Función para manejar el archivo de imagen
-            function handleImageFile(file) {
-                // Verificar que sea una imagen
-                if (!file.type.match('image.*')) {
-                    showError('El archivo seleccionado no es una imagen válida. Por favor, selecciona un archivo de imagen (JPG, PNG, GIF, etc.).');
-                    return;
-                }
-                
-                // Verificar tamaño (10 MB máximo)
-                if (file.size > 10 * 1024 * 1024) {
-                    showError('La imagen es demasiado grande. El tamaño máximo permitido es 10 MB.');
-                    return;
-                }
-                
-                currentImageFile = file;
-                
-                // Mostrar información de la imagen
-                fileName.textContent = file.name;
-                fileSize.textContent = formatFileSize(file.size);
-                fileType.textContent = file.type;
-                
-                // Leer la imagen para obtener dimensiones y vista previa
-                const reader = new FileReader();
-                
-                reader.onload = function(e) {
-                    currentImageDataUrl = e.target.result;
-                    
-                    // Crear una imagen para obtener dimensiones
-                    const img = new Image();
-                    img.onload = function() {
-                        imageDimensions.textContent = `${img.width} × ${img.height} px`;
-                        
-                        // Mostrar vista previa
-                        imagePreview.src = currentImageDataUrl;
-                        imagePreview.style.display = 'block';
-                        imageInfo.style.display = 'block';
-                        
-                        // Habilitar botones
-                        analyzeBtn.disabled = false;
-                        clearBtn.disabled = false;
-                        
-                        // Ocultar mensaje de error si existe
-                        hideError();
-                    };
-                    img.src = currentImageDataUrl;
-                };
-                
-                reader.readAsDataURL(file);
-            }
-            
-            // Función para formatear el tamaño del archivo
-            function formatFileSize(bytes) {
-                if (bytes === 0) return '0 Bytes';
-                
-                const k = 1024;
-                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-                const i = Math.floor(Math.log(bytes) / Math.log(k));
-                
-                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-            }
-            
-            // Evento para el botón de análisis
-            analyzeBtn.addEventListener('click', async () => {
-                if (!currentImageFile) return;
-                
-                // Mostrar estado de carga
-                loading.style.display = 'block';
-                results.style.display = 'none';
-                defaultMessage.style.display = 'none';
-                hideError();
-                
-                try {
-                    // Enviar la imagen a la API
-                    const formData = new FormData();
-                    formData.append('image', currentImageFile);
-                    
-                    // Aquí es donde llamaríamos a la API real
-                    // Por ahora, simulamos una respuesta después de un retraso
-                    simulateAnalysis();
-                    
-                } catch (error) {
-                    console.error('Error al analizar la imagen:', error);
-                    showError('Error al conectar con el servidor de análisis. Verifica tu conexión o intenta más tarde.');
-                    loading.style.display = 'none';
-                }
-            });
-            
-            // Evento para el botón de limpiar
-            clearBtn.addEventListener('click', () => {
-                // Limpiar todo
-                imageInput.value = '';
-                imagePreview.style.display = 'none';
-                imageInfo.style.display = 'none';
-                results.style.display = 'none';
-                defaultMessage.style.display = 'block';
-                loading.style.display = 'none';
-                hideError();
-                
-                // Deshabilitar botones
-                analyzeBtn.disabled = true;
-                clearBtn.disabled = true;
-                
-                // Limpiar variables
-                currentImageFile = null;
-                currentImageDataUrl = null;
-                
-                // Restablecer información
-                fileName.textContent = '-';
-                fileSize.textContent = '-';
-                imageDimensions.textContent = '-';
-                fileType.textContent = '-';
-            });
-            
-            // Función para simular el análisis (simulación hasta que tengamos la API)
-            function simulateAnalysis() {
-                // Simular un retraso de red
-                setTimeout(() => {
-                    // Datos de ejemplo para simulación
-                    const mockResults = {
-                        description: "Una imagen que muestra un hermoso paisaje montañoso con un lago cristalino en primer plano y majestuosas montañas cubiertas de nieve en el fondo. El cielo está parcialmente nublado con tonos azules y blancos, y la vegetación alrededor del lago es exuberante y verde.",
-                        tags: ["montaña", "lago", "naturaleza", "paisaje", "cielo", "agua", "nieve", "reflejo"],
-                        objects: [
-                            { name: "Montaña", confidence: 0.95 },
-                            { name: "Lago", confidence: 0.92 },
-                            { name: "Cielo", confidence: 0.89 },
-                            { name: "Árboles", confidence: 0.87 },
-                            { name: "Nieve", confidence: 0.78 }
-                        ],
-                        colors: [
-                            { name: "Azul cielo", hex: "#87CEEB", percentage: 35 },
-                            { name: "Verde bosque", hex: "#228B22", percentage: 25 },
-                            { name: "Blanco nieve", hex: "#FFFFFF", percentage: 20 },
-                            { name: "Azul agua", hex: "#1E90FF", percentage: 15 },
-                            { name: "Gris roca", hex: "#808080", percentage: 5 }
-                        ],
-                        hasText: false,
-                        text: "",
-                        analysisTime: "1.8 segundos",
-                        model: "Vision AI v2.1"
-                    };
-                    
-                    // Mostrar resultados
-                    displayResults(mockResults);
-                    loading.style.display = 'none';
-                }, 2000);
-            }
-            
-            // Función para mostrar resultados en la interfaz
-            function displayResults(data) {
-                // Ocultar mensaje por defecto
-                defaultMessage.style.display = 'none';
-                
-                // Construir HTML de resultados
-                let resultsHTML = '';
-                
-                // Descripción
-                resultsHTML += `
-                    <div class="result-item">
-                        <div class="result-title">Descripción de la imagen</div>
-                        <div class="result-content">${data.description}</div>
-                    </div>
-                `;
-                
-                // Etiquetas
-                resultsHTML += `
-                    <div class="result-item">
-                        <div class="result-title">Etiquetas detectadas</div>
-                        <div class="result-content">
-                            <div class="tags-container">
-                `;
-                
-                data.tags.forEach(tag => {
-                    resultsHTML += `<span class="tag">${tag}</span>`;
-                });
-                
-                resultsHTML += `
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                // Objetos detectados
-                resultsHTML += `
-                    <div class="result-item">
-                        <div class="result-title">Objetos detectados</div>
-                        <div class="result-content">
-                `;
-                
-                data.objects.forEach(obj => {
-                    const confidencePercent = Math.round(obj.confidence * 100);
-                    resultsHTML += `
-                        <div style="margin-bottom: 15px;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                <span>${obj.name}</span>
-                                <span>${confidencePercent}%</span>
-                            </div>
-                            <div class="confidence-meter">
-                                <div class="confidence-fill" style="width: ${confidencePercent}%"></div>
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                resultsHTML += `
-                        </div>
-                    </div>
-                `;
-                
-                // Colores predominantes
-                resultsHTML += `
-                    <div class="result-item">
-                        <div class="result-title">Colores predominantes</div>
-                        <div class="result-content">
-                            <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
-                `;
-                
-                data.colors.forEach(color => {
-                    resultsHTML += `
-                        <div style="text-align: center;">
-                            <div style="width: 50px; height: 50px; border-radius: 50%; background-color: ${color.hex}; margin-bottom: 5px; border: 2px solid white;"></div>
-                            <div style="font-size: 0.8rem;">${color.name}</div>
-                            <div style="font-size: 0.8rem; color: #a0a0c0;">${color.percentage}%</div>
-                        </div>
-                    `;
-                });
-                
-                resultsHTML += `
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                // Metadatos del análisis
-                resultsHTML += `
-                    <div class="result-item">
-                        <div class="result-title">Información del análisis</div>
-                        <div class="result-content">
-                            <div class="image-info-row">
-                                <span>Tiempo de análisis:</span>
-                                <span>${data.analysisTime}</span>
-                            </div>
-                            <div class="image-info-row">
-                                <span>Modelo de IA:</span>
-                                <span>${data.model}</span>
-                            </div>
-                            <div class="image-info-row">
-                                <span>Texto detectado:</span>
-                                <span>${data.hasText ? "Sí" : "No"}</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                // Insertar resultados y mostrar
-                results.innerHTML = resultsHTML;
-                results.style.display = 'block';
-                
-                // Animar las barras de confianza
-                setTimeout(() => {
-                    document.querySelectorAll('.confidence-fill').forEach(fill => {
-                        // Ya tienen el ancho establecido, solo necesitamos asegurar la animación
-                        fill.style.transition = 'width 1.5s ease';
-                    });
-                }, 100);
-            }
-            
-            // Función para mostrar mensajes de error
-            function showError(message) {
-                errorText.textContent = message;
-                errorMessage.style.display = 'block';
-            }
-            
-            // Función para ocultar mensajes de error
-            function hideError() {
-                errorMessage.style.display = 'none';
-            }
-            
-            // Inicializar la interfaz
-            hideError();
-        });
-    </script>
+        <!-- INVESTIGADOR -->
+        <div class="btn-card" id="card-investigador">
+          <h3>
+            <!-- MICROSCOPIO SVG -->
+            <svg class="icon-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+              <rect x="20" y="54" width="24" height="4" rx="2" fill="#7f00ff"/>
+              <path d="M32 54 L32 35 L38 25 L38 15" stroke="#c080ff" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <circle cx="38" cy="12" r="5" fill="none" stroke="#a040ff" stroke-width="2.5"/>
+              <circle cx="38" cy="12" r="3" fill="#7f00ff" opacity="0.3">
+                <animate attributeName="opacity" values="0.3;0.6;0.3" dur="2s" repeatCount="indefinite"/>
+              </circle>
+              <rect x="25" y="32" width="14" height="3" rx="1" fill="#c080ff"/>
+              <circle cx="32" cy="40" r="4" fill="#7f00ff"/>
+              <circle cx="32" cy="40" r="2.5" fill="#a040ff"/>
+              <circle cx="42" cy="35" r="2" fill="#c080ff"/>
+              <circle cx="42" cy="40" r="2" fill="#c080ff"/>
+              <circle cx="32" cy="30" r="1.5" fill="#ffff00" opacity="0.8">
+                <animate attributeName="opacity" values="0.8;0.3;0.8" dur="1.5s" repeatCount="indefinite"/>
+              </circle>
+            </svg>
+            Investigadores
+          </h3>
+          <p>Acceso restringido para visualizar y analizar los resultados de la investigación.</p>
+          <button class="btn-primary btn-investigador" id="btn-iniciar-investigador">Acceso Restringido</button>
+        </div>
+      </div>
+
+      <section>
+        <h3>🔬 Metodología</h3>
+        <ol>
+          <li><strong>Test SD3:</strong> El participante responde el cuestionario de personalidad oscura.</li>
+          <li><strong>Captura de Imagen:</strong> Se captura una fotografía mientras el participante procesa una historia.</li>
+          <li><strong>Análisis Automático:</strong> Un modelo de deep learning analiza las microexpresiones en la imagen.</li>
+          <li><strong>Correlaciones:</strong> Los resultados se correlacionan con los rasgos de personalidad SD3.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h3>⚖️ Consideraciones Éticas</h3>
+        <ul>
+          <li><strong>Consentimiento informado:</strong> Todos los participantes aceptan voluntariamente los términos antes de comenzar.</li>
+          <li><strong>Anonimato:</strong> Los datos personales se tratan de forma confidencial y no permiten identificación individual.</li>
+          <li><strong>Uso académico:</strong> Toda la información recopilada se utiliza exclusivamente con fines de investigación.</li>
+          <li><strong>No diagnóstico:</strong> Esta herramienta <em>NO</em> sustituye evaluaciones psicológicas profesionales.</li>
+        </ul>
+      </section>
+
+      <footer style="margin-top: 40px; font-size: 0.9em; color: #c080ff;">
+        <p>Proyecto desarrollado en la Licenciatura en Ciencia de Datos - Universidad del Gran Rosario (UGR) - 2024/2025</p>
+        <p>© 2025 DARKLENS - Todos los derechos reservados</p>
+      </footer>
+    </section>
+
+    <!-- ===============================
+         SECCIÓN 1: BIENVENIDA / DATOS PARTICIPANTE
+         =============================== -->
+    <section id="seccion-bienvenida" class="content-box hidden">
+      <h2>Antes de comenzar</h2>
+      <p class="subtitle" style="text-align:center; margin-bottom:20px;">
+        Completa tus datos y aceptá el consentimiento para continuar con el test.
+      </p>
+
+      <form id="form-datos-basicos" class="form-box" autocomplete="off">
+        <div class="form-group">
+          <label for="nombre">Nombre completo</label>
+          <input id="nombre" name="nombre" type="text" placeholder="Tu nombre" required />
+        </div>
+
+        <div class="form-group">
+          <label for="edad">Edad</label>
+          <input id="edad" name="edad" type="number" min="14" max="120" placeholder="Ej: 28" required />
+        </div>
+
+        <div class="form-group">
+          <label for="genero">Género</label>
+          <select id="genero" name="genero" required>
+            <option value="">-- Seleccioná tu género --</option>
+            <option value="femenino">Femenino</option>
+            <option value="masculino">Masculino</option>
+            <option value="no-binario">No binario</option>
+            <option value="otro">Otro / Prefiero no decir</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="pais">País</label>
+          <input id="pais" name="pais" type="text" placeholder="Ej: Argentina" required />
+        </div>
+
+        <div class="consent-box">
+          <h3>Consentimiento informado</h3>
+          <p style="color:var(--text-secondary);">
+            Acepto participar en esta investigación. Comprendo que los datos serán almacenados de forma segura y utilizados sólo con fines académicos.
+          </p>
+
+          <label class="checkbox-group" for="consentimiento">
+            <input id="consentimiento" name="consentimiento" type="checkbox" required />
+            <div style="display:flex; flex-direction:column;">
+              <strong>Acepto el consentimiento</strong>
+              <small style="color:var(--text-secondary);">Podés abandonar el estudio en cualquier momento.</small>
+            </div>
+          </label>
+        </div>
+
+        <div style="text-align:center; margin-top: 10px;">
+          <button type="submit" class="btn-primary">Iniciar test</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ===============================
+         SECCIÓN 2: TEST SD3
+         =============================== -->
+    <section id="seccion-test" class="content-box hidden">
+      <h2>Test SD3</h2>
+      <p class="subtitle" style="text-align:center; margin-bottom:10px;">
+        Respondé cada ítem según lo que mejor describe tus actitudes.
+      </p>
+
+      <!-- ESCALA CORREGIDA - SOLO UNA VEZ -->
+      <div class="escala-container">
+        <table class="escala-tabla">
+          <tr>
+            <td><strong>1</strong><br>Totalmente en desacuerdo</td>
+            <td><strong>2</strong><br>En desacuerdo</td>
+            <td><strong>3</strong><br>Neutral</td>
+            <td><strong>4</strong><br>De acuerdo</td>
+            <td><strong>5</strong><br>Totalmente de acuerdo</td>
+          </tr>
+        </table>
+      </div>
+
+      <form id="form-sd3" class="form-box"></form>
+      
+      <div style="text-align:center; margin-top:20px;">
+        <button id="btn-enviar-test" class="btn-primary">Enviar respuestas</button>
+      </div>
+    </section>
+
+    <!-- ===============================
+         SECCIÓN 3: CAPTURA DE IMAGEN
+         =============================== -->
+    <section id="seccion-micro" class="content-box hidden">
+      <h2>Captura de Imagen Facial</h2>
+      
+      <!-- Historia para leer, visible al inicio -->
+      <div id="audio-container" style="margin-top: 20px;">
+        <h4 style="text-align: center; color: var(--accent);">📖 Historia para Leer</h4>
+        <div id="texto-historia" style="background: rgba(127, 0, 255, 0.1); padding: 20px; border-radius: 10px; margin-top: 15px; text-align: left; max-height: 300px; overflow-y: auto;">
+          <p style="text-align: center; color: var(--text-secondary); font-style: italic;">
+            La historia se cargará según tus respuestas al test SD3...
+          </p>
+        </div>
+        <div style="text-align:center; margin-top: 15px;">
+          <button id="btn-listo-capturar" class="btn-primary">Listo para capturar imagen 📸</button>
+        </div>
+      </div>
+
+      <!-- Controles de cámara, ocultos inicialmente -->
+      <div id="camera-section" class="hidden">
+        <div class="instrucciones">
+          <h3>📌 Instrucciones IMPORTANTES</h3>
+          <ul>
+            <li><strong>Mira de frente a la cámara</strong> durante la captura</li>
+            <li><strong>Piensa en la historia</strong> y cómo te haría sentir</li>
+            <li><strong>Mantén una expresión natural</strong> - queremos captar tu reacción facial espontánea</li>
+            <li><strong>Captura única:</strong> Se tomará una sola fotografía de alta calidad</li>
+            <li><strong>Buena iluminación:</strong> Asegurate de estar en un lugar bien iluminado</li>
+          </ul>
+        </div>
+
+        <div class="camera-container">
+          <video id="video" autoplay playsinline muted class="hidden"></video>
+          <canvas id="canvas" class="hidden"></canvas>
+          <div id="camera-placeholder">
+            <p style="color:var(--text-secondary);">La cámara está desactivada.</p>
+          </div>
+
+          <div id="preview-container" class="hidden" style="text-align:center;">
+            <h3>📸 Imagen capturada</h3>
+            <img id="preview-image" style="max-width:100%; border-radius:15px; border:2px solid var(--border); margin-top:20px;" />
+            <div id="info-imagen" style="margin-top: 15px; color: var(--text-secondary);"></div>
+          </div>
+
+          <div class="button-group">
+            <button id="btn-activar-camara" class="btn-primary">Activar cámara</button>
+            <button id="btn-capturar-imagen" class="btn-primary hidden">📸 Capturar Imagen</button>
+            <button id="btn-recapturar" class="btn-secondary hidden">🔄 Recapturar</button>
+          </div>
+
+          <div id="contador-container" class="hidden" style="margin-top: 20px; text-align: center;">
+            <div style="font-size: 1.2em; color: var(--accent); margin-bottom: 10px;">
+              Prepárate para la captura en:
+            </div>
+            <div id="contador" style="font-size: 3em; font-weight: bold; color: var(--accent);">5</div>
+            <div style="margin-top: 10px; color: var(--text-secondary); font-size: 0.9em;">
+              Mantén la mirada en la cámara y piensa en la historia
+            </div>
+          </div>
+        </div>
+
+        <div id="resultado-micro" class="hidden"></div>
+
+        <div style="text-align:center; margin-top:20px;">
+          <button id="btn-subir-imagen" class="btn-primary hidden">📤 Subir Imagen y Analizar</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===============================
+         SECCIÓN 4: LOGIN INVESTIGADOR
+         =============================== -->
+    <section id="seccion-login" class="content-box hidden">
+      <h2>Panel del Investigador</h2>
+      <p class="subtitle" style="text-align:center;">
+        Acceso restringido solo al equipo de investigación
+      </p>
+      <div class="form-group">
+        <label for="password-investigador">Contraseña</label>
+        <input type="password" id="password-investigador" placeholder="Ingresá la contraseña">
+      </div>
+      <div style="text-align:center;">
+        <button id="btn-login-investigador" class="btn-primary">Acceder</button>
+        <button id="btn-volver-inicio-2" class="btn-secondary" style="margin-top:20px;">
+          Volver al inicio
+        </button>
+      </div>
+    </section>
+
+    <!-- ===============================
+         SECCIÓN 5: PANEL INVESTIGADOR
+         =============================== -->
+    <section id="seccion-investigador" class="content-box hidden">
+      <h2>Listado de Participantes</h2>
+      <p class="subtitle" style="text-align:center; margin-bottom:25px;">
+        Seleccioná un participante para ver los resultados completos
+      </p>
+      <div id="lista-participantes" class="content-box" 
+           style="background:rgba(0,0,0,0.25); max-height:500px; overflow-y:auto;">
+        <p style="text-align:center; color:var(--text-secondary);">
+          Cargando datos...
+        </p>
+      </div>
+      <div style="text-align:center; margin-top:30px;">
+        <button id="btn-volver-login" class="btn-secondary">Salir del panel</button>
+        <button id="btn-ir-analisis" class="btn-primary" style="margin-left:15px;">
+          📈 Análisis Avanzado
+        </button>
+      </div>
+    </section>
+
+    <!-- ===============================
+         SECCIÓN 6: RESULTADOS DETALLADOS (SOLO INVESTIGADOR)
+         =============================== -->
+    <section id="seccion-resultados" class="content-box hidden">
+      <h2>Resultados del Participante</h2>
+      
+      <h3>🧍‍♂️ Información del Participante</h3>
+      <div id="info-participante" class="resultado-box"></div>
+
+      <h3>📊 Resultados del Test SD3</h3>
+      <div id="resultados-sd3-detalle" class="resultado-box"></div>
+      <canvas id="grafico-sd3-resultados" style="margin:40px auto; max-width:600px;"></canvas>
+
+      <h3>⏱ Tiempos de Respuesta</h3>
+      <div id="tiempos-detalle" class="resultado-box"></div>
+      <canvas id="grafico-tiempos" style="margin:40px auto; max-width:600px;"></canvas>
+
+      <h3>😶‍🌫️ Microexpresiones Detectadas</h3>
+      <div id="microexpresiones-detalle" class="resultado-box"></div>
+      <canvas id="grafico-emociones" style="margin:40px auto; max-width:600px;"></canvas>
+
+      <h3>🔍 Unidades FACS</h3>
+      <div id="facs-detalle" class="resultado-box"></div>
+
+      <h3>🧠 Integración de Resultados</h3>
+      <div id="analisis-final" class="resultado-box"></div>
+
+      <h3>📷 Imagen del Participante</h3>
+      <div id="imagen-participante" style="text-align:center; margin-top:30px;">
+        <p style="color:var(--text-secondary);">La imagen no está disponible en esta vista.</p>
+      </div>
+
+      <div style="text-align:center; margin-top:30px;">
+        <button id="btn-volver-panel" class="btn-secondary">Volver al panel</button>
+      </div>
+    </section>
+
+    <!-- ===============================
+         SECCIÓN 7: ANÁLISIS ESTADÍSTICO AVANZADO
+         =============================== -->
+    <section id="seccion-analisis" class="content-box hidden">
+      <div class="analisis-header">
+        <h2>📈 Análisis Estadístico Avanzado</h2>
+        <button id="btn-volver-investigador" class="btn-secondary">
+          ← Volver al panel
+        </button>
+      </div>
+
+      <p class="subtitle" style="text-align:center; margin-bottom:30px;">
+        Análisis de correlaciones, regresiones y tiempos de respuesta entre todos los participantes
+      </p>
+
+      <!-- Correlaciones SD3-FACS -->
+      <div class="analisis-section">
+        <h3>🔗 Correlaciones entre Rasgos SD3 y Unidades FACS</h3>
+        <p style="color:var(--text-secondary); margin-bottom:20px;">
+          Análisis de correlaciones entre los rasgos de personalidad oscura y las unidades de acción facial detectadas.
+        </p>
+        <div id="resultados-correlaciones">
+          <div class="analisis-loading">
+            <p>📊 Calculando correlaciones...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tiempos de respuesta -->
+      <div class="analisis-section">
+        <h3>⏱️ Análisis de Tiempos de Respuesta SD3</h3>
+        <p style="color:var(--text-secondary); margin-bottom:20px;">
+          Análisis de qué ítems del test SD3 se responden más rápido o más lento.
+        </p>
+        <div id="resultados-tiempos">
+          <div class="analisis-loading">
+            <p>⏳ Analizando tiempos de respuesta...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Análisis de regresión -->
+      <div class="analisis-section">
+        <h3>📊 Regresión Lineal: SD3 vs FACS</h3>
+        <p style="color:var(--text-secondary); margin-bottom:20px;">
+          Análisis de regresión para predecir intensidades FACS basadas en puntajes SD3.
+        </p>
+        <div id="resultados-regresion">
+          <div class="analisis-loading">
+            <p>🧮 Calculando modelos de regresión...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resumen estadístico -->
+      <div class="analisis-section">
+        <h3>📋 Resumen Estadístico</h3>
+        <p style="color:var(--text-secondary); margin-bottom:20px;">
+          Resumen general de los análisis realizados.
+        </p>
+        <div id="resumen-estadistico" class="resultado-box">
+          <p style="text-align:center; color:var(--text-secondary);">
+            Los resultados del análisis aparecerán aquí...
+          </p>
+        </div>
+      </div>
+
+      <div style="text-align:center; margin-top:40px;">
+        <button id="btn-descargar-informe" class="btn-primary">📥 Descargar Informe Completo</button>
+        <button id="btn-volver-investigador2" class="btn-secondary" style="margin-left:15px;">
+          ← Volver al panel
+        </button>
+        <button id="btn-refrescar-analisis" class="btn-secondary" style="margin-left:15px;">
+          🔄 Refrescar análisis
+        </button>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Supabase y aplicación JavaScript -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js" defer></script>
+  
 </body>
 </html>
