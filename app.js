@@ -662,7 +662,8 @@ async function analizarImagenCompleta(imagenBase64, datosPersonales, datosSD3) {
     formData.append('narc', datosSD3.narc || 0);
     formData.append('psych', datosSD3.psych || 0);
     formData.append('tiempo_total_seg', datosSD3.tiempo_total_segundos || 0);
-    
+    formData.append('include_facs', true);
+     
     // Obtener historia utilizada
     const historiaUtilizada = sessionStorage.getItem('historiaUtilizada') || '';
     formData.append('historia_utilizada', historiaUtilizada);
