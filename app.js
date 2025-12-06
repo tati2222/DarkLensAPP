@@ -34,7 +34,7 @@ let tiemposRespuesta = {};
 let tiempoInicioItem = {};
 let testInicioTimestamp = null;
 let stream = null;
-let participantesData = [];
+let participantesData = [];  // SOLO UNA DECLARACIÓN - LÍNEA 55
 let participanteSeleccionado = null;
 let imagenCapturada = null;
 let capturedBlob = null; // Variable para la captura mejorada
@@ -144,7 +144,7 @@ const itemsSD3 = [
   "La gente me ve como un líder nato.",
   "(R) Odio ser el centro de atención.",
   "Muchas actividades grupales tienden a ser aburridas sin mí.",
-  "Sé que soy especial porque todos me lo dicen continuamente.",
+  "Sé que soy special porque todos me lo dicen continuamente.",
   "Me gusta relacionarme con personas importantes.",
   "(R) Me siento avergonzado/a si alguien me hace un cumplido.",
   "Me han comparado con gente famosa.",
@@ -374,6 +374,7 @@ async function reproducirHistoria() {
     }, 2000);
   });
 }
+
 /* ---------- CONFIGURAR BOTÓN LISTO PARA CAPTURAR ---------- */
 function configurarBotonListoCapturar() {
   const btnListoCapturar = document.getElementById('btn-listo-capturar');
@@ -400,8 +401,6 @@ function configurarCapturaImagen() {
   const contadorContainer = document.getElementById('contador-container');
   const contadorElement = document.getElementById('contador');
   const infoImagen = document.getElementById('info-imagen');
-
-  // 👉 NUEVO: input para subir imagen desde el dispositivo
   const inputArchivo = document.getElementById('input-subir-archivo');
   const btnElegirArchivo = document.getElementById('btn-elegir-archivo');
 
@@ -421,63 +420,67 @@ function configurarCapturaImagen() {
      OPCIÓN 1 → USAR LA CÁMARA
      ============================================================ */
 
-  btnActivarCamara.addEventListener('click', async () => {
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'user',
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 }
-        },
-        audio: false
-      });
-      
-      stream = localStream;
-      video.srcObject = localStream;
-      video.classList.remove('hidden');
-      video.play();
+  if (btnActivarCamara) {
+    btnActivarCamara.addEventListener('click', async () => {
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ 
+          video: { 
+            facingMode: 'user',
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            frameRate: { ideal: 30 }
+          },
+          audio: false
+        });
+        
+        stream = localStream;
+        video.srcObject = localStream;
+        video.classList.remove('hidden');
+        video.play();
 
-      btnActivarCamara.classList.add('hidden');
-      btnCapturarImagen.classList.remove('hidden');
-      document.getElementById('camera-placeholder')?.classList?.add('hidden');
+        btnActivarCamara.classList.add('hidden');
+        btnCapturarImagen.classList.remove('hidden');
+        document.getElementById('camera-placeholder')?.classList?.add('hidden');
 
-      console.log('✅ Cámara activada');
-      
-    } catch (error) {
-      console.error('❌ Error accediendo a la cámara:', error);
-      alert('No se pudo activar la cámara. Asegúrate de dar permisos.');
-    }
-  });
+        console.log('✅ Cámara activada');
+        
+      } catch (error) {
+        console.error('❌ Error accediendo a la cámara:', error);
+        alert('No se pudo activar la cámara. Asegúrate de dar permisos.');
+      }
+    });
+  }
 
   /* ---------- Capturar imagen ---------- */
 
-  btnCapturarImagen.addEventListener('click', () => {
-    if (!localStream || !video.videoWidth) {
-      alert('Primero activá la cámara');
-      return;
-    }
-
-    if (capturaEnCurso) return;
-    
-    capturaEnCurso = true;
-    tiempoRestante = 3;
-    
-    contadorElement.textContent = tiempoRestante;
-    contadorContainer.classList.remove('hidden');
-    btnCapturarImagen.disabled = true;
-    btnCapturarImagen.textContent = 'Preparando...';
-    
-    intervaloContador = setInterval(() => {
-      tiempoRestante--;
-      contadorElement.textContent = tiempoRestante;
-      
-      if (tiempoRestante <= 0) {
-        clearInterval(intervaloContador);
-        realizarCaptura();
+  if (btnCapturarImagen) {
+    btnCapturarImagen.addEventListener('click', () => {
+      if (!localStream || !video.videoWidth) {
+        alert('Primero activá la cámara');
+        return;
       }
-    }, 1000);
-  });
+
+      if (capturaEnCurso) return;
+      
+      capturaEnCurso = true;
+      tiempoRestante = 3;
+      
+      contadorElement.textContent = tiempoRestante;
+      contadorContainer.classList.remove('hidden');
+      btnCapturarImagen.disabled = true;
+      btnCapturarImagen.textContent = 'Preparando...';
+      
+      intervaloContador = setInterval(() => {
+        tiempoRestante--;
+        contadorElement.textContent = tiempoRestante;
+        
+        if (tiempoRestante <= 0) {
+          clearInterval(intervaloContador);
+          realizarCaptura();
+        }
+      }, 1000);
+    });
+  }
 
   function realizarCaptura() {
     canvas.width = video.videoWidth;
@@ -503,23 +506,19 @@ function configurarCapturaImagen() {
      OPCIÓN 2 → SUBIR IMAGEN DESDE EL TELÉFONO / PC
      ============================================================ */
 
-  // Botón que abre el selector de archivos
-  btnElegirArchivo.addEventListener('click', () => {
-    inputArchivo.click();
-  });
+  if (inputArchivo) {
+    inputArchivo.addEventListener('change', function() {
+      const archivo = this.files[0];
+      if (!archivo) return;
 
-  // Cuando la persona selecciona un archivo
-  inputArchivo.addEventListener('change', function() {
-    const archivo = this.files[0];
-    if (!archivo) return;
+      if (!archivo.type.startsWith("image/")) {
+        alert("Debe seleccionar una imagen válida");
+        return;
+      }
 
-    if (!archivo.type.startsWith("image/")) {
-      alert("Debe seleccionar una imagen válida");
-      return;
-    }
-
-    mostrarPreview(archivo);
-  });
+      mostrarPreview(archivo);
+    });
+  }
 
   /* ============================================================
      FUNCIÓN GENERAL PARA MOSTRAR PREVIEW (CÁMARA o ARCHIVO)
@@ -534,17 +533,19 @@ function configurarCapturaImagen() {
     // actualizar UI
     contadorContainer.classList.add('hidden');
     previewContainer.classList.remove('hidden');
-    btnRecapturar.classList.remove('hidden');
-    btnSubirImagen.classList.remove('hidden');
-    btnCapturarImagen.classList.add('hidden');
-    video.classList.add('hidden');
+    if (btnRecapturar) btnRecapturar.classList.remove('hidden');
+    if (btnSubirImagen) btnSubirImagen.classList.remove('hidden');
+    if (btnCapturarImagen) btnCapturarImagen.classList.add('hidden');
+    if (video) video.classList.add('hidden');
 
     const sizeKB = (blob.size / 1024).toFixed(2);
-    infoImagen.innerHTML = `
-      <p><strong>Tamaño:</strong> ${sizeKB} KB</p>
-      <p><strong>Formato:</strong> ${blob.type}</p>
-      <p><strong>Lista para analizar</strong></p>
-    `;
+    if (infoImagen) {
+      infoImagen.innerHTML = `
+        <p><strong>Tamaño:</strong> ${sizeKB} KB</p>
+        <p><strong>Formato:</strong> ${blob.type}</p>
+        <p><strong>Lista para analizar</strong></p>
+      `;
+    }
 
     console.log("📸 Imagen lista (cámara o archivo)");
   }
@@ -552,52 +553,56 @@ function configurarCapturaImagen() {
   /* ============================================================
      RECAPTURAR
      ============================================================ */
-  btnRecapturar.addEventListener('click', () => {
-    capturedBlob = null;
-    imagenCapturada = null;
+  if (btnRecapturar) {
+    btnRecapturar.addEventListener('click', () => {
+      capturedBlob = null;
+      imagenCapturada = null;
 
-    previewContainer.classList.add('hidden');
-    btnRecapturar.classList.add('hidden');
-    btnSubirImagen.classList.add('hidden');
+      previewContainer.classList.add('hidden');
+      btnRecapturar.classList.add('hidden');
+      if (btnSubirImagen) btnSubirImagen.classList.add('hidden');
 
-    document.getElementById('camera-placeholder')?.classList?.remove('hidden');
+      document.getElementById('camera-placeholder')?.classList?.remove('hidden');
 
-    btnActivarCamara.classList.remove('hidden');
-  });
+      if (btnActivarCamara) btnActivarCamara.classList.remove('hidden');
+    });
+  }
 
   /* ============================================================
      ENVIAR IMAGEN A LA API
      ============================================================ */
-  btnSubirImagen.addEventListener('click', async () => {
-    if (!capturedBlob) {
-      alert('No hay imagen');
-      return;
-    }
-
-    btnSubirImagen.disabled = true;
-    btnSubirImagen.textContent = '⏳ Procesando...';
-
-    try {
-      const base64Imagen = await blobToBase64(capturedBlob);
-      const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
-      const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
-
-      const analisisImagen = await analizarImagenCompleta(base64Imagen, persona, sd3);
-
-      if (analisisImagen.success) {
-        await subirImagenSupabaseStorage(capturedBlob, persona);
-        mostrarConfirmacionParticipante(analisisImagen);
-      } else {
-        throw new Error(analisisImagen.error || 'Error en el análisis');
+  if (btnSubirImagen) {
+    btnSubirImagen.addEventListener('click', async () => {
+      if (!capturedBlob) {
+        alert('No hay imagen');
+        return;
       }
 
-    } catch (err) {
-      console.error("❌ Error procesando imagen:", err);
-      alert("Error: " + err.message);
-      btnSubirImagen.disabled = false;
-      btnSubirImagen.textContent = "📤 Subir Imagen y Analizar";
-    }
-  });
+      btnSubirImagen.disabled = true;
+      btnSubirImagen.textContent = '⏳ Procesando...';
+
+      try {
+        const base64Imagen = await blobToBase64(capturedBlob);
+        const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
+        const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
+
+        const analisisImagen = await analizarImagenCompleta(base64Imagen, persona, sd3);
+
+        if (analisisImagen.success) {
+          await subirImagenSupabaseStorage(capturedBlob, persona);
+          mostrarConfirmacionParticipante(analisisImagen);
+        } else {
+          throw new Error(analisisImagen.error || 'Error en el análisis');
+        }
+
+      } catch (err) {
+        console.error("❌ Error procesando imagen:", err);
+        alert("Error: " + err.message);
+        btnSubirImagen.disabled = false;
+        btnSubirImagen.textContent = "📤 Subir Imagen y Analizar";
+      }
+    });
+  }
 }
 
 /* ---------- FUNCIÓN PARA SUBIR IMAGEN A SUPABASE STORAGE ---------- */
@@ -697,6 +702,7 @@ async function analizarImagenCompleta(imagenBase64, datosPersonales, datosSD3) {
     };
   }
 }
+
 /* ---------- GUARDAR ANÁLISIS DE IMAGEN EN SUPABASE ---------- */
 async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
   console.log("📤 Guardando análisis de imagen en Supabase...");
@@ -841,9 +847,6 @@ function mostrarConfirmacionParticipante(analisisImagen = null) {
 /* ========================================================
    PANEL DEL INVESTIGADOR — VERSIÓN LIMPIA Y CORREGIDA
    ======================================================== */
-
-let participantesData = [];
-let participanteSeleccionado = null;
 
 /* ---------- CARGAR PARTICIPANTES ---------- */
 async function cargarDatosParticipantes() {
@@ -992,83 +995,14 @@ function mostrarParticipanteEnPanel(index) {
       ? `<img src="${p.imagen_url}" style="max-width:300px; border-radius:10px;">`
       : `<p style="color:var(--text-secondary);">No hay imagen disponible.</p>`;
 
+  // Llamar a análisis individual
+  analizarParticipanteIndividual(p);
+  
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 /* ========================================================
-   ANÁLISIS AVANZADO (SOLO GRUPAL)
-   ======================================================== */
-async function cargarAnalisisAvanzado() {
-  participanteSeleccionado = null; // ⬅️ IMPORTANTE
-
-  const { data: participantes, error } = await supabase
-    .from("darklens_records")
-    .select("*");
-
-  if (error || !participantes) {
-    mostrarMensajeAnalisis("No se pudieron cargar los datos.");
-    return;
-  }
-
-  // Limpieza y procesamiento
-  const sd3 = participantes.map(p => ({
-    mach: p.mach,
-    narc: p.narc,
-    psych: p.psych,
-    emocion: p.emocion_principal
-  }));
-
-  /* ------------------ CORRELACIONES ------------------ */
-  mostrarResultadosCorrelaciones(sd3);
-
-  /* ------------------ REGRESIÓN ------------------ */
-  mostrarRegresion(sd3);
-
-  /* ------------------ TIEMPOS ------------------ */
-  mostrarTiempos(participantes);
-}
-
-function mostrarMensajeAnalisis(msg) {
-  ["resultados-correlaciones", "resultados-tiempos", "resultados-regresion"]
-    .forEach(id => {
-      const div = document.getElementById(id);
-      if (div) div.innerHTML = `<p>${msg}</p>`;
-    });
-}
-
-/* ========================================================
-   Helper: Mostrar correlaciones grupales
-   ======================================================== */
-function mostrarResultadosCorrelaciones(sd3) {
-  const div = document.getElementById("resultados-correlaciones");
-  div.innerHTML = `
-    <h4>Correlaciones Globales</h4>
-    <p>Relación entre emoción detectada y rasgos SD3 promediados.</p>
-  `;
-}
-
-/* ========================================================
-   Helper: Mostrar regresión global
-   ======================================================== */
-function mostrarRegresion(sd3) {
-  document.getElementById("resultados-regresion").innerHTML = `
-    <h4>Regresión Lineal</h4>
-    <p>El gráfico se generará aquí (pendiente).</p>
-  `;
-}
-
-/* ========================================================
-   Helper: Tiempos de respuesta globales
-   ======================================================== */
-function mostrarTiempos(participantes) {
-  document.getElementById("resultados-tiempos").innerHTML = `
-    <h4>Tiempos de respuesta</h4>
-    <p>Próximamente se agregará análisis detallado.</p>
-  `;
-}
-/* ========================================================
    FUNCIONES DE ANALISIS INDIVIDUAL DEL PARTICIPANTE
-   Se llama automáticamente en mostrarParticipanteEnPanel()
    ======================================================== */
    
 function analizarParticipanteIndividual(p) {
@@ -1137,6 +1071,25 @@ function analizarParticipanteIndividual(p) {
   document.getElementById("info-participante").innerHTML += `
     <p><strong>Historia utilizada:</strong> ${p.historia_utilizada || "No disponible"}</p>
   `;
+  
+  /* ============================
+     6️⃣ GRAFICO DE EMOCIONES (individual)
+     ============================ */
+  renderGraficoEmocionesIndividual(p);
+  
+  /* ============================
+     7️⃣ INTERPRETACIÓN CLÍNICA
+     ============================ */
+  const interpretacion = generarInterpretacionClinica(p);
+  document.getElementById("analisis-final").innerHTML += `
+    <h4>🧠 Interpretación Clínica</h4>
+    <p>${interpretacion}</p>
+  `;
+  
+  /* ============================
+     8️⃣ COMPARACIÓN CON GRUPO
+     ============================ */
+  compararConGrupo(p);
 }
 
 
@@ -1153,6 +1106,18 @@ function calcularCorrelacionIndividual(p) {
   return totalSD3 * emoCode / 40;  // normalizado simple
 }
 
+function emotionToCode(emocion) {
+  const map = {
+    'happiness': 1, 'felicidad': 1, 'alegría': 1,
+    'anger': 2, 'enojo': 2, 'ira': 2,
+    'fear': 3, 'miedo': 3,
+    'sadness': 4, 'tristeza': 4,
+    'surprise': 5, 'sorpresa': 5,
+    'disgust': 6, 'asco': 6,
+    'neutral': 7
+  };
+  return map[emocion?.toLowerCase()] || -1;
+}
 
 /* ========================================================
    GRAFICO INDIVIDUAL — SD3
@@ -1160,6 +1125,14 @@ function calcularCorrelacionIndividual(p) {
 
 function renderGraficoSD3Individual(p) {
   const ctx = document.getElementById("grafico-sd3-resultados");
+  
+  // Limpiar canvas si ya existe
+  if (ctx) {
+    const existingChart = Chart.getChart(ctx);
+    if (existingChart) {
+      existingChart.destroy();
+    }
+  }
 
   new Chart(ctx, {
     type: "bar",
@@ -1184,10 +1157,18 @@ function renderGraficoSD3Individual(p) {
    ======================================================== */
 
 function renderGraficoTiemposIndividual(tiempos) {
+  const ctx = document.getElementById("grafico-tiempos");
+  
+  // Limpiar canvas si ya existe
+  if (ctx) {
+    const existingChart = Chart.getChart(ctx);
+    if (existingChart) {
+      existingChart.destroy();
+    }
+  }
+
   const labels = Object.keys(tiempos);
   const values = Object.values(tiempos).map(v => v / 1000);
-
-  const ctx = document.getElementById("grafico-tiempos");
 
   new Chart(ctx, {
     type: "line",
@@ -1211,21 +1192,21 @@ function renderGraficoTiemposIndividual(tiempos) {
   `;
 }
 
-
 /* ========================================================
-   AL MOSTRAR UN PARTICIPANTE → CORRER ANÁLISIS INDIVIDUAL
-   ======================================================== */
-
-const originalMostrar = mostrarParticipanteEnPanel;
-mostrarParticipanteEnPanel = function(index) {
-  originalMostrar(index);
-  analizarParticipanteIndividual(participantesData[index]);
-};
-/* ========================================================
-   📊 6️⃣ GRAFICO INDIVIDUAL — MICROEXPRESIONES
+   GRAFICO INDIVIDUAL — MICROEXPRESIONES
    ======================================================== */
 
 function renderGraficoEmocionesIndividual(p) {
+  const ctx = document.getElementById("grafico-emociones");
+  
+  // Limpiar canvas si ya existe
+  if (ctx) {
+    const existingChart = Chart.getChart(ctx);
+    if (existingChart) {
+      existingChart.destroy();
+    }
+  }
+
   if (!p.emociones_detectadas || p.emociones_detectadas.length === 0) {
     document.getElementById("microexpresiones-detalle").innerHTML =
       "<p>No se registraron microexpresiones.</p>";
@@ -1240,7 +1221,7 @@ function renderGraficoEmocionesIndividual(p) {
   const labels = Object.keys(counts);
   const values = Object.values(counts);
 
-  new Chart(document.getElementById("grafico-emociones"), {
+  new Chart(ctx, {
     type: "pie",
     data: {
       labels,
@@ -1265,64 +1246,17 @@ function renderGraficoEmocionesIndividual(p) {
   `;
 }
 
-
 /* ========================================================
-   🧠 7️⃣ GRAFICO INDIVIDUAL — UNIDADES FACS (RADAR)
-   ======================================================== */
-
-function renderGraficoFACSIndividual(p) {
-  if (!p.facs_promedio || Object.keys(p.facs_promedio).length === 0) {
-    document.getElementById("facs-detalle").innerHTML =
-      "<p>No hay datos FACS registrados.</p>";
-    return;
-  }
-
-  const labels = Object.keys(p.facs_promedio);
-  const values = Object.values(p.facs_promedio);
-
-  const ctx = document.createElement("canvas");
-  ctx.style.maxWidth = "500px";
-  ctx.style.margin = "20px auto";
-  document.getElementById("facs-container").appendChild(ctx);
-
-  new Chart(ctx, {
-    type: "radar",
-    data: {
-      labels,
-      datasets: [{
-        label: "Intensidad promedio FACS",
-        data: values,
-        borderWidth: 2,
-        pointRadius: 3
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: true } },
-      scales: {
-        r: {
-          beginAtZero: true,
-          suggestedMax: 1
-        }
-      }
-    }
-  });
-
-  document.getElementById("facs-detalle").innerHTML = `
-    <p><strong>Total unidades faciales analizadas:</strong> ${labels.length}</p>
-  `;
-}
-
-
-/* ========================================================
-   🧬 8️⃣ INTERPRETACIÓN CLÍNICA AUTOMÁTICA
+   INTERPRETACIÓN CLÍNICA AUTOMÁTICA
    ======================================================== */
 
 function generarInterpretacionClinica(p) {
   let texto = [];
 
-  texto.push(`La microexpresión principal detectada fue <strong>${p.emocion_principal}</strong>.`);
-  texto.push(`El rasgo predominante del SD3 fue <strong>${obtenerRasgoPredominante(p)}</strong>.`);
+  texto.push(`La microexpresión principal detectada fue <strong>${p.emocion_principal || 'no disponible'}</strong>.`);
+  
+  const rasgoPred = obtenerRasgoPredominante(p);
+  texto.push(`El rasgo predominante del SD3 fue <strong>${rasgoPred}</strong>.`);
 
   const relacion = {
     "happiness": "positividad, validación externa y percepción de autoeficacia.",
@@ -1332,7 +1266,7 @@ function generarInterpretacionClinica(p) {
     "neutral": "control emocional o inhibición voluntaria.",
     "surprise": "hipervigilancia o reactividad emocional.",
     "disgust": "rechazo, desacuerdo o aversión."
-  }[p.emocion_principal] || "un estado emocional complejo.";
+  }[p.emocion_principal?.toLowerCase()] || "un estado emocional complejo.";
 
   texto.push(`Esta emoción suele asociarse a <strong>${relacion}</strong>.`);
 
@@ -1348,61 +1282,155 @@ function obtenerRasgoPredominante(p) {
   return rasgo;
 }
 
-
 /* ========================================================
-   📈 9️⃣ COMPARACIÓN PARTICIPANTE VS PROMEDIO DEL GRUPO
+   COMPARACIÓN PARTICIPANTE VS PROMEDIO DEL GRUPO
    ======================================================== */
 
 async function compararConGrupo(p) {
-  const { data, error } = await supabase
-    .from("darklens_records")
-    .select("mach, narc, psych");
+  try {
+    const { data, error } = await supabase
+      .from("darklens_records")
+      .select("mach, narc, psych");
 
-  if (error || !data) return;
+    if (error || !data) return;
 
-  const mach_prom = promedio(data.map(d => d.mach));
-  const narc_prom = promedio(data.map(d => d.narc));
-  const psych_prom = promedio(data.map(d => d.psych));
+    const mach_prom = promedio(data.map(d => d.mach));
+    const narc_prom = promedio(data.map(d => d.narc));
+    const psych_prom = promedio(data.map(d => d.psych));
 
-  document.getElementById("analisis-final").innerHTML += `
-    <h4>📊 Comparación con el grupo</h4>
-    <p><strong>Maquiavelismo:</strong> ${p.mach} (grupo: ${mach_prom.toFixed(2)})</p>
-    <p><strong>Narcisismo:</strong> ${p.narc} (grupo: ${narc_prom.toFixed(2)})</p>
-    <p><strong>Psicopatía:</strong> ${p.psych} (grupo: ${psych_prom.toFixed(2)})</p>
-  `;
+    const analisisDiv = document.getElementById("analisis-final");
+    if (analisisDiv) {
+      analisisDiv.innerHTML += `
+        <h4>📊 Comparación con el grupo</h4>
+        <p><strong>Maquiavelismo:</strong> ${p.mach} (grupo: ${mach_prom.toFixed(2)})</p>
+        <p><strong>Narcisismo:</strong> ${p.narc} (grupo: ${narc_prom.toFixed(2)})</p>
+        <p><strong>Psicopatía:</strong> ${p.psych} (grupo: ${psych_prom.toFixed(2)})</p>
+      `;
+    }
+  } catch (error) {
+    console.error("Error comparando con grupo:", error);
+  }
 }
 
 function promedio(arr) {
   const nums = arr.filter(n => typeof n === "number");
+  if (nums.length === 0) return 0;
   return nums.reduce((a,b)=>a+b,0) / nums.length;
 }
 
+/* ========================================================
+   ANÁLISIS AVANZADO (SOLO GRUPAL)
+   ======================================================== */
+async function cargarAnalisisAvanzado() {
+  participanteSeleccionado = null; // ⬅️ IMPORTANTE
+
+  const { data: participantes, error } = await supabase
+    .from("darklens_records")
+    .select("*");
+
+  if (error || !participantes) {
+    mostrarMensajeAnalisis("No se pudieron cargar los datos.");
+    return;
+  }
+
+  // Limpieza y procesamiento
+  const sd3 = participantes.map(p => ({
+    mach: p.mach,
+    narc: p.narc,
+    psych: p.psych,
+    emocion: p.emocion_principal
+  }));
+
+  /* ------------------ CORRELACIONES ------------------ */
+  mostrarResultadosCorrelaciones(sd3);
+
+  /* ------------------ REGRESIÓN ------------------ */
+  mostrarRegresion(sd3);
+
+  /* ------------------ TIEMPOS ------------------ */
+  mostrarTiempos(participantes);
+}
+
+function mostrarMensajeAnalisis(msg) {
+  ["resultados-correlaciones", "resultados-tiempos", "resultados-regresion"]
+    .forEach(id => {
+      const div = document.getElementById(id);
+      if (div) div.innerHTML = `<p>${msg}</p>`;
+    });
+}
 
 /* ========================================================
-   🔗  🔟  COMPLETAR ANÁLISIS AL MOSTRAR PARTICIPANTE
+   Helper: Mostrar correlaciones grupales
    ======================================================== */
-
-const _mostrarOriginal2 = mostrarParticipanteEnPanel;
-mostrarParticipanteEnPanel = async function(index) {
-  _mostrarOriginal2(index);
-
-  const p = participantesData[index];
-
-  // gráficos individuales
-  renderGraficoEmocionesIndividual(p);
-  renderGraficoFACSIndividual(p);
-
-  // interpretación clínica
-  const interpretacion = generarInterpretacionClinica(p);
-  document.getElementById("analisis-final").innerHTML += `
-    <h4>🧠 Interpretación Clínica</h4>
-    <p>${interpretacion}</p>
+function mostrarResultadosCorrelaciones(sd3) {
+  const div = document.getElementById("resultados-correlaciones");
+  if (!div) return;
+  
+  div.innerHTML = `
+    <h4>Correlaciones Globales</h4>
+    <p>Relación entre emoción detectada y rasgos SD3 promediados.</p>
+    <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 10px; margin-top: 15px;">
+      <p>Total de participantes analizados: ${sd3.length}</p>
+      <p>Análisis de correlación disponible próximamente.</p>
+    </div>
   `;
+}
 
-  // comparación con grupo
-  await compararConGrupo(p);
-};
+/* ========================================================
+   Helper: Mostrar regresión global
+   ======================================================== */
+function mostrarRegresion(sd3) {
+  const div = document.getElementById("resultados-regresion");
+  if (!div) return;
+  
+  div.innerHTML = `
+    <h4>Regresión Lineal</h4>
+    <p>Análisis de regresión entre características faciales y rasgos SD3.</p>
+    <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 10px; margin-top: 15px;">
+      <p>El gráfico se generará aquí (pendiente).</p>
+    </div>
+  `;
+}
 
+/* ========================================================
+   Helper: Tiempos de respuesta globales
+   ======================================================== */
+function mostrarTiempos(participantes) {
+  const div = document.getElementById("resultados-tiempos");
+  if (!div) return;
+  
+  const tiemposPromedio = participantes.map(p => p.tiempo_total_seg || 0).filter(t => t > 0);
+  const promedio = tiemposPromedio.length > 0 ? 
+    (tiemposPromedio.reduce((a,b) => a + b, 0) / tiemposPromedio.length).toFixed(2) : 0;
+  
+  div.innerHTML = `
+    <h4>Tiempos de respuesta</h4>
+    <p>Tiempo promedio de respuesta: <strong>${promedio} segundos</strong></p>
+    <p>Total participantes con tiempos registrados: ${tiemposPromedio.length}</p>
+    <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 10px; margin-top: 15px;">
+      <p>Próximamente se agregará análisis detallado por ítem.</p>
+    </div>
+  `;
+}
+
+/* ---------- FUNCIÓN PARA VOLVER AL INICIO ---------- */
+function volverAlInicio() {
+  sessionStorage.clear();
+  tiemposRespuesta = {};
+  tiempoInicioItem = {};
+  testInicioTimestamp = null;
+  imagenCapturada = null;
+  capturedBlob = null;
+  
+  // Ocultar todas las secciones
+  document.querySelectorAll('section[id^="seccion-"], #pagina-inicio').forEach(section => {
+    section.classList.add('hidden');
+  });
+  
+  // Mostrar página de inicio
+  document.getElementById('pagina-inicio')?.classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
 /* ---------- INICIALIZACIÓN ---------- */
 document.addEventListener('DOMContentLoaded', () => {
@@ -1421,12 +1449,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnInvestigador = document.getElementById('btn-iniciar-investigador');
 
   btnParticipante?.addEventListener('click', () => {
-    sessionStorage.clear();
-    tiemposRespuesta = {};
-    tiempoInicioItem = {};
-    testInicioTimestamp = null;
-    imagenCapturada = null;
-    capturedBlob = null;
+    volverAlInicio();
     document.getElementById('pagina-inicio')?.classList.add('hidden');
     document.getElementById('seccion-bienvenida')?.classList.remove('hidden');
     const fd = document.getElementById('form-datos-basicos');
