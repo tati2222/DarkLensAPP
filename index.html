@@ -1188,29 +1188,20 @@
         </div>
 
         <div class="camera-container">
-          <input 
-  type="file" 
-  id="input-subir-archivo"
-  accept="image/*"
-  class="hidden"
->
+          <input type="file" id="input-subir-archivo" accept="image/*" class="hidden">
+          
+          <video id="video" autoplay playsinline muted class="hidden"></video>
+          <canvas id="canvas" class="hidden"></canvas>
 
-    <video id="video" autoplay playsinline muted class="hidden"></video>
-    <canvas id="canvas" class="hidden"></canvas>
-
-    <div id="camera-placeholder">
-        <p style="color: var(--text-secondary);">La cámara está desactivada.</p>
-    </div>
-
-    <!-- ⭐ NUEVO: SUBIR FOTO DESDE EL CELULAR/PC -->
-    <input 
-        type="file" 
-        id="uploadInput" 
-        accept="image/*" 
-        style="margin-top: 15px;"
-    >
-</div>
-
+          <div id="camera-placeholder">
+            <p style="color: var(--text-secondary);">La cámara está desactivada.</p>
+            <p style="color: var(--text-secondary); margin-top: 15px;">
+              <strong>O subí una imagen desde tu dispositivo:</strong>
+            </p>
+            <label for="input-subir-archivo" class="btn-primary" style="display: inline-block; margin-top: 15px; cursor: pointer;">
+              📁 Subir imagen
+            </label>
+          </div>
 
           <div id="preview-container" class="hidden" style="text-align:center;">
             <h3>📸 Imagen capturada</h3>
@@ -1241,14 +1232,14 @@
           <button id="btn-subir-imagen" class="btn-primary hidden">📤 Subir Imagen y Analizar</button>
 
           <!-- Campos ocultos para envío a API -->
-<input type="hidden" id="hidden-nombre" name="nombre" value="">
-<input type="hidden" id="hidden-edad" name="edad" value="">
-<input type="hidden" id="hidden-genero" name="genero" value="">
-<input type="hidden" id="hidden-pais" name="pais" value="">
-<input type="hidden" id="hidden-mach" name="mach" value="">
-<input type="hidden" id="hidden-narc" name="narc" value="">
-<input type="hidden" id="hidden-psych" name="psych" value="">
-<input type="hidden" id="hidden-tiempo" name="tiempo_total_seg" value="">
+          <input type="hidden" id="hidden-nombre" name="nombre" value="">
+          <input type="hidden" id="hidden-edad" name="edad" value="">
+          <input type="hidden" id="hidden-genero" name="genero" value="">
+          <input type="hidden" id="hidden-pais" name="pais" value="">
+          <input type="hidden" id="hidden-mach" name="mach" value="">
+          <input type="hidden" id="hidden-narc" name="narc" value="">
+          <input type="hidden" id="hidden-psych" name="psych" value="">
+          <input type="hidden" id="hidden-tiempo" name="tiempo_total_seg" value="">
         </div>
       </div>
     </section>
@@ -1411,15 +1402,11 @@
         </button>
       </div>
     </section>
-
-     
-    
   </div>
 
   <!-- Supabase y aplicación JavaScript -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-      <script src="facs_ui.js"></script> 
+  <script src="facs_ui.js"></script> 
   <script src="app.js" defer></script>
-  
 </body>
 </html>
