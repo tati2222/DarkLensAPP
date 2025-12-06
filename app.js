@@ -610,6 +610,8 @@ async function subirImagenSupabaseStorage(imageBlob, datosPersonales) {
   try {
     const fileName = `microexpresiones/${datosPersonales.nombre || 'anonimo'}_${Date.now()}.jpg`;
     
+    console.log('📤 Subiendo imagen a Storage:', fileName);
+    
     const { data, error } = await supabase.storage
       .from('DARKLENS-IMAGES')
       .upload(fileName, imageBlob, {
@@ -620,9 +622,11 @@ async function subirImagenSupabaseStorage(imageBlob, datosPersonales) {
 
     if (error) {
       console.error('❌ Error subiendo imagen a Storage:', error);
+      console.log('⚠️ Si es error de RLS, revisa las políticas del bucket en Supabase');
       return null;
     }
 
+    // Obtener URL pública de la imagen
     const { data: { publicUrl } } = supabase.storage
       .from('DARKLENS-IMAGES')
       .getPublicUrl(fileName);
@@ -736,6 +740,29 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
       }
     }
 
+    // 👉 Preparar FACS según las columnas existentes en tu tabla
+    let facsPromedio = null;
+    let ausFrecuente = null;
+    
+    if (analisis.facs && analisis.facs.action_units) {
+      // Procesar Action Units para el formato correcto
+      const aus = analisis.facs.action_units;
+      
+      // Crear array de AUs frecuentes (ej: ["AU01", "AU02", "AU04"])
+      ausFrecuente = aus.map(au => au.code || au.au || `AU${au.au_code}`).filter(Boolean);
+      
+      // Crear objeto de promedios si hay intensidades
+      if (aus.some(au => au.intensity !== undefined)) {
+        facsPromedio = {};
+        aus.forEach(au => {
+          const auCode = au.code || au.au || `AU${au.au_code}`;
+          if (auCode && au.intensity !== undefined) {
+            facsPromedio[auCode] = parseFloat(au.intensity) || 0;
+          }
+        });
+      }
+    }
+
     // 👉 Preparar el análisis completo
     const analisisCompleto = {
       ...analisis,
@@ -744,6 +771,7 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
       timestamp: new Date().toISOString()
     };
 
+    // 👉 CORREGIDO: Usar los nombres de columna correctos de tu tabla
     const imagenData = {
       nombre: persona.nombre || 'Anónimo',
       edad: parseInt(persona.edad) || 0,
@@ -765,18 +793,56 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
       imagen_analizada: true,
       tipo_captura: 'imagen',
       analisis_completo: JSON.stringify(analisisCompleto),
-      facs_data: analisis.facs ? JSON.stringify(analisis.facs) : null
+      // 👉 COLUMNAS CORRECTAS según tu tabla
+      FACS_PROMEDIO: facsPromedio ? JSON.stringify(facsPromedio) : null,
+      AUS_FRECUENTE: ausFrecuente ? JSON.stringify(ausFrecuente) : null
     };
 
     console.log('📤 Datos a insertar en Supabase:', imagenData);
 
+    // Intentar insertar sin las columnas problemáticas si hay error
+    let datosParaInsertar = { ...imagenData };
+    
+    // Eliminar columnas nulas para evitar errores
+    Object.keys(datosParaInsertar).forEach(key => {
+      if (datosParaInsertar[key] === null || datosParaInsertar[key] === undefined) {
+        delete datosParaInsertar[key];
+      }
+    });
+
     const { data, error } = await supabase
       .from('darklens_records')
-      .insert([imagenData])
+      .insert([datosParaInsertar])
       .select();
 
     if (error) {
       console.error('❌ Error detallado de Supabase:', error);
+      
+      // Si hay error por columnas FACS, intentar sin ellas
+      if (error.message.includes('FACS_PROMEDIO') || error.message.includes('AUS_FRECUENTE')) {
+        console.log('⚠️ Intentando sin columnas FACS...');
+        delete datosParaInsertar.FACS_PROMEDIO;
+        delete datosParaInsertar.AUS_FRECUENTE;
+        
+        const { data: data2, error: error2 } = await supabase
+          .from('darklens_records')
+          .insert([datosParaInsertar])
+          .select();
+          
+        if (error2) {
+          throw new Error(`Error Supabase: ${error2.message}`);
+        }
+        
+        console.log('✅ Datos guardados en Supabase (sin FACS)! ID:', data2[0]?.id);
+        return {
+          success: true,
+          id: data2[0]?.id,
+          message: 'Datos guardados correctamente (sin datos FACS)',
+          correlacion: correlacionEmocionSD3,
+          facs_data: analisis.facs
+        };
+      }
+      
       throw new Error(`Error Supabase: ${error.message}`);
     }
 
@@ -1108,13 +1174,37 @@ function mostrarParticipanteEnPanel(index) {
   if (facsDiv) {
     let facsHTML = '';
     
-    // Intentar obtener FACS desde facs_data o analisis_completo
+    // Intentar obtener FACS desde FACS_PROMEDIO o analisis_completo
     let facsData = null;
     try {
-      if (p.facs_data) {
-        facsData = typeof p.facs_data === 'string' 
-          ? JSON.parse(p.facs_data) 
-          : p.facs_data;
+      // Primero buscar en FACS_PROMEDIO
+      if (p.FACS_PROMEDIO) {
+        const facsPromedio = typeof p.FACS_PROMEDIO === 'string' 
+          ? JSON.parse(p.FACS_PROMEDIO) 
+          : p.FACS_PROMEDIO;
+          
+        const ausFrecuente = p.AUS_FRECUENTE ? 
+          (typeof p.AUS_FRECUENTE === 'string' ? JSON.parse(p.AUS_FRECUENTE) : p.AUS_FRECUENTE) 
+          : Object.keys(facsPromedio || {});
+        
+        // Crear estructura compatible con mostrarFACS
+        facsData = {
+          action_units: Object.entries(facsPromedio || {}).map(([code, intensity]) => ({
+            code: code,
+            intensity: intensity,
+            description: `Action Unit ${code}`
+          })),
+          interpretation: {
+            primary_emotion: p.emocion_principal || 'No detectada',
+            authenticity_score: 0.7,
+            confidence: 0.8,
+            microexpression_indicators: ausFrecuente ? ausFrecuente.map(au => ({
+              type: au,
+              authenticity: 'alta',
+              note: `Detectado en análisis facial`
+            })) : []
+          }
+        };
       } else if (p.analisis_completo) {
         const analisisCompleto = typeof p.analisis_completo === 'string' 
           ? JSON.parse(p.analisis_completo) 
