@@ -1188,11 +1188,22 @@
         </div>
 
         <div class="camera-container">
-          <video id="video" autoplay playsinline muted class="hidden"></video>
-          <canvas id="canvas" class="hidden"></canvas>
-          <div id="camera-placeholder">
-            <p style="color:var(--text-secondary);">La cámara está desactivada.</p>
-          </div>
+    <video id="video" autoplay playsinline muted class="hidden"></video>
+    <canvas id="canvas" class="hidden"></canvas>
+
+    <div id="camera-placeholder">
+        <p style="color: var(--text-secondary);">La cámara está desactivada.</p>
+    </div>
+
+    <!-- ⭐ NUEVO: SUBIR FOTO DESDE EL CELULAR/PC -->
+    <input 
+        type="file" 
+        id="uploadInput" 
+        accept="image/*" 
+        style="margin-top: 15px;"
+    >
+</div>
+
 
           <div id="preview-container" class="hidden" style="text-align:center;">
             <h3>📸 Imagen capturada</h3>
