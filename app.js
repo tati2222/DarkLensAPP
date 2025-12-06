@@ -611,7 +611,7 @@ async function subirImagenSupabaseStorage(imageBlob, datosPersonales) {
     const fileName = `microexpresiones/${datosPersonales.nombre || 'anonimo'}_${Date.now()}.jpg`;
     
     const { data, error } = await supabase.storage
-      .from('images')
+      .from('DARKLENS-IMAGES')
       .upload(fileName, imageBlob, {
         cacheControl: '3600',
         upsert: false,
@@ -624,7 +624,7 @@ async function subirImagenSupabaseStorage(imageBlob, datosPersonales) {
     }
 
     const { data: { publicUrl } } = supabase.storage
-      .from('images')
+      .from('DARKLENS-IMAGES')
       .getPublicUrl(fileName);
 
     console.log('✅ Imagen subida a Storage:', publicUrl);
@@ -726,6 +726,15 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
       parseFloat(sd3.psych) || 0
     );
 
+    // 👉 Preparar el análisis completo incluyendo el informe
+    const analisisCompleto = {
+      ...analisis,
+      informe: analisis.informe || '',
+      emocion_detectada: emocionPrincipal,
+      imagen_url: imagenURL,
+      timestamp: new Date().toISOString()
+    };
+
     const imagenData = {
       nombre: persona.nombre || 'Anónimo',
       edad: parseInt(persona.edad) || 0,
@@ -746,8 +755,8 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
       historia_utilizada: historiaUtilizada,
       imagen_analizada: true,
       tipo_captura: 'imagen',
-      informe_completo: analisis.informe || '',
-      analisis_completo: JSON.stringify(analisis || {})
+      // 👉 CAMBIO: Guardamos TODO (incluyendo informe) en analisis_completo
+      analisis_completo: JSON.stringify(analisisCompleto)
     };
 
     console.log('📤 Datos a insertar en Supabase:', imagenData);
