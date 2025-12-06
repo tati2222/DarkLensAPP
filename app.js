@@ -374,7 +374,6 @@ async function reproducirHistoria() {
     }, 2000);
   });
 }
-
 /* ---------- CONFIGURAR BOTÓN LISTO PARA CAPTURAR ---------- */
 function configurarBotonListoCapturar() {
   const btnListoCapturar = document.getElementById('btn-listo-capturar');
@@ -387,7 +386,7 @@ function configurarBotonListoCapturar() {
   }
 }
 
-/* ---------- CAPTURA DE IMAGEN MEJORADA ---------- */
+/* ---------- CAPTURA DE IMAGEN MEJORADA + SUBIR DESDE GALERÍA ---------- */
 function configurarCapturaImagen() {
   // Elementos DOM
   const video = document.getElementById('video');
@@ -401,7 +400,11 @@ function configurarCapturaImagen() {
   const contadorContainer = document.getElementById('contador-container');
   const contadorElement = document.getElementById('contador');
   const infoImagen = document.getElementById('info-imagen');
-  
+
+  // 👉 NUEVO: input para subir imagen desde el dispositivo
+  const inputArchivo = document.getElementById('input-subir-archivo');
+  const btnElegirArchivo = document.getElementById('btn-elegir-archivo');
+
   let localStream = null;
   let ctx = null;
   let capturaEnCurso = false;
@@ -414,7 +417,10 @@ function configurarCapturaImagen() {
     canvas.style.display = 'none';
   }
 
-  // 1. Activar cámara
+  /* ============================================================
+     OPCIÓN 1 → USAR LA CÁMARA
+     ============================================================ */
+
   btnActivarCamara.addEventListener('click', async () => {
     try {
       localStream = await navigator.mediaDevices.getUserMedia({ 
@@ -428,17 +434,14 @@ function configurarCapturaImagen() {
       });
       
       stream = localStream;
-      
-      if (video) { 
-        video.srcObject = localStream; 
-        video.classList.remove('hidden'); 
-        video.play(); 
-      }
-      
+      video.srcObject = localStream;
+      video.classList.remove('hidden');
+      video.play();
+
       btnActivarCamara.classList.add('hidden');
       btnCapturarImagen.classList.remove('hidden');
       document.getElementById('camera-placeholder')?.classList?.add('hidden');
-      
+
       console.log('✅ Cámara activada');
       
     } catch (error) {
@@ -447,7 +450,8 @@ function configurarCapturaImagen() {
     }
   });
 
-  // 2. Capturar imagen con contador
+  /* ---------- Capturar imagen ---------- */
+
   btnCapturarImagen.addEventListener('click', () => {
     if (!localStream || !video.videoWidth) {
       alert('Primero activá la cámara');
@@ -458,6 +462,7 @@ function configurarCapturaImagen() {
     
     capturaEnCurso = true;
     tiempoRestante = 3;
+    
     contadorElement.textContent = tiempoRestante;
     contadorContainer.classList.remove('hidden');
     btnCapturarImagen.disabled = true;
@@ -474,126 +479,116 @@ function configurarCapturaImagen() {
     }, 1000);
   });
 
-  // Función para realizar la captura
   function realizarCaptura() {
-    if (!video || !ctx || !canvas) return;
-    
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     
     canvas.toBlob(blob => {
-      capturedBlob = blob;
-      imagenCapturada = blob;
-      
-      const imageURL = URL.createObjectURL(blob);
-      previewImage.src = imageURL;
-      
-      contadorContainer.classList.add('hidden');
-      previewContainer.classList.remove('hidden');
-      btnRecapturar.classList.remove('hidden');
-      btnSubirImagen.classList.remove('hidden');
-      btnCapturarImagen.classList.add('hidden');
-      video.classList.add('hidden');
-      
-      const sizeKB = (blob.size / 1024).toFixed(2);
-      const resolution = `${canvas.width} × ${canvas.height}`;
-      infoImagen.innerHTML = `
-        <p><strong>Resolución:</strong> ${resolution}</p>
-        <p><strong>Tamaño:</strong> ${sizeKB} KB</p>
-        <p><strong>Formato:</strong> JPEG (alta calidad)</p>
-        <p><strong>Lista para analizar</strong></p>
-      `;
-      
+      mostrarPreview(blob);
       stopStream();
-      
-      capturaEnCurso = false;
-      btnCapturarImagen.disabled = false;
-      btnCapturarImagen.textContent = '📸 Capturar Imagen';
-      
-      console.log('✅ Imagen capturada:', { resolution, size: `${sizeKB} KB` });
-      
     }, 'image/jpeg', 0.95);
   }
 
-  // 3. Función para detener la cámara
   function stopStream() {
     if (localStream) {
-      localStream.getTracks().forEach(track => {
-        track.stop();
-      });
+      localStream.getTracks().forEach(track => track.stop());
       localStream = null;
       stream = null;
     }
   }
 
-  // 4. Recapturar
-  btnRecapturar.addEventListener('click', async () => {
+  /* ============================================================
+     OPCIÓN 2 → SUBIR IMAGEN DESDE EL TELÉFONO / PC
+     ============================================================ */
+
+  // Botón que abre el selector de archivos
+  btnElegirArchivo.addEventListener('click', () => {
+    inputArchivo.click();
+  });
+
+  // Cuando la persona selecciona un archivo
+  inputArchivo.addEventListener('change', function() {
+    const archivo = this.files[0];
+    if (!archivo) return;
+
+    if (!archivo.type.startsWith("image/")) {
+      alert("Debe seleccionar una imagen válida");
+      return;
+    }
+
+    mostrarPreview(archivo);
+  });
+
+  /* ============================================================
+     FUNCIÓN GENERAL PARA MOSTRAR PREVIEW (CÁMARA o ARCHIVO)
+     ============================================================ */
+  function mostrarPreview(blob) {
+    capturedBlob = blob;
+    imagenCapturada = blob;
+
+    const imageURL = URL.createObjectURL(blob);
+    previewImage.src = imageURL;
+
+    // actualizar UI
+    contadorContainer.classList.add('hidden');
+    previewContainer.classList.remove('hidden');
+    btnRecapturar.classList.remove('hidden');
+    btnSubirImagen.classList.remove('hidden');
+    btnCapturarImagen.classList.add('hidden');
+    video.classList.add('hidden');
+
+    const sizeKB = (blob.size / 1024).toFixed(2);
+    infoImagen.innerHTML = `
+      <p><strong>Tamaño:</strong> ${sizeKB} KB</p>
+      <p><strong>Formato:</strong> ${blob.type}</p>
+      <p><strong>Lista para analizar</strong></p>
+    `;
+
+    console.log("📸 Imagen lista (cámara o archivo)");
+  }
+
+  /* ============================================================
+     RECAPTURAR
+     ============================================================ */
+  btnRecapturar.addEventListener('click', () => {
     capturedBlob = null;
     imagenCapturada = null;
-    
+
     previewContainer.classList.add('hidden');
     btnRecapturar.classList.add('hidden');
     btnSubirImagen.classList.add('hidden');
-    
+
     document.getElementById('camera-placeholder')?.classList?.remove('hidden');
+
     btnActivarCamara.classList.remove('hidden');
-    
-    if (intervaloContador) {
-      clearInterval(intervaloContador);
-      intervaloContador = null;
-    }
-    capturaEnCurso = false;
-    
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'user',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
-      });
-      
-      stream = localStream;
-      video.srcObject = localStream;
-      video.classList.remove('hidden');
-      btnCapturarImagen.classList.remove('hidden');
-      btnActivarCamara.classList.add('hidden');
-      
-    } catch (error) {
-      console.error('Error reactivando cámara:', error);
-      alert('No se pudo reactivar la cámara');
-    }
   });
 
-  // 5. Subir imagen y analizar
+  /* ============================================================
+     ENVIAR IMAGEN A LA API
+     ============================================================ */
   btnSubirImagen.addEventListener('click', async () => {
     if (!capturedBlob) {
-      alert('No hay imagen capturada');
+      alert('No hay imagen');
       return;
     }
 
     btnSubirImagen.disabled = true;
-    btnSubirImagen.textContent = '⏳ Subiendo y analizando...';
+    btnSubirImagen.textContent = '⏳ Procesando...';
 
     try {
       const base64Imagen = await blobToBase64(capturedBlob);
-      
       const persona = JSON.parse(sessionStorage.getItem('datos_personales') || '{}');
       const sd3 = JSON.parse(sessionStorage.getItem('resultadosSD3') || '{}');
 
-      console.log('📤 Enviando imagen para análisis...');
-
       const analisisImagen = await analizarImagenCompleta(base64Imagen, persona, sd3);
-      
+
       if (analisisImagen.success) {
         await subirImagenSupabaseStorage(capturedBlob, persona);
-        
         mostrarConfirmacionParticipante(analisisImagen);
       } else {
-        throw new Error(analisisImagen.error || 'Error en el análisis de la imagen');
+        throw new Error(analisisImagen.error || 'Error en el análisis');
       }
 
     } catch (err) {
