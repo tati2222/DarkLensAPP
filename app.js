@@ -401,8 +401,9 @@ function configurarCapturaImagen() {
   const contadorElement = document.getElementById('contador');
   const infoImagen = document.getElementById('info-imagen');
 
-  // 👉 INPUT para subir imagen desde el dispositivo (corregido el ID)
-  const inputArchivo = document.getElementById('uploadInput');
+  // 👉 NUEVO: input para subir imagen desde el dispositivo
+  const inputArchivo = document.getElementById('input-subir-archivo');
+  const btnElegirArchivo = document.getElementById('btn-elegir-archivo');
 
   let localStream = null;
   let ctx = null;
@@ -420,67 +421,63 @@ function configurarCapturaImagen() {
      OPCIÓN 1 → USAR LA CÁMARA
      ============================================================ */
 
-  if (btnActivarCamara) {
-    btnActivarCamara.addEventListener('click', async () => {
-      try {
-        localStream = await navigator.mediaDevices.getUserMedia({ 
-          video: { 
-            facingMode: 'user',
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            frameRate: { ideal: 30 }
-          },
-          audio: false
-        });
-        
-        stream = localStream;
-        video.srcObject = localStream;
-        video.classList.remove('hidden');
-        video.play();
+  btnActivarCamara.addEventListener('click', async () => {
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'user',
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 }
+        },
+        audio: false
+      });
+      
+      stream = localStream;
+      video.srcObject = localStream;
+      video.classList.remove('hidden');
+      video.play();
 
-        btnActivarCamara.classList.add('hidden');
-        btnCapturarImagen.classList.remove('hidden');
-        document.getElementById('camera-placeholder')?.classList?.add('hidden');
+      btnActivarCamara.classList.add('hidden');
+      btnCapturarImagen.classList.remove('hidden');
+      document.getElementById('camera-placeholder')?.classList?.add('hidden');
 
-        console.log('✅ Cámara activada');
-        
-      } catch (error) {
-        console.error('❌ Error accediendo a la cámara:', error);
-        alert('No se pudo activar la cámara. Asegúrate de dar permisos o usa la opción de subir imagen.');
-      }
-    });
-  }
+      console.log('✅ Cámara activada');
+      
+    } catch (error) {
+      console.error('❌ Error accediendo a la cámara:', error);
+      alert('No se pudo activar la cámara. Asegúrate de dar permisos.');
+    }
+  });
 
   /* ---------- Capturar imagen ---------- */
 
-  if (btnCapturarImagen) {
-    btnCapturarImagen.addEventListener('click', () => {
-      if (!localStream || !video.videoWidth) {
-        alert('Primero activá la cámara');
-        return;
-      }
+  btnCapturarImagen.addEventListener('click', () => {
+    if (!localStream || !video.videoWidth) {
+      alert('Primero activá la cámara');
+      return;
+    }
 
-      if (capturaEnCurso) return;
-      
-      capturaEnCurso = true;
-      tiempoRestante = 3;
-      
+    if (capturaEnCurso) return;
+    
+    capturaEnCurso = true;
+    tiempoRestante = 3;
+    
+    contadorElement.textContent = tiempoRestante;
+    contadorContainer.classList.remove('hidden');
+    btnCapturarImagen.disabled = true;
+    btnCapturarImagen.textContent = 'Preparando...';
+    
+    intervaloContador = setInterval(() => {
+      tiempoRestante--;
       contadorElement.textContent = tiempoRestante;
-      contadorContainer.classList.remove('hidden');
-      btnCapturarImagen.disabled = true;
-      btnCapturarImagen.textContent = 'Preparando...';
       
-      intervaloContador = setInterval(() => {
-        tiempoRestante--;
-        contadorElement.textContent = tiempoRestante;
-        
-        if (tiempoRestante <= 0) {
-          clearInterval(intervaloContador);
-          realizarCaptura();
-        }
-      }, 1000);
-    });
-  }
+      if (tiempoRestante <= 0) {
+        clearInterval(intervaloContador);
+        realizarCaptura();
+      }
+    }, 1000);
+  });
 
   function realizarCaptura() {
     canvas.width = video.videoWidth;
@@ -506,30 +503,32 @@ function configurarCapturaImagen() {
      OPCIÓN 2 → SUBIR IMAGEN DESDE EL TELÉFONO / PC
      ============================================================ */
 
+  // Botón que abre el selector de archivos
+  btnElegirArchivo.addEventListener('click', () => {
+    inputArchivo.click();
+  });
+
   // Cuando la persona selecciona un archivo
-  if (inputArchivo) {
-    inputArchivo.addEventListener('change', function() {
-      const archivo = this.files[0];
-      if (!archivo) return;
+  inputArchivo.addEventListener('change', function() {
+    const archivo = this.files[0];
+    if (!archivo) return;
 
-      if (!archivo.type.startsWith("image/")) {
-        alert("Debe seleccionar una imagen válida (JPG, PNG, etc.)");
-        return;
-      }
+    if (!archivo.type.startsWith("image/")) {
+      alert("Debe seleccionar una imagen válida");
+      return;
+    }
 
-      console.log("📁 Archivo seleccionado:", archivo.name, archivo.type);
-      mostrarPreview(archivo);
-    });
-  }
+    mostrarPreview(archivo);
+  });
 
   /* ============================================================
      FUNCIÓN GENERAL PARA MOSTRAR PREVIEW (CÁMARA o ARCHIVO)
      ============================================================ */
-  function mostrarPreview(blobOrFile) {
-    capturedBlob = blobOrFile;
-    imagenCapturada = blobOrFile;
+  function mostrarPreview(blob) {
+    capturedBlob = blob;
+    imagenCapturada = blob;
 
-    const imageURL = URL.createObjectURL(blobOrFile);
+    const imageURL = URL.createObjectURL(blob);
     previewImage.src = imageURL;
 
     // actualizar UI
@@ -540,10 +539,10 @@ function configurarCapturaImagen() {
     btnCapturarImagen.classList.add('hidden');
     video.classList.add('hidden');
 
-    const sizeKB = (blobOrFile.size / 1024).toFixed(2);
+    const sizeKB = (blob.size / 1024).toFixed(2);
     infoImagen.innerHTML = `
       <p><strong>Tamaño:</strong> ${sizeKB} KB</p>
-      <p><strong>Formato:</strong> ${blobOrFile.type}</p>
+      <p><strong>Formato:</strong> ${blob.type}</p>
       <p><strong>Lista para analizar</strong></p>
     `;
 
@@ -553,25 +552,18 @@ function configurarCapturaImagen() {
   /* ============================================================
      RECAPTURAR
      ============================================================ */
-  if (btnRecapturar) {
-    btnRecapturar.addEventListener('click', () => {
-      capturedBlob = null;
-      imagenCapturada = null;
+  btnRecapturar.addEventListener('click', () => {
+    capturedBlob = null;
+    imagenCapturada = null;
 
-      previewContainer.classList.add('hidden');
-      btnRecapturar.classList.add('hidden');
-      btnSubirImagen.classList.add('hidden');
+    previewContainer.classList.add('hidden');
+    btnRecapturar.classList.add('hidden');
+    btnSubirImagen.classList.add('hidden');
 
-      document.getElementById('camera-placeholder')?.classList?.remove('hidden');
+    document.getElementById('camera-placeholder')?.classList?.remove('hidden');
 
-      btnActivarCamara.classList.remove('hidden');
-      
-      // Limpiar el input de archivo
-      if (inputArchivo) {
-        inputArchivo.value = '';
-      }
-    });
-  }
+    btnActivarCamara.classList.remove('hidden');
+  });
 
   /* ============================================================
      ENVIAR IMAGEN A LA API
