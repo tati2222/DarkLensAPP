@@ -972,37 +972,263 @@ function mostrarParticipanteEnPanel(index) {
   /* INFO PERSONAL */
   document.getElementById("info-participante").innerHTML = `
     <div class="info-grid">
-      <div><strong>Nombre:</strong> ${p.nombre}</div>
-      <div><strong>Edad:</strong> ${p.edad}</div>
-      <div><strong>Género:</strong> ${p.genero}</div>
-      <div><strong>País:</strong> ${p.pais}</div>
-      <div><strong>Fecha:</strong> ${new Date(p.created_at).toLocaleString("es-AR")}</div>
-      <div><strong>Historia:</strong> ${p.historia_utilizada || "No disponible"}</div>
+      <div class="info-item"><strong>Nombre:</strong> ${p.nombre || 'No disponible'}</div>
+      <div class="info-item"><strong>Edad:</strong> ${p.edad || 'No disponible'}</div>
+      <div class="info-item"><strong>Género:</strong> ${p.genero || 'No disponible'}</div>
+      <div class="info-item"><strong>País:</strong> ${p.pais || 'No disponible'}</div>
+      <div class="info-item"><strong>Fecha:</strong> ${new Date(p.created_at).toLocaleString("es-AR")}</div>
+      <div class="info-item"><strong>Historia:</strong> ${p.historia_utilizada || "No disponible"}</div>
+      <div class="info-item"><strong>Tipo captura:</strong> ${p.tipo_captura || "imagen"}</div>
     </div>
   `;
 
   /* SD3 */
   document.getElementById("resultados-sd3-detalle").innerHTML = `
     <div class="scores-grid">
-      <div class="score-card">🎭 Maquiavelismo: <b>${p.mach}</b></div>
-      <div class="score-card">👑 Narcisismo: <b>${p.narc}</b></div>
-      <div class="score-card">⚡ Psicopatía: <b>${p.psych}</b></div>
+      <div class="score-card">
+        <div class="score-icon">🎭</div>
+        <div class="score-label">Maquiavelismo</div>
+        <div class="score-value">${p.mach || 0}</div>
+        <div class="score-level ${(p.mach || 0) < 2.5 ? 'nivel-bajo' : (p.mach || 0) < 3.5 ? 'nivel-medio' : 'nivel-alto'}">
+          ${(p.mach || 0) < 2.5 ? 'Bajo' : (p.mach || 0) < 3.5 ? 'Medio' : 'Alto'}
+        </div>
+      </div>
+      <div class="score-card">
+        <div class="score-icon">👑</div>
+        <div class="score-label">Narcisismo</div>
+        <div class="score-value">${p.narc || 0}</div>
+        <div class="score-level ${(p.narc || 0) < 2.5 ? 'nivel-bajo' : (p.narc || 0) < 3.5 ? 'nivel-medio' : 'nivel-alto'}">
+          ${(p.narc || 0) < 2.5 ? 'Bajo' : (p.narc || 0) < 3.5 ? 'Medio' : 'Alto'}
+        </div>
+      </div>
+      <div class="score-card">
+        <div class="score-icon">⚡</div>
+        <div class="score-label">Psicopatía</div>
+        <div class="score-value">${p.psych || 0}</div>
+        <div class="score-level ${(p.psych || 0) < 2.5 ? 'nivel-bajo' : (p.psych || 0) < 3.5 ? 'nivel-medio' : 'nivel-alto'}">
+          ${(p.psych || 0) < 2.5 ? 'Bajo' : (p.psych || 0) < 3.5 ? 'Medio' : 'Alto'}
+        </div>
+      </div>
     </div>
   `;
 
+  /* ============================================================
+     ⏱️ TIEMPOS DE RESPUESTA - MEJORADO
+     ============================================================ */
+  const tiemposDiv = document.getElementById("tiempos-detalle");
+  if (tiemposDiv) {
+    let tiemposHTML = '';
+    
+    // Intentar parsear tiempos_respuesta si existe
+    let tiemposData = null;
+    try {
+      if (p.tiempos_respuesta) {
+        tiemposData = typeof p.tiempos_respuesta === 'string' 
+          ? JSON.parse(p.tiempos_respuesta) 
+          : p.tiempos_respuesta;
+      }
+    } catch (e) {
+      console.warn('No se pudieron parsear tiempos_respuesta:', e);
+    }
+
+    if (tiemposData && Object.keys(tiemposData).length > 0) {
+      const tiemposArray = Object.values(tiemposData)
+        .filter(t => t && t.tiempo_ms)
+        .map(t => parseFloat(t.tiempo_ms));
+      
+      if (tiemposArray.length > 0) {
+        const promedio = tiemposArray.reduce((a,b) => a+b, 0) / tiemposArray.length;
+        const minimo = Math.min(...tiemposArray);
+        const maximo = Math.max(...tiemposArray);
+        
+        tiemposHTML = `
+          <div class="stats-mini">
+            <div class="stat-mini">
+              <div class="stat-mini-label">⏱️ Tiempo Total</div>
+              <div class="stat-mini-value">${p.tiempo_total_seg || '0'} seg</div>
+            </div>
+            <div class="stat-mini">
+              <div class="stat-mini-label">📊 Promedio por ítem</div>
+              <div class="stat-mini-value">${(promedio/1000).toFixed(2)} seg</div>
+            </div>
+            <div class="stat-mini">
+              <div class="stat-mini-label">⚡ Más rápido</div>
+              <div class="stat-mini-value">${(minimo/1000).toFixed(2)} seg</div>
+            </div>
+            <div class="stat-mini">
+              <div class="stat-mini-label">🐌 Más lento</div>
+              <div class="stat-mini-value">${(maximo/1000).toFixed(2)} seg</div>
+            </div>
+          </div>
+          <div style="margin-top: 20px; padding: 15px; background: rgba(127, 0, 255, 0.1); border-radius: 10px;">
+            <p style="color: var(--text-secondary); font-size: 0.95em; margin: 0;">
+              <strong>✅ Ítems respondidos:</strong> ${tiemposArray.length} de 27
+            </p>
+          </div>
+        `;
+      } else {
+        tiemposHTML = '<p style="color: var(--text-secondary);">Los datos de tiempo no están en el formato esperado.</p>';
+      }
+    } else {
+      tiemposHTML = `
+        <div style="text-align: center; padding: 30px; background: rgba(255, 206, 86, 0.1); border-radius: 15px; border: 2px dashed rgba(255, 206, 86, 0.3);">
+          <div style="font-size: 3em; margin-bottom: 15px;">⏱️</div>
+          <p style="color: var(--text-secondary); font-size: 1.1em; margin: 0;">
+            No hay datos de tiempos de respuesta registrados
+          </p>
+          <p style="color: var(--text-secondary); font-size: 0.85em; margin-top: 10px; opacity: 0.7;">
+            Los tiempos se registran automáticamente durante el test SD3
+          </p>
+        </div>
+      `;
+    }
+    
+    tiemposDiv.innerHTML = tiemposHTML;
+  }
+
+  /* ============================================================
+     🔍 UNIDADES FACS - MEJORADO
+     ============================================================ */
+  const facsDiv = document.getElementById("facs-detalle");
+  if (facsDiv) {
+    let facsHTML = '';
+    
+    // Intentar obtener FACS desde analisis_completo
+    let analisisCompleto = null;
+    try {
+      if (p.analisis_completo) {
+        analisisCompleto = typeof p.analisis_completo === 'string' 
+          ? JSON.parse(p.analisis_completo) 
+          : p.analisis_completo;
+      }
+    } catch (e) {
+      console.warn('No se pudo parsear analisis_completo:', e);
+    }
+
+    const facs = analisisCompleto?.facs || analisisCompleto?.unidades_facs || p.facs || null;
+
+    if (facs && Array.isArray(facs) && facs.length > 0) {
+      facsHTML = `
+        <div style="background: rgba(127, 0, 255, 0.05); padding: 25px; border-radius: 15px; border: 1px solid rgba(127, 0, 255, 0.2);">
+          <h5 style="color: var(--accent); margin-bottom: 20px; font-size: 1.2em;">
+            🔬 Unidades de Acción Facial (FACS) detectadas
+          </h5>
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px;">
+      `;
+      
+      facs.forEach(au => {
+        const nombre = au.name || au.nombre || `AU ${au.au || au.codigo || '?'}`;
+        const intensidad = au.intensity || au.intensidad || 0;
+        const porcentaje = (intensidad * 100).toFixed(0);
+        
+        facsHTML += `
+          <div style="background: rgba(0,0,0,0.4); padding: 18px; border-radius: 10px; border-left: 4px solid var(--accent); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="font-weight: bold; color: var(--accent); margin-bottom: 8px; font-size: 1.05em;">${nombre}</div>
+            <div style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
+              Intensidad: <strong style="color: var(--text-primary);">${porcentaje}%</strong>
+            </div>
+            <div class="bar-container" style="height: 10px; background: rgba(0,0,0,0.5); border-radius: 5px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);">
+              <div style="height: 100%; width: ${porcentaje}%; background: linear-gradient(90deg, var(--accent), var(--accent-hover)); transition: width 0.5s ease; border-radius: 5px;"></div>
+            </div>
+          </div>
+        `;
+      });
+      
+      facsHTML += `
+          </div>
+          <div style="margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px;">
+            <p style="color: var(--text-secondary); font-size: 0.9em; margin: 0;">
+              <strong>Total de unidades detectadas:</strong> ${facs.length}
+            </p>
+          </div>
+        </div>
+      `;
+    } else {
+      facsHTML = `
+        <div style="text-align: center; padding: 30px; background: rgba(255, 206, 86, 0.1); border-radius: 15px; border: 2px dashed rgba(255, 206, 86, 0.3);">
+          <div style="font-size: 3em; margin-bottom: 15px;">🔬</div>
+          <p style="color: var(--text-secondary); font-size: 1.1em; margin: 0;">
+            No se detectaron unidades FACS
+          </p>
+          <p style="color: var(--text-secondary); font-size: 0.85em; margin-top: 10px; opacity: 0.7;">
+            Las unidades FACS se extraen del análisis facial automático
+          </p>
+        </div>
+      `;
+    }
+    
+    facsDiv.innerHTML = facsHTML;
+  }
+
   /* MICROEXPRESIONES */
-  document.getElementById("microexpresiones-detalle").innerHTML = p.emocion_principal
-    ? `
-      <h4>Emoción detectada</h4>
-      <p style="font-size:2em; color:#7f00ff;">${p.emocion_principal}</p>
-    `
-    : `<p style="color:var(--text-secondary)">No se analizaron microexpresiones.</p>`;
+  const microDiv = document.getElementById("microexpresiones-detalle");
+  if (microDiv && p.emocion_principal) {
+    const emocion = p.emocion_principal;
+    const correlacion = p.correlacion_emocion_sd3 || 0;
+    const interpretacion = p.interpretacion_correlacion || '';
+    const perfilEsperado = p.perfil_esperado_emocion || {};
+    
+    microDiv.innerHTML = `
+      <div style="text-align: center; padding: 20px;">
+        <h4 style="color: var(--accent);">Emoción predominante detectada</h4>
+        <p style="font-size: 2em; font-weight: bold; color: #7f00ff;">
+          ${emocion}
+        </p>
+        
+        <div style="background: rgba(127, 0, 255, 0.1); padding: 20px; border-radius: 10px; margin: 20px 0;">
+          <h5 style="color: var(--accent);">📊 Correlación entre Emoción y Perfil SD3</h5>
+          <div style="font-size: 3em; font-weight: bold; color: ${correlacion > 0.7 ? '#4CAF50' : correlacion > 0.3 ? '#FFC107' : '#FF5252'};">
+            r = ${parseFloat(correlacion).toFixed(2)}
+          </div>
+          <p style="color: var(--text-secondary); margin-top: 10px;">${interpretacion}</p>
+        </div>
+        
+        ${p.tipo_captura ? `<p><strong>Tipo de captura:</strong> ${p.tipo_captura}</p>` : ''}
+        
+        <div style="margin-top: 20px; padding: 15px; background: rgba(30, 30, 50, 0.7); border-radius: 10px;">
+          <h5 style="color: var(--accent);">Perfil Esperado para la Emoción "${emocion}"</h5>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px;">
+            <div style="text-align: center;">
+              <div style="font-size: 0.9em; color: var(--text-secondary);">Maquiavelismo</div>
+              <div style="font-size: 1.5em; font-weight: bold; color: #667eea;">${perfilEsperado.mach || 0}</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 0.9em; color: var(--text-secondary);">Narcisismo</div>
+              <div style="font-size: 1.5em; font-weight: bold; color: #764ba2;">${perfilEsperado.narc || 0}</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 0.9em; color: var(--text-secondary);">Psicopatía</div>
+              <div style="font-size: 1.5em; font-weight: bold; color: #ff6384;">${perfilEsperado.psych || 0}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (microDiv) {
+    microDiv.innerHTML = `
+      <div style="text-align: center; padding: 30px; background: rgba(255, 206, 86, 0.1); border-radius: 15px;">
+        <div style="font-size: 3em; margin-bottom: 15px;">😶</div>
+        <p style="color: var(--text-secondary);">No se analizaron microexpresiones</p>
+      </div>
+    `;
+  }
 
   /* IMAGEN */
-  document.getElementById("imagen-participante").innerHTML =
-    p.imagen_url
-      ? `<img src="${p.imagen_url}" style="max-width:300px; border-radius:10px;">`
-      : `<p style="color:var(--text-secondary);">No hay imagen disponible.</p>`;
+  const imagenDiv = document.getElementById("imagen-participante");
+  if (imagenDiv) {
+    imagenDiv.innerHTML = p.imagen_url
+      ? `
+        <div style="text-align: center;">
+          <img src="${p.imagen_url}" style="max-width:400px; border-radius:10px; border: 2px solid var(--accent); box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+        </div>
+      `
+      : `
+        <div style="text-align: center; padding: 30px; background: rgba(255, 206, 86, 0.1); border-radius: 15px;">
+          <div style="font-size: 3em; margin-bottom: 15px;">📷</div>
+          <p style="color: var(--text-secondary);">No hay imagen disponible</p>
+        </div>
+      `;
+  }
 
   // Llamar a análisis individual
   analizarParticipanteIndividual(p);
@@ -1037,7 +1263,7 @@ function analizarParticipanteIndividual(p) {
     <h4>🧠 Integración de Resultados</h4>
     <p><strong>Rasgo predominante:</strong> ${mayorRasgo.toUpperCase()} (${mayorValor})</p>
     <p><strong>Emoción esperada según SD3:</strong> ${emocionEsperada}</p>
-    <p><strong>Emoción detectada por microexpresión:</strong> ${p.emocion_principal}</p>
+    <p><strong>Emoción detectada por microexpresión:</strong> ${p.emocion_principal || 'No detectada'}</p>
   `;
 
 
@@ -1068,19 +1294,11 @@ function analizarParticipanteIndividual(p) {
      4️⃣ GRAFICO DE TIEMPOS (individual)
      ============================ */
 
-  if (p.tiempos_respuesta)
+  if (p.tiempos_respuesta) {
     renderGraficoTiemposIndividual(p.tiempos_respuesta);
-  else
-    document.getElementById("tiempos-detalle").innerHTML = "<p>No hay tiempos registrados.</p>";
+  }
 
 
-  /* ============================
-     5️⃣ HISTORIA UTILIZADA
-     ============================ */
-  document.getElementById("info-participante").innerHTML += `
-    <p><strong>Historia utilizada:</strong> ${p.historia_utilizada || "No disponible"}</p>
-  `;
-  
   /* ============================
      6️⃣ GRAFICO DE EMOCIONES (individual)
      ============================ */
@@ -1150,12 +1368,18 @@ function renderGraficoSD3Individual(p) {
       datasets: [{
         label: "Puntajes SD3",
         data: [p.mach, p.narc, p.psych],
-        backgroundColor: ["#7f00ff55", "#ff00aa55", "#00ffff55"]
+        backgroundColor: ["#667eea", "#764ba2", "#ff6384"]
       }]
     },
     options: {
       responsive: true,
-      plugins: { legend: { display: false } }
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 5
+        }
+      }
     }
   });
 }
@@ -1165,19 +1389,32 @@ function renderGraficoSD3Individual(p) {
    GRAFICO INDIVIDUAL — TIEMPOS
    ======================================================== */
 
-function renderGraficoTiemposIndividual(tiempos) {
+function renderGraficoTiemposIndividual(tiemposRaw) {
   const ctx = document.getElementById("grafico-tiempos");
+  if (!ctx) return;
   
   // Limpiar canvas si ya existe
-  if (ctx) {
-    const existingChart = Chart.getChart(ctx);
-    if (existingChart) {
-      existingChart.destroy();
+  const existingChart = Chart.getChart(ctx);
+  if (existingChart) {
+    existingChart.destroy();
+  }
+
+  // Parsear si es necesario
+  let tiempos = tiemposRaw;
+  if (typeof tiemposRaw === 'string') {
+    try {
+      tiempos = JSON.parse(tiemposRaw);
+    } catch (e) {
+      console.error('Error parseando tiempos:', e);
+      return;
     }
   }
 
   const labels = Object.keys(tiempos);
-  const values = Object.values(tiempos).map(v => v / 1000);
+  const values = Object.values(tiempos).map(v => {
+    const tiempo_ms = v?.tiempo_ms || v;
+    return parseFloat(tiempo_ms) / 1000;
+  });
 
   new Chart(ctx, {
     type: "line",
@@ -1186,19 +1423,32 @@ function renderGraficoTiemposIndividual(tiempos) {
       datasets: [{
         label: "Tiempo de respuesta (segundos)",
         data: values,
+        borderColor: "#7f00ff",
+        backgroundColor: "rgba(127, 0, 255, 0.1)",
         borderWidth: 2,
-        tension: 0.3
+        tension: 0.3,
+        fill: true
       }]
     },
     options: {
       responsive: true,
-      plugins: { legend: { display: true } }
+      plugins: { 
+        legend: { display: true },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return `Tiempo: ${context.parsed.y.toFixed(2)}s`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
     }
   });
-
-  document.getElementById("tiempos-detalle").innerHTML = `
-    <p><strong>Tiempo promedio:</strong> ${(values.reduce((a,b)=>a+b,0) / values.length).toFixed(2)} s</p>
-  `;
 }
 
 /* ========================================================
@@ -1207,18 +1457,16 @@ function renderGraficoTiemposIndividual(tiempos) {
 
 function renderGraficoEmocionesIndividual(p) {
   const ctx = document.getElementById("grafico-emociones");
+  if (!ctx) return;
   
   // Limpiar canvas si ya existe
-  if (ctx) {
-    const existingChart = Chart.getChart(ctx);
-    if (existingChart) {
-      existingChart.destroy();
-    }
+  const existingChart = Chart.getChart(ctx);
+  if (existingChart) {
+    existingChart.destroy();
   }
 
   if (!p.emociones_detectadas || p.emociones_detectadas.length === 0) {
-    document.getElementById("microexpresiones-detalle").innerHTML =
-      "<p>No se registraron microexpresiones.</p>";
+    // No hacer nada, ya se muestra mensaje en microexpresiones-detalle
     return;
   }
 
@@ -1237,8 +1485,8 @@ function renderGraficoEmocionesIndividual(p) {
       datasets: [{
         data: values,
         backgroundColor: [
-          "#ff638455", "#36a2eb55", "#ffce5655",
-          "#4bc0c055", "#9966ff55", "#ff9f4055", "#c9cbcf55"
+          "#ff6384", "#36a2eb", "#ffce56",
+          "#4bc0c0", "#9966ff", "#ff9f40", "#c9cbcf"
         ]
       }]
     },
@@ -1249,10 +1497,6 @@ function renderGraficoEmocionesIndividual(p) {
       }
     }
   });
-
-  document.getElementById("microexpresiones-detalle").innerHTML = `
-    <p><strong>Emoción predominante:</strong> ${p.emocion_principal}</p>
-  `;
 }
 
 /* ========================================================
@@ -1277,7 +1521,7 @@ function generarInterpretacionClinica(p) {
     "disgust": "rechazo, desacuerdo o aversión."
   }[p.emocion_principal?.toLowerCase()] || "un estado emocional complejo.";
 
-  texto.push(`Esta emoción suele asociarse a <strong>${relacion}</strong>.`);
+  texto.push(`Esta emoción suele asociarse a <strong>${relacion}</strong>`);
 
   return texto.join("<br>");
 }
@@ -1326,7 +1570,6 @@ function promedio(arr) {
   if (nums.length === 0) return 0;
   return nums.reduce((a,b)=>a+b,0) / nums.length;
 }
-
 /* ========================================================
    📊 ANÁLISIS ESTADÍSTICO AVANZADO COMPLETO
    ======================================================== */
