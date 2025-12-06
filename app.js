@@ -1328,100 +1328,693 @@ function promedio(arr) {
 }
 
 /* ========================================================
-   ANÁLISIS AVANZADO (SOLO GRUPAL)
+   📊 ANÁLISIS ESTADÍSTICO AVANZADO COMPLETO
    ======================================================== */
+
 async function cargarAnalisisAvanzado() {
-  participanteSeleccionado = null; // ⬅️ IMPORTANTE
+  participanteSeleccionado = null;
 
   const { data: participantes, error } = await supabase
     .from("darklens_records")
     .select("*");
 
-  if (error || !participantes) {
-    mostrarMensajeAnalisis("No se pudieron cargar los datos.");
+  if (error || !participantes || participantes.length === 0) {
+    mostrarMensajeAnalisis("No se pudieron cargar los datos o no hay participantes registrados.");
     return;
   }
 
-  // Limpieza y procesamiento
-  const sd3 = participantes.map(p => ({
-    mach: p.mach,
-    narc: p.narc,
-    psych: p.psych,
-    emocion: p.emocion_principal
-  }));
-
-  /* ------------------ CORRELACIONES ------------------ */
-  mostrarResultadosCorrelaciones(sd3);
-
-  /* ------------------ REGRESIÓN ------------------ */
-  mostrarRegresion(sd3);
-
-  /* ------------------ TIEMPOS ------------------ */
-  mostrarTiempos(participantes);
-}
-
-function mostrarMensajeAnalisis(msg) {
-  ["resultados-correlaciones", "resultados-tiempos", "resultados-regresion"]
+  // Mostrar loading
+  ["resultados-correlaciones", "resultados-tiempos", "resultados-regresion", "resumen-estadistico"]
     .forEach(id => {
       const div = document.getElementById(id);
-      if (div) div.innerHTML = `<p>${msg}</p>`;
+      if (div) div.innerHTML = `
+        <div class="analisis-loading">
+          <p>📊 Calculando análisis estadístico...</p>
+        </div>
+      `;
     });
+
+  setTimeout(() => {
+    /* ------------------ CORRELACIONES REALES ------------------ */
+    mostrarResultadosCorrelacionesCompletas(participantes);
+
+    /* ------------------ ANÁLISIS DE TIEMPOS REAL ------------------ */
+    mostrarTiemposCompletos(participantes);
+
+    /* ------------------ REGRESIÓN REAL ------------------ */
+    mostrarRegresionCompleta(participantes);
+
+    /* ------------------ RESUMEN ESTADÍSTICO ------------------ */
+    mostrarResumenEstadistico(participantes);
+  }, 500);
 }
 
 /* ========================================================
-   Helper: Mostrar correlaciones grupales
+   FUNCIÓN 1: CORRELACIONES COMPLETAS
    ======================================================== */
-function mostrarResultadosCorrelaciones(sd3) {
+function mostrarResultadosCorrelacionesCompletas(participantes) {
   const div = document.getElementById("resultados-correlaciones");
   if (!div) return;
-  
-  div.innerHTML = `
-    <h4>Correlaciones Globales</h4>
-    <p>Relación entre emoción detectada y rasgos SD3 promediados.</p>
-    <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 10px; margin-top: 15px;">
-      <p>Total de participantes analizados: ${sd3.length}</p>
-      <p>Análisis de correlación disponible próximamente.</p>
+
+  // Filtrar participantes con datos completos
+  const datosCompletos = participantes.filter(p => 
+    p.mach && p.narc && p.psych && p.emocion_principal
+  );
+
+  if (datosCompletos.length < 3) {
+    div.innerHTML = `
+      <h4>🔗 Correlaciones Globales</h4>
+      <p>Se necesitan al menos 3 participantes con datos completos para calcular correlaciones.</p>
+      <div style="background: rgba(255,99,132,0.1); padding: 15px; border-radius: 10px; margin-top: 15px;">
+        <p>Participantes con datos: ${datosCompletos.length}</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Preparar datos para correlaciones
+  const emocionesCodificadas = {
+    'happiness': 1, 'felicidad': 1, 'alegría': 1,
+    'anger': 2, 'enojo': 2, 'ira': 2,
+    'fear': 3, 'miedo': 3,
+    'sadness': 4, 'tristeza': 4,
+    'surprise': 5, 'sorpresa': 5,
+    'disgust': 6, 'asco': 6,
+    'neutral': 7
+  };
+
+  const datosCorrelacion = datosCompletos.map(p => ({
+    emocion: emocionesCodificadas[p.emocion_principal?.toLowerCase()] || 0,
+    mach: parseFloat(p.mach) || 0,
+    narc: parseFloat(p.narc) || 0,
+    psych: parseFloat(p.psych) || 0
+  })).filter(d => d.emocion > 0);
+
+  // Calcular correlaciones
+  const corrMach = calcularCorrelacionPearson(
+    datosCorrelacion.map(d => d.mach),
+    datosCorrelacion.map(d => d.emocion)
+  );
+
+  const corrNarc = calcularCorrelacionPearson(
+    datosCorrelacion.map(d => d.narc),
+    datosCorrelacion.map(d => d.emocion)
+  );
+
+  const corrPsych = calcularCorrelacionPearson(
+    datosCorrelacion.map(d => d.psych),
+    datosCorrelacion.map(d => d.emocion)
+  );
+
+  // Crear HTML de resultados
+  let html = `
+    <h4>🔗 Correlaciones entre Rasgos SD3 y Emoción Detectada</h4>
+    <p>Análisis de Pearson entre puntajes SD3 y emociones faciales detectadas.</p>
+    
+    <div class="correlation-grid">
+      <div class="correlation-card">
+        <div class="correlation-header">
+          <span><strong>Maquiavelismo vs Emoción</strong></span>
+          <span class="correlation-value">${corrMach.toFixed(3)}</span>
+        </div>
+        <div class="correlation-strength ${getStrengthClass(corrMach)}">
+          ${getStrengthLabel(corrMach)}
+        </div>
+        <p style="margin-top: 10px; font-size: 0.9em;">
+          ${interpretarCorrelacionSD3(corrMach, 'maquiavelismo')}
+        </p>
+      </div>
+
+      <div class="correlation-card">
+        <div class="correlation-header">
+          <span><strong>Narcisismo vs Emoción</strong></span>
+          <span class="correlation-value">${corrNarc.toFixed(3)}</span>
+        </div>
+        <div class="correlation-strength ${getStrengthClass(corrNarc)}">
+          ${getStrengthLabel(corrNarc)}
+        </div>
+        <p style="margin-top: 10px; font-size: 0.9em;">
+          ${interpretarCorrelacionSD3(corrNarc, 'narcisismo')}
+        </p>
+      </div>
+
+      <div class="correlation-card">
+        <div class="correlation-header">
+          <span><strong>Psicopatía vs Emoción</strong></span>
+          <span class="correlation-value">${corrPsych.toFixed(3)}</span>
+        </div>
+        <div class="correlation-strength ${getStrengthClass(corrPsych)}">
+          ${getStrengthLabel(corrPsych)}
+        </div>
+        <p style="margin-top: 10px; font-size: 0.9em;">
+          ${interpretarCorrelacionSD3(corrPsych, 'psicopatía')}
+        </p>
+      </div>
+    </div>
+
+    <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; margin-top: 20px;">
+      <p><strong>📊 Información del análisis:</strong></p>
+      <ul style="margin-left: 20px; margin-top: 10px; font-size: 0.9em;">
+        <li>Participantes incluidos: ${datosCorrelacion.length}</li>
+        <li>Coeficiente de Pearson (r): -1 a +1</li>
+        <li>Significado: r > 0.3 (moderado), r > 0.7 (alto)</li>
+        <li>Correlación positiva: Mayor puntaje SD3 asociado a emociones más intensas</li>
+        <li>Correlación negativa: Mayor puntaje SD3 asociado a emociones menos intensas</li>
+      </ul>
     </div>
   `;
+
+  div.innerHTML = html;
 }
 
 /* ========================================================
-   Helper: Mostrar regresión global
+   FUNCIÓN 2: ANÁLISIS DE TIEMPOS COMPLETO
    ======================================================== */
-function mostrarRegresion(sd3) {
-  const div = document.getElementById("resultados-regresion");
-  if (!div) return;
-  
-  div.innerHTML = `
-    <h4>Regresión Lineal</h4>
-    <p>Análisis de regresión entre características faciales y rasgos SD3.</p>
-    <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 10px; margin-top: 15px;">
-      <p>El gráfico se generará aquí (pendiente).</p>
-    </div>
-  `;
-}
-
-/* ========================================================
-   Helper: Tiempos de respuesta globales
-   ======================================================== */
-function mostrarTiempos(participantes) {
+function mostrarTiemposCompletos(participantes) {
   const div = document.getElementById("resultados-tiempos");
   if (!div) return;
+
+  const participantesConTiempos = participantes.filter(p => p.tiempo_total_seg);
   
-  const tiemposPromedio = participantes.map(p => p.tiempo_total_seg || 0).filter(t => t > 0);
-  const promedio = tiemposPromedio.length > 0 ? 
-    (tiemposPromedio.reduce((a,b) => a + b, 0) / tiemposPromedio.length).toFixed(2) : 0;
-  
-  div.innerHTML = `
-    <h4>Tiempos de respuesta</h4>
-    <p>Tiempo promedio de respuesta: <strong>${promedio} segundos</strong></p>
-    <p>Total participantes con tiempos registrados: ${tiemposPromedio.length}</p>
-    <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 10px; margin-top: 15px;">
-      <p>Próximamente se agregará análisis detallado por ítem.</p>
+  if (participantesConTiempos.length === 0) {
+    div.innerHTML = `
+      <h4>⏱️ Análisis de Tiempos de Respuesta</h4>
+      <p>No hay datos de tiempo registrados.</p>
+    `;
+    return;
+  }
+
+  // Calcular estadísticas
+  const tiempos = participantesConTiempos.map(p => parseFloat(p.tiempo_total_seg) || 0);
+  const promedio = (tiempos.reduce((a, b) => a + b, 0) / tiempos.length).toFixed(2);
+  const maximo = Math.max(...tiempos).toFixed(2);
+  const minimo = Math.min(...tiempos).toFixed(2);
+  const desviacion = calcularDesviacionEstandar(tiempos).toFixed(2);
+
+  // Clasificar por tiempo
+  const rapidos = participantesConTiempos.filter(p => p.tiempo_total_seg < 30).length;
+  const normales = participantesConTiempos.filter(p => p.tiempo_total_seg >= 30 && p.tiempo_total_seg <= 60).length;
+  const lentos = participantesConTiempos.filter(p => p.tiempo_total_seg > 60).length;
+
+  // Análisis por rasgo predominante
+  const tiemposPorRasgo = {
+    maquiavelismo: [],
+    narcisismo: [],
+    psicopatía: []
+  };
+
+  participantesConTiempos.forEach(p => {
+    const rasgo = obtenerRasgoPredominante(p);
+    tiemposPorRasgo[rasgo].push(p.tiempo_total_seg);
+  });
+
+  let html = `
+    <h4>⏱️ Análisis de Tiempos de Respuesta SD3</h4>
+    <p>Distribución de tiempos totales de respuesta al cuestionario SD3.</p>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px;">
+      <div class="stat-mini">
+        <div class="stat-mini-label">Tiempo Promedio</div>
+        <div class="stat-mini-value">${promedio} s</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-label">Tiempo Más Rápido</div>
+        <div class="stat-mini-value">${minimo} s</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-label">Tiempo Más Lento</div>
+        <div class="stat-mini-value">${maximo} s</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-label">Desviación Estándar</div>
+        <div class="stat-mini-value">${desviacion} s</div>
+      </div>
+    </div>
+
+    <div style="margin-top: 25px;">
+      <h5>📊 Distribución por Velocidad</h5>
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <div style="flex: 1; background: rgba(76, 175, 80, 0.2); padding: 15px; border-radius: 10px; border-left: 4px solid #4CAF50;">
+          <strong>Rápidos (&lt;30s)</strong><br>
+          <span style="font-size: 1.5em;">${rapidos}</span> participantes
+        </div>
+        <div style="flex: 1; background: rgba(255, 193, 7, 0.2); padding: 15px; border-radius: 10px; border-left: 4px solid #FFC107;">
+          <strong>Normales (30-60s)</strong><br>
+          <span style="font-size: 1.5em;">${normales}</span> participantes
+        </div>
+        <div style="flex: 1; background: rgba(244, 67, 54, 0.2); padding: 15px; border-radius: 10px; border-left: 4px solid #F44336;">
+          <strong>Lentos (&gt;60s)</strong><br>
+          <span style="font-size: 1.5em;">${lentos}</span> participantes
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 25px;">
+      <h5>🎯 Tiempos por Rasgo Predominante</h5>
+      <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; margin-top: 10px;">
+  `;
+
+  // Agregar tiempos por rasgo
+  Object.keys(tiemposPorRasgo).forEach(rasgo => {
+    const tiempos = tiemposPorRasgo[rasgo];
+    if (tiempos.length > 0) {
+      const promRasgo = (tiempos.reduce((a, b) => a + b, 0) / tiempos.length).toFixed(2);
+      html += `
+        <div style="margin-bottom: 10px;">
+          <strong>${rasgo.charAt(0).toUpperCase() + rasgo.slice(1)}:</strong> 
+          ${promRasgo} segundos (n=${tiempos.length})
+        </div>
+      `;
+    }
+  });
+
+  html += `
+      </div>
+    </div>
+
+    <div style="margin-top: 20px; font-size: 0.9em; color: var(--text-secondary);">
+      <p><strong>Interpretación:</strong> Tiempos más cortos pueden indicar respuestas automáticas o poca reflexión, mientras que tiempos más largos pueden sugerir mayor introspección o indecisión.</p>
     </div>
   `;
+
+  div.innerHTML = html;
 }
 
+/* ========================================================
+   FUNCIÓN 3: REGRESIÓN COMPLETA
+   ======================================================== */
+function mostrarRegresionCompleta(participantes) {
+  const div = document.getElementById("resultados-regresion");
+  if (!div) return;
+
+  // Filtrar datos para regresión
+  const datosRegresion = participantes.filter(p => 
+    p.mach && p.narc && p.psych && p.emocion_principal
+  ).map(p => ({
+    x: (parseFloat(p.mach) + parseFloat(p.narc) + parseFloat(p.psych)) / 3, // Promedio SD3
+    y: emotionToCode(p.emocion_principal) || 0,
+    emocion: p.emocion_principal,
+    mach: parseFloat(p.mach),
+    narc: parseFloat(p.narc),
+    psych: parseFloat(p.psych)
+  })).filter(d => d.y > 0);
+
+  if (datosRegresion.length < 4) {
+    div.innerHTML = `
+      <h4>📊 Regresión Lineal: SD3 vs Emoción</h4>
+      <p>Se necesitan al menos 4 puntos de datos para calcular regresión lineal.</p>
+      <div style="background: rgba(255,99,132,0.1); padding: 15px; border-radius: 10px; margin-top: 15px;">
+        <p>Datos disponibles: ${datosRegresion.length}</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Calcular regresión lineal simple
+  const { slope, intercept, r2 } = calcularRegresionLineal(
+    datosRegresion.map(d => d.x),
+    datosRegresion.map(d => d.y)
+  );
+
+  // Crear gráfico de dispersión
+  const canvasId = 'grafico-regresion';
+  let html = `
+    <h4>📊 Regresión Lineal: Puntaje SD3 vs Intensidad Emocional</h4>
+    <p>Relación entre el puntaje total SD3 y la intensidad emocional detectada.</p>
+    
+    <div class="regression-equation">
+      <strong>Ecuación de regresión:</strong><br>
+      <code>Emoción = ${slope.toFixed(3)} × SD3 + ${intercept.toFixed(3)}</code><br>
+      <small>R² = ${r2.toFixed(3)} (${(r2 * 100).toFixed(1)}% de varianza explicada)</small>
+    </div>
+
+    <div class="plot-container">
+      <canvas id="${canvasId}" width="600" height="400"></canvas>
+    </div>
+
+    <div style="margin-top: 20px;">
+      <h5>📈 Interpretación del modelo:</h5>
+      <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; margin-top: 10px;">
+        <p><strong>Pendiente (${slope.toFixed(3)}):</strong> ${
+          slope > 0.1 ? 'Positiva - Mayor SD3 asociado a emociones más intensas' :
+          slope < -0.1 ? 'Negativa - Mayor SD3 asociado a emociones menos intensas' :
+          'Casi nula - Poca relación entre SD3 y emoción'
+        }</p>
+        <p><strong>Coeficiente R² (${r2.toFixed(3)}):</strong> ${
+          r2 > 0.5 ? 'Fuerte capacidad predictiva' :
+          r2 > 0.3 ? 'Capacidad predictiva moderada' :
+          r2 > 0.1 ? 'Capacidad predictiva débil' :
+          'Muy baja capacidad predictiva'
+        }</p>
+        <p><strong>Puntos de datos:</strong> ${datosRegresion.length} participantes</p>
+      </div>
+    </div>
+  `;
+
+  div.innerHTML = html;
+
+  // Crear gráfico después de que se inserte el HTML
+  setTimeout(() => {
+    crearGraficoDispersion(canvasId, datosRegresion, slope, intercept);
+  }, 100);
+}
+
+/* ========================================================
+   FUNCIÓN 4: RESUMEN ESTADÍSTICO
+   ======================================================== */
+function mostrarResumenEstadistico(participantes) {
+  const div = document.getElementById("resumen-estadistico");
+  if (!div) return;
+
+  // Calcular estadísticas generales
+  const total = participantes.length;
+  const conImagen = participantes.filter(p => p.imagen_url).length;
+  const conEmocion = participantes.filter(p => p.emocion_principal).length;
+  
+  // Promedios SD3
+  const machProm = promedio(participantes.map(p => parseFloat(p.mach) || 0));
+  const narcProm = promedio(participantes.map(p => parseFloat(p.narc) || 0));
+  const psychProm = promedio(participantes.map(p => parseFloat(p.psych) || 0));
+
+  // Distribución de emociones
+  const emociones = {};
+  participantes.forEach(p => {
+    if (p.emocion_principal) {
+      const emocion = p.emocion_principal.toLowerCase();
+      emociones[emocion] = (emociones[emocion] || 0) + 1;
+    }
+  });
+
+  // Ordenar emociones por frecuencia
+  const emocionesOrdenadas = Object.entries(emociones)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  let html = `
+    <h4>📋 Resumen Estadístico General</h4>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">
+      <div class="info-item">
+        <strong>📊 Participantes Totales</strong>
+        <div style="font-size: 2em; color: var(--accent); margin-top: 10px;">${total}</div>
+      </div>
+      
+      <div class="info-item">
+        <strong>📷 Con Imagen Analizada</strong>
+        <div style="font-size: 2em; color: var(--accent); margin-top: 10px;">${conImagen}</div>
+        <small>${((conImagen / total) * 100).toFixed(0)}% del total</small>
+      </div>
+      
+      <div class="info-item">
+        <strong>😶 Con Emoción Detectada</strong>
+        <div style="font-size: 2em; color: var(--accent); margin-top: 10px;">${conEmocion}</div>
+        <small>${((conEmocion / total) * 100).toFixed(0)}% del total</small>
+      </div>
+    </div>
+
+    <div style="margin-top: 30px;">
+      <h5>🎭 Promedios SD3</h5>
+      <div class="scores-grid">
+        <div class="score-card">
+          <div class="score-label">Maquiavelismo</div>
+          <div class="score-value">${machProm.toFixed(2)}</div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: ${(machProm / 5) * 100}%"></div>
+          </div>
+          <div class="score-level ${getNivelSD3(machProm)}">${getEtiquetaSD3(machProm)}</div>
+        </div>
+        
+        <div class="score-card">
+          <div class="score-label">Narcisismo</div>
+          <div class="score-value">${narcProm.toFixed(2)}</div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: ${(narcProm / 5) * 100}%"></div>
+          </div>
+          <div class="score-level ${getNivelSD3(narcProm)}">${getEtiquetaSD3(narcProm)}</div>
+        </div>
+        
+        <div class="score-card">
+          <div class="score-label">Psicopatía</div>
+          <div class="score-value">${psychProm.toFixed(2)}</div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: ${(psychProm / 5) * 100}%"></div>
+          </div>
+          <div class="score-level ${getNivelSD3(psychProm)}">${getEtiquetaSD3(psychProm)}</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 30px;">
+      <h5>📈 Emociones Más Frecuentes</h5>
+      <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 10px; margin-top: 15px;">
+  `;
+
+  if (emocionesOrdenadas.length > 0) {
+    emocionesOrdenadas.forEach(([emocion, count], index) => {
+      const porcentaje = ((count / total) * 100).toFixed(1);
+      html += `
+        <div style="margin-bottom: 15px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+            <span><strong>${index + 1}.</strong> ${emocion.charAt(0).toUpperCase() + emocion.slice(1)}</span>
+            <span>${count} (${porcentaje}%)</span>
+          </div>
+          <div class="bar-container">
+            <div class="bar-fill" style="width: ${porcentaje}%">${porcentaje}%</div>
+          </div>
+        </div>
+      `;
+    });
+  } else {
+    html += `<p style="text-align: center; color: var(--text-secondary);">No hay datos de emociones disponibles.</p>`;
+  }
+
+  html += `
+      </div>
+    </div>
+
+    <div style="margin-top: 30px; padding: 15px; background: rgba(127, 0, 255, 0.1); border-radius: 10px; border-left: 4px solid var(--accent);">
+      <h5>💡 Conclusiones del Análisis</h5>
+      <p style="margin-top: 10px;">
+        ${generarConclusionAnalisis(participantes, machProm, narcProm, psychProm)}
+      </p>
+    </div>
+  `;
+
+  div.innerHTML = html;
+}
+
+/* ========================================================
+   FUNCIONES AUXILIARES PARA ANÁLISIS
+   ======================================================== */
+
+function calcularDesviacionEstandar(arr) {
+  if (arr.length === 0) return 0;
+  const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+  const squaredDiffs = arr.map(value => Math.pow(value - mean, 2));
+  const variance = squaredDiffs.reduce((a, b) => a + b, 0) / arr.length;
+  return Math.sqrt(variance);
+}
+
+function calcularRegresionLineal(x, y) {
+  const n = x.length;
+  const sumX = x.reduce((a, b) => a + b, 0);
+  const sumY = y.reduce((a, b) => a + b, 0);
+  const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
+  const sumX2 = x.reduce((sum, xi) => sum + xi * xi, 0);
+  
+  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+  
+  // Calcular R²
+  const yMean = sumY / n;
+  const ssTot = y.reduce((sum, yi) => sum + Math.pow(yi - yMean, 2), 0);
+  const ssRes = y.reduce((sum, yi, i) => sum + Math.pow(yi - (slope * x[i] + intercept), 2), 0);
+  const r2 = 1 - (ssRes / ssTot);
+  
+  return { slope, intercept, r2 };
+}
+
+function crearGraficoDispersion(canvasId, datos, slope, intercept) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  
+  // Destruir gráfico existente
+  const existingChart = Chart.getChart(ctx);
+  if (existingChart) {
+    existingChart.destroy();
+  }
+  
+  // Preparar datos para el gráfico
+  const xValues = datos.map(d => d.x);
+  const yValues = datos.map(d => d.y);
+  
+  // Calcular línea de regresión
+  const minX = Math.min(...xValues);
+  const maxX = Math.max(...xValues);
+  const lineX = [minX, maxX];
+  const lineY = lineX.map(x => slope * x + intercept);
+  
+  new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        {
+          label: 'Participantes',
+          data: datos.map(d => ({x: d.x, y: d.y})),
+          backgroundColor: 'rgba(127, 0, 255, 0.6)',
+          borderColor: 'rgba(127, 0, 255, 1)',
+          pointRadius: 6,
+          pointHoverRadius: 8
+        },
+        {
+          label: 'Línea de Regresión',
+          data: lineX.map((x, i) => ({x: x, y: lineY[i]})),
+          type: 'line',
+          borderColor: 'rgba(255, 99, 132, 1)',
+          borderWidth: 2,
+          fill: false,
+          pointRadius: 0,
+          tension: 0
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'top',
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const dato = datos[context.dataIndex];
+              return `SD3: ${dato.x.toFixed(2)}, Emoción: ${dato.emocion || dato.y}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Puntaje Promedio SD3 (1-5)'
+          }
+        },
+        y: {
+          title: {
+            display: true,
+            text: 'Código de Emoción (1-7)'
+          },
+          ticks: {
+            callback: function(value) {
+              const map = {
+                1: 'Felicidad', 2: 'Enojo', 3: 'Miedo',
+                4: 'Tristeza', 5: 'Sorpresa', 6: 'Asco', 7: 'Neutral'
+              };
+              return map[value] || value;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function getStrengthClass(corr) {
+  const absCorr = Math.abs(corr);
+  if (absCorr > 0.7) return 'strength-high';
+  if (absCorr > 0.3) return 'strength-medium';
+  return 'strength-low';
+}
+
+function getStrengthLabel(corr) {
+  const absCorr = Math.abs(corr);
+  if (absCorr > 0.7) return 'Alta';
+  if (absCorr > 0.3) return 'Moderada';
+  if (absCorr > 0.1) return 'Baja';
+  return 'Muy Baja';
+}
+
+function interpretarCorrelacionSD3(corr, rasgo) {
+  const absCorr = Math.abs(corr);
+  const direccion = corr > 0 ? 'positiva' : 'negativa';
+  
+  if (absCorr < 0.1) {
+    return `No hay relación significativa entre ${rasgo} y la emoción detectada.`;
+  }
+  
+  const interpretaciones = {
+    'maquiavelismo': {
+      'positiva': 'Mayor maquiavelismo asociado a emociones más intensas/expresivas.',
+      'negativa': 'Mayor maquiavelismo asociado a emociones menos intensas/más controladas.'
+    },
+    'narcisismo': {
+      'positiva': 'Mayor narcisismo asociado a emociones más intensas/expresivas.',
+      'negativa': 'Mayor narcisismo asociado a emociones menos intensas/más controladas.'
+    },
+    'psicopatía': {
+      'positiva': 'Mayor psicopatía asociado a emociones más intensas/expresivas.',
+      'negativa': 'Mayor psicopatía asociado a emociones menos intensas/afecto plano.'
+    }
+  };
+  
+  return interpretaciones[rasgo]?.[direccion] || `Correlación ${direccion} entre ${rasgo} y emoción.`;
+}
+
+function getNivelSD3(puntaje) {
+  if (puntaje < 2) return 'nivel-bajo';
+  if (puntaje < 3.5) return 'nivel-medio';
+  return 'nivel-alto';
+}
+
+function getEtiquetaSD3(puntaje) {
+  if (puntaje < 2) return 'Bajo';
+  if (puntaje < 3.5) return 'Medio';
+  return 'Alto';
+}
+
+function generarConclusionAnalisis(participantes, machProm, narcProm, psychProm) {
+  const total = participantes.length;
+  const conclusiones = [];
+  
+  if (total === 0) return "No hay datos suficientes para generar conclusiones.";
+  
+  // Análisis de promedios
+  const rasgoDominante = machProm >= narcProm && machProm >= psychProm ? 'maquiavelismo' :
+                        narcProm >= machProm && narcProm >= psychProm ? 'narcisismo' : 'psicopatía';
+  
+  conclusiones.push(`El rasgo SD3 predominante en la muestra es <strong>${rasgoDominante}</strong> (promedio: ${Math.max(machProm, narcProm, psychProm).toFixed(2)}).`);
+  
+  // Análisis de distribución
+  const variabilidad = calcularDesviacionEstandar([machProm, narcProm, psychProm]);
+  if (variabilidad < 0.5) {
+    conclusiones.push("Los tres rasgos muestran niveles similares, sugiriendo un perbalance equilibrado en la muestra.");
+  } else {
+    conclusiones.push(`Existe variabilidad significativa entre rasgos (SD=${variabilidad.toFixed(2)}).`);
+  }
+  
+  // Análisis de completitud
+  const completitud = ((participantes.filter(p => p.emocion_principal && p.imagen_url).length / total) * 100).toFixed(0);
+  conclusiones.push(`Completitud de datos: ${completitud}% de participantes tienen análisis facial completo.`);
+  
+  return conclusiones.join(' ');
+}
+
+/* ========================================================
+   REEMPLAZAR LAS FUNCIONES VACÍAS EXISTENTES
+   ======================================================== */
+
+function mostrarMensajeAnalisis(msg) {
+  ["resultados-correlaciones", "resultados-tiempos", "resultados-regresion", "resumen-estadistico"]
+    .forEach(id => {
+      const div = document.getElementById(id);
+      if (div) div.innerHTML = `
+        <div style="text-align: center; padding: 30px;">
+          <p style="color: var(--text-secondary);">${msg}</p>
+        </div>
+      `;
+    });
+}
 /* ---------- FUNCIÓN PARA VOLVER AL INICIO ---------- */
 function volverAlInicio() {
   sessionStorage.clear();
