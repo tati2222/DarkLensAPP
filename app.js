@@ -11,7 +11,7 @@ const SUPABASE_CONFIG = {
 // INICIALIZAR SUPABASE
 const supabase = window.supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
 
-const FASTAPI_URL = "https://darklnesapp-api-1.onrender.com";
+const FASTAPI_URL = "https://darklnesapp-api-6qvs.onrender.com";
 const PASSWORD_INVESTIGADOR = "investigador2025";
 
 /* ---------- PERFILES EMOCIONALES PARA CORRELACIÓN ---------- */
