@@ -726,10 +726,19 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
       parseFloat(sd3.psych) || 0
     );
 
-    // 👉 Preparar el análisis completo incluyendo el informe
+    // 👉 Guardar los datos FACS en sessionStorage para usarlos después
+    if (analisis.facs) {
+      try {
+        sessionStorage.setItem('facs_data', JSON.stringify(analisis.facs));
+        console.log('✅ Datos FACS guardados en sessionStorage');
+      } catch (error) {
+        console.error('❌ Error guardando datos FACS:', error);
+      }
+    }
+
+    // 👉 Preparar el análisis completo
     const analisisCompleto = {
       ...analisis,
-      informe: analisis.informe || '',
       emocion_detectada: emocionPrincipal,
       imagen_url: imagenURL,
       timestamp: new Date().toISOString()
@@ -755,8 +764,8 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
       historia_utilizada: historiaUtilizada,
       imagen_analizada: true,
       tipo_captura: 'imagen',
-      // 👉 CAMBIO: Guardamos TODO (incluyendo informe) en analisis_completo
-      analisis_completo: JSON.stringify(analisisCompleto)
+      analisis_completo: JSON.stringify(analisisCompleto),
+      facs_data: analisis.facs ? JSON.stringify(analisis.facs) : null
     };
 
     console.log('📤 Datos a insertar en Supabase:', imagenData);
@@ -777,7 +786,8 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
       success: true,
       id: data[0]?.id,
       message: 'Datos guardados correctamente',
-      correlacion: correlacionEmocionSD3
+      correlacion: correlacionEmocionSD3,
+      facs_data: analisis.facs
     };
 
   } catch (error) {
@@ -799,7 +809,6 @@ function mostrarConfirmacionParticipante(analisisImagen = null) {
     const analisis = analisisImagen.analisis;
     const emocion = analisis.emocion_detectada || analisis.emocion_principal || 'No detectada';
     const imagenURL = analisis.imagen_url || '';
-    const informe = analisis.informe || '';
     
     analisisHTML = `
       <div style="background: rgba(127, 0, 255, 0.1); padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center;">
@@ -814,12 +823,8 @@ function mostrarConfirmacionParticipante(analisisImagen = null) {
           </div>
         ` : ''}
         
-        ${informe ? `
-          <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-top: 15px; text-align: left;">
-            <h5 style="color: var(--accent); text-align: center;">📋 Informe del Análisis</h5>
-            <pre style="white-space: pre-wrap; word-wrap: break-word; color: var(--text-secondary); font-size: 0.9em;">${informe}</pre>
-          </div>
-        ` : ''}
+        <!-- Contenedor para FACS -->
+        <div id="facs-resultados" style="margin-top: 20px;"></div>
         
         <p style="color: var(--text-secondary); margin-top: 15px;">
           ✅ La imagen y el análisis han sido guardados exitosamente
@@ -851,6 +856,16 @@ function mostrarConfirmacionParticipante(analisisImagen = null) {
       </div>
     </div>
   `;
+  
+  // 👉 LLAMAR A LA FUNCIÓN DE FACS DESPUÉS DE CREAR EL HTML
+  if (analisisImagen && analisisImagen.success && typeof mostrarFACS === 'function') {
+    const facsData = analisisImagen.analisis?.facs || analisisImagen.facs_data;
+    if (facsData) {
+      setTimeout(() => {
+        mostrarFACS(facsData, 'facs-resultados');
+      }, 100);
+    }
+  }
 }
 
 /* ========================================================
@@ -1093,54 +1108,31 @@ function mostrarParticipanteEnPanel(index) {
   if (facsDiv) {
     let facsHTML = '';
     
-    // Intentar obtener FACS desde analisis_completo
-    let analisisCompleto = null;
+    // Intentar obtener FACS desde facs_data o analisis_completo
+    let facsData = null;
     try {
-      if (p.analisis_completo) {
-        analisisCompleto = typeof p.analisis_completo === 'string' 
+      if (p.facs_data) {
+        facsData = typeof p.facs_data === 'string' 
+          ? JSON.parse(p.facs_data) 
+          : p.facs_data;
+      } else if (p.analisis_completo) {
+        const analisisCompleto = typeof p.analisis_completo === 'string' 
           ? JSON.parse(p.analisis_completo) 
           : p.analisis_completo;
+        facsData = analisisCompleto.facs || null;
       }
     } catch (e) {
-      console.warn('No se pudo parsear analisis_completo:', e);
+      console.warn('No se pudo parsear datos FACS:', e);
     }
 
-    const facs = analisisCompleto?.facs || analisisCompleto?.unidades_facs || p.facs || null;
-
-    if (facs && Array.isArray(facs) && facs.length > 0) {
+    if (facsData && (facsData.action_units || facsData.unidades_facs)) {
+      // Crear contenedor para FACS
       facsHTML = `
-        <div style="background: rgba(127, 0, 255, 0.05); padding: 25px; border-radius: 15px; border: 1px solid rgba(127, 0, 255, 0.2);">
-          <h5 style="color: var(--accent); margin-bottom: 20px; font-size: 1.2em;">
-            🔬 Unidades de Acción Facial (FACS) detectadas
+        <div style="margin-top: 20px;">
+          <h5 style="color: var(--accent); margin-bottom: 15px;">
+            🔬 Análisis FACS (Facial Action Coding System)
           </h5>
-          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px;">
-      `;
-      
-      facs.forEach(au => {
-        const nombre = au.name || au.nombre || `AU ${au.au || au.codigo || '?'}`;
-        const intensidad = au.intensity || au.intensidad || 0;
-        const porcentaje = (intensidad * 100).toFixed(0);
-        
-        facsHTML += `
-          <div style="background: rgba(0,0,0,0.4); padding: 18px; border-radius: 10px; border-left: 4px solid var(--accent); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-            <div style="font-weight: bold; color: var(--accent); margin-bottom: 8px; font-size: 1.05em;">${nombre}</div>
-            <div style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
-              Intensidad: <strong style="color: var(--text-primary);">${porcentaje}%</strong>
-            </div>
-            <div class="bar-container" style="height: 10px; background: rgba(0,0,0,0.5); border-radius: 5px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);">
-              <div style="height: 100%; width: ${porcentaje}%; background: linear-gradient(90deg, var(--accent), var(--accent-hover)); transition: width 0.5s ease; border-radius: 5px;"></div>
-            </div>
-          </div>
-        `;
-      });
-      
-      facsHTML += `
-          </div>
-          <div style="margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px;">
-            <p style="color: var(--text-secondary); font-size: 0.9em; margin: 0;">
-              <strong>Total de unidades detectadas:</strong> ${facs.length}
-            </p>
-          </div>
+          <div id="facs-detalle-participante" style="margin-top: 15px;"></div>
         </div>
       `;
     } else {
@@ -1158,6 +1150,13 @@ function mostrarParticipanteEnPanel(index) {
     }
     
     facsDiv.innerHTML = facsHTML;
+    
+    // 👉 LLAMAR A LA FUNCIÓN FACS SI HAY DATOS
+    if (facsData && typeof mostrarFACS === 'function') {
+      setTimeout(() => {
+        mostrarFACS(facsData, 'facs-detalle-participante');
+      }, 200);
+    }
   }
 
   /* MICROEXPRESIONES */
@@ -2289,6 +2288,13 @@ document.addEventListener('DOMContentLoaded', () => {
   capturedBlob = null;
   window._capturaInicializada = false;
   console.log('✅ Sesión limpiada al cargar');
+
+  // Verificar si las funciones FACS están disponibles
+  console.log('✅ Funciones FACS disponibles:', {
+    mostrarFACS: typeof mostrarFACS === 'function',
+    mostrarFACSCompacto: typeof mostrarFACSCompacto === 'function',
+    ocultarFACS: typeof ocultarFACS === 'function'
+  });
 
   const btnParticipante = document.getElementById('btn-iniciar-participante');
   const btnInvestigador = document.getElementById('btn-iniciar-investigador');
