@@ -1,5 +1,5 @@
 /* ========================================
-   app.js - VERSIÓN COMPLETA CON CORRELACIÓN MEJORADA
+   app.js - VERSIÓN COMPLETA 
    ======================================== */
 
 /* ---------- CONFIG SUPABASE ---------- */
