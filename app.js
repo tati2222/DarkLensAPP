@@ -4,7 +4,7 @@
 
 /* ---------- CONFIG SUPABASE ---------- */
 const SUPABASE_CONFIG = {
-  URL: 'https://cdhndtzuwtmvhiulvzbp.supabase.co',
+  URL: 'https://qkwddddyxucglucjklda.supabase.co',
   ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNkaG5kdHp1d3RtdmhpdWx2emJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNTE1OTcsImV4cCI6MjA3OTkyNzU5N30.KeyAfqJuCjgSpmd0kRdjDppkJwBRlF9oGyN0ozJMt6M'
 };
 
