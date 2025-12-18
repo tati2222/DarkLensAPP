@@ -811,7 +811,7 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
     });
 
     const { data, error } = await supabase
-      .from('darklens_records')
+      .from('DarkLens_records')
       .insert([datosParaInsertar])
       .select();
 
@@ -825,7 +825,7 @@ async function guardarAnalisisImagenEnSupabase(analisis, persona, sd3) {
         delete datosParaInsertar.AUS_FRECUENTE;
         
         const { data: data2, error: error2 } = await supabase
-          .from('darklens_records')
+          .from('DarkLens_records')
           .insert([datosParaInsertar])
           .select();
           
@@ -954,7 +954,7 @@ async function cargarDatosParticipantes() {
 
   try {
     const { data: participantes, error } = await supabase
-      .from("darklens_records")
+      .from("DarkLens_records")
       .select("*")
       .order("created_at", { ascending: false });
 
@@ -1631,7 +1631,7 @@ function obtenerRasgoPredominante(p) {
 async function compararConGrupo(p) {
   try {
     const { data, error } = await supabase
-      .from("darklens_records")
+      .from("DarkLens_records")
       .select("mach, narc, psych");
 
     if (error || !data) return;
@@ -1667,7 +1667,7 @@ async function cargarAnalisisAvanzado() {
   participanteSeleccionado = null;
 
   const { data: participantes, error } = await supabase
-    .from("darklens_records")
+    .from("DarkLens_records")
     .select("*");
 
   if (error || !participantes || participantes.length === 0) {
