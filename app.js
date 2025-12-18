@@ -2386,10 +2386,13 @@ document.addEventListener('DOMContentLoaded', () => {
     ocultarFACS: typeof ocultarFACS === 'function'
   });
 
-  const btnParticipante = document.getElementById('btn-iniciar-participante');
-  const btnInvestigador = document.getElementById('btn-iniciar-investigador');
+ // Eventos para los CARDS (divs contenedores)
+const cardParticipante = document.getElementById('card-participante');
+const cardInvestigador = document.getElementById('card-investigador');
 
-  btnParticipante?.addEventListener('click', () => {
+if (cardParticipante) {
+  cardParticipante.addEventListener('click', () => {
+    console.log('🔵 Card participante clickeado');
     volverAlInicio();
     document.getElementById('pagina-inicio')?.classList.add('hidden');
     document.getElementById('seccion-bienvenida')?.classList.remove('hidden');
@@ -2397,12 +2400,39 @@ document.addEventListener('DOMContentLoaded', () => {
     if (fd) fd.reset();
     window.scrollTo({ top:0, behavior:'smooth' });
   });
+}
 
-  btnInvestigador?.addEventListener('click', () => {
+if (cardInvestigador) {
+  cardInvestigador.addEventListener('click', () => {
+    console.log('🔴 Card investigador clickeado');
     document.getElementById('pagina-inicio')?.classList.add('hidden');
     document.getElementById('seccion-login')?.classList.remove('hidden');
     window.scrollTo({ top:0, behavior:'smooth' });
   });
+}
+
+// También eventos para los BOTONES internos (por si acaso)
+const btnParticipante = document.getElementById('btn-iniciar-participante');
+const btnInvestigador = document.getElementById('btn-iniciar-investigador');
+
+btnParticipante?.addEventListener('click', (e) => {
+  e.stopPropagation(); // Evitar doble disparo
+  console.log('🔵 Botón participante clickeado');
+  volverAlInicio();
+  document.getElementById('pagina-inicio')?.classList.add('hidden');
+  document.getElementById('seccion-bienvenida')?.classList.remove('hidden');
+  const fd = document.getElementById('form-datos-basicos');
+  if (fd) fd.reset();
+  window.scrollTo({ top:0, behavior:'smooth' });
+});
+
+btnInvestigador?.addEventListener('click', (e) => {
+  e.stopPropagation(); // Evitar doble disparo
+  console.log('🔴 Botón investigador clickeado');
+  document.getElementById('pagina-inicio')?.classList.add('hidden');
+  document.getElementById('seccion-login')?.classList.remove('hidden');
+  window.scrollTo({ top:0, behavior:'smooth' });
+});
 
   configurarBotonListoCapturar();
 
